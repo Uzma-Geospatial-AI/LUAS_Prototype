@@ -1,0 +1,20 @@
+# Fail perantaraan ETL (dimuat turun semula oleh skrip scripts/01*)
+*_raw.json
+*_raw.geojson
+waterbodies_selangor_full.geojson
+
+# OS / editor
+Thumbs.db
+Desktop.ini
+.DS_Store
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node (tiada binaan diperlukan, tetapi berjaga-jaga)
+node_modules/

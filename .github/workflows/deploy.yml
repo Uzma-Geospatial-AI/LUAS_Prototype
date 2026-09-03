@@ -1,0 +1,115 @@
+name: Deploy portal WQI ke GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Kebenaran yang diperlukan oleh actions/deploy-pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Satu penerbitan pada satu masa; jangan batalkan yang sedang berjalan
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  # ---------------------------------------------------------------
+  # 1. Semakan kewarasan — laman statik, jadi tiada langkah binaan.
+  #    Kita sahkan sintaks JS dan integriti setiap fail data.
+  # ---------------------------------------------------------------
+  semak:
+    name: Semak sintaks & data
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Semak sintaks modul JavaScript
+        run: |
+          for f in js/*.js; do
+            node --check "$f" && echo "  ok  $f"
+          done
+
+      - name: Sahkan JSON / GeoJSON boleh dihuraikan
+        run: |
+          python3 - <<'PY'
+          import json, glob, sys, os
+          gagal = 0
+          for f in sorted(glob.glob('data/*.json') + glob.glob('data/*.geojson')):
+              try:
+                  d = json.load(open(f, encoding='utf-8'))
+              except Exception as e:
+                  print(f'  GAGAL  {f}: {e}'); gagal += 1; continue
+              if isinstance(d, list):
+                  n = len(d)
+              else:
+                  n = len(d.get('features') or d.get('stations') or [])
+              print(f'  ok  {f:44} {os.path.getsize(f)//1024:>6} KB  {n:>6} rekod')
+          sys.exit(1 if gagal else 0)
+          PY
+
+      - name: Sahkan formula WQI terhadap kes rujukan DOE
+        run: |
+          node --input-type=module -e "
+          import { computeWQI, wqiClass } from './js/wqi.js';
+          const kes = [
+            { r: { do: 7.8, bod: 1.2, cod: 8,   ss: 15,  an: 0.05, ph: 6.9 }, kelas: 'I'   },
+            { r: { do: 6.5, bod: 2.5, cod: 18,  ss: 40,  an: 0.25, ph: 7.0 }, kelas: 'II'  },
+            { r: { do: 5.2, bod: 4.0, cod: 30,  ss: 70,  an: 0.80, ph: 6.8 }, kelas: 'III' },
+            { r: { do: 3.0, bod: 8.0, cod: 60,  ss: 200, an: 2.40, ph: 6.5 }, kelas: 'IV'  },
+            { r: { do: 1.2, bod: 18,  cod: 120, ss: 600, an: 3.80, ph: 5.2 }, kelas: 'V'   },
+          ];
+          let gagal = 0;
+          for (const k of kes) {
+            const { wqi } = computeWQI(k.r);
+            const c = wqiClass(wqi).id;
+            const ok = c === k.kelas;
+            if (!ok) gagal++;
+            console.log(\`  \${ok ? 'ok  ' : 'GAGAL'} WQI \${wqi.toFixed(1).padStart(5)} -> Kelas \${c} (dijangka \${k.kelas})\`);
+          }
+          process.exit(gagal ? 1 : 0);
+          "
+
+      - name: Sahkan setiap fail yang dirujuk index.html wujud
+        run: |
+          python3 - <<'PY'
+          import re, os, sys
+          html = open('index.html', encoding='utf-8').read()
+          rujukan = set(re.findall(r'(?:src|href)="(?!https?:|#)([^"]+)"', html))
+          rujukan |= set(re.findall(r"'(data/[^']+)'", open('js/data.js', encoding='utf-8').read()))
+          hilang = [r for r in sorted(rujukan) if not os.path.exists(r)]
+          for r in sorted(rujukan):
+              print(('  ok  ' if r not in hilang else '  HILANG  ') + r)
+          sys.exit(1 if hilang else 0)
+          PY
+
+  # ---------------------------------------------------------------
+  # 2. Terbitkan direktori repo secara terus (laman statik).
+  # ---------------------------------------------------------------
+  terbit:
+    name: Terbitkan ke GitHub Pages
+    needs: semak
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
+
+      - name: Muat naik artifak laman
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Terbitkan
+        id: deploy
+        uses: actions/deploy-pages@v4
