@@ -12,7 +12,7 @@
 import { DEFAULT_CONDITIONS } from './loads.js';
 
 const KEY = 'luas-system-v2';
-const EMPTY = { readings: [], licences: [], feedback: [], cond: null, examplesCleared: false };
+const EMPTY = { readings: [], licences: [], cond: null, examplesCleared: false };
 
 let cache = null;
 
@@ -123,22 +123,6 @@ export const store = {
     write();
   },
 
-  /* ---------------- Feedback ---------------- */
-  feedback: () => read().feedback ?? [],
-  addFeedback(f) {
-    (read().feedback ??= []).push({ id: uid(), created: new Date().toISOString(), ...f });
-    write();
-  },
-  removeFeedback(id) {
-    cache = read();
-    cache.feedback = (cache.feedback ?? []).filter((f) => f.id !== id);
-    write();
-  },
-  clearFeedback() {
-    read().feedback = [];
-    write();
-  },
-
   clearAll() {
     cache = structuredClone(EMPTY);
     write();
@@ -159,13 +143,6 @@ export const store = {
       for (const r of payload.readings) {
         if (!r || typeof r.t !== 'string') continue;
         d.readings.push({ ...r, id: uid() });
-        n++;
-      }
-    }
-    if (Array.isArray(payload?.feedback)) {
-      for (const f of payload.feedback) {
-        if (!f || typeof f.body !== 'string') continue;
-        (d.feedback ??= []).push({ ...f, id: uid() });
         n++;
       }
     }

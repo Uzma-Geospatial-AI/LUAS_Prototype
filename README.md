@@ -155,17 +155,6 @@ Add, edit, suspend, delete, export to JSON/CSV, import back.
 
 ---
 
-## Feedback
-
-A single plain box sits at the foot of every phase — deliberately not attached to a chart, a
-figure or a section, so whoever is reading can write about the system as a whole without first
-deciding what the comment belongs to. Optional name, no required fields beyond the text itself.
-
-Entries are kept in `localStorage` (this browser only) and exported as JSON to pass on. If the
-system ever gets a backend, this is the one place that needs wiring to it.
-
----
-
 ## Data
 
 | Dataset | Source | Status |
@@ -226,7 +215,6 @@ js/mapview.js             the main map: basemaps, stations, water bodies, legend
 js/phase2.js              monitoring, water bodies, national context
 js/satellite.js           imagery layer catalogue + spectral index reference
 js/phase3.js              TMDL budget + licence register
-js/feedback.js            general feedback box
 js/app.js                 routing and bootstrap
 data/*.json               processed data
 data/*.geojson            water body outlines
