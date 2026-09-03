@@ -7,6 +7,7 @@ import { store } from './store.js';
 import { renderPhase1, resizePhase1 } from './phase1.js';
 import { renderPhase2, renderNational, resizePhase2 } from './phase2.js';
 import { renderPhase3, buildLicenceForm, resizePhase3 } from './phase3.js';
+import { initFeedback } from './feedback.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -82,6 +83,7 @@ function updatePills() {
   }
 
   updatePills();
+  initFeedback();
   document.querySelectorAll('#nav button').forEach((b) => {
     b.onclick = () => show(b.dataset.view);
   });

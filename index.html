@@ -501,6 +501,36 @@
   </div>
 </section>
 
+<!-- ================= FEEDBACK ================= -->
+<section class="feedback-band">
+  <div class="feedback-in">
+    <div class="fb-head">
+      <h2>Feedback</h2>
+      <span class="badge soft" id="fbCountBadge">0</span>
+    </div>
+    <p class="fb-lead">Anything about this system — what is useful, what is wrong, what is
+      missing. No need to say which part it is about.</p>
+
+    <div class="fb-form">
+      <textarea id="fbText" rows="4" placeholder="Write your feedback here…"></textarea>
+      <div class="fb-row">
+        <input id="fbFrom" type="text" placeholder="Your name or unit (optional)">
+        <span class="fb-count" id="fbCount">0 / 4000</span>
+        <button class="btn btn-primary" id="fbSend" disabled>Send feedback</button>
+        <span id="fbMsg"></span>
+      </div>
+    </div>
+
+    <div id="fbList" class="fb-list"></div>
+
+    <div class="fb-tools" id="fbTools" style="display:none">
+      <button class="btn btn-ghost" id="fbExport">Export feedback (JSON)</button>
+      <button class="btn btn-ghost" id="fbClear">Clear all</button>
+      <span class="fb-note">Saved in this browser only — export to pass it on.</span>
+    </div>
+  </div>
+</section>
+
 <footer class="footer">
   <div class="footer-col">
     <b>Lembaga Urus Air Selangor (LUAS)</b><br>
