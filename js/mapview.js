@@ -19,7 +19,8 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
 const ALL = { ...IMAGERY, ...REFERENCE_MAPS };
 
 let map = null, base = null, current = 'esri';
-let stationLayer = null, waterLayer = null, reachLayer = null, stateLayer = null;
+let stationLayer = null, waterLayer = null, stateLayer = null;
+let basinLayer = null, riverLayer = null;
 let monthIdx = null, timer = null;
 
 const pad = (n) => String(n).padStart(2, '0');
@@ -44,11 +45,28 @@ export function initMap() {
     interactive: false,
   }).addTo(map);
 
-  /* --- The reach the water bodies were clipped to --- */
-  const radiusKm = DATA.water?.meta?.radius_km ?? 15;
-  reachLayer = L.circle([s.lat, s.lon], {
-    radius: radiusKm * 1000,
-    color: '#f5e01c', weight: 1.6, dashArray: '7 6', fill: false, interactive: false,
+  /* --- The catchment: the focus, and what the water bodies were clipped to --- */
+  basinLayer = L.geoJSON(DATA.catchment, {
+    style: {
+      color: '#f5e01c', weight: 2.4, dashArray: '9 6', opacity: 0.95,
+      fillColor: '#f5e01c', fillOpacity: 0.07,
+    },
+    interactive: false,
+  }).addTo(map);
+
+  /* --- Sungai Langat and everything that drains into it --- */
+  riverLayer = L.geoJSON(DATA.rivers, {
+    style: (f) => (f.properties.main
+      ? { color: '#0aa3d9', weight: 3.2, opacity: 0.95 }
+      : { color: '#45bfe0', weight: 1.4, opacity: 0.8 }),
+    onEachFeature: (f, layer) => {
+      const r = f.properties;
+      layer.bindTooltip(
+        `<b>${r.name ? esc(r.name) : 'Unnamed river'}</b><br>`
+        + `${(r.m / 1000).toFixed(1)} km of mapped channel`
+        + (r.main ? '<br>Main channel' : ''),
+        { sticky: true });
+    },
   }).addTo(map);
 
   /* --- Water bodies: the Digital Earth outlines themselves --- */
@@ -60,7 +78,7 @@ export function initMap() {
       layer.bindTooltip(
         `<b>${b.name ? esc(b.name) : 'Unnamed water body'}</b><br>`
         + `${esc(g.label)} · ${esc(b.kind)}<br>`
-        + `${(b.area_m2 / 1e4).toFixed(2)} ha · ${b.km.toFixed(1)} km from the station`,
+        + `${(b.area_m2 / 1e4).toFixed(2)} ha · ${b.km.toFixed(1)} km from the nearest river`,
         { sticky: true });
       layer.on({
         mouseover: (e) => e.target.setStyle({ weight: 1.8, fillOpacity: 0.8 }),
@@ -82,8 +100,8 @@ export function initMap() {
   setBase('esri');
   repaint();
 
-  /* Open on the whole state, which is the jurisdiction, not just the reach */
-  map.fitBounds(stateLayer.getBounds().pad(0.03));
+  /* Open on the catchment — the area the whole system is about */
+  map.fitBounds(basinLayer.getBounds().pad(0.06));
   return map;
 }
 
@@ -281,12 +299,13 @@ function buildLayerToggles() {
   const w = waterSummary();
   $('ovStations').textContent = DATA.stations.length;
   $('ovWater').textContent = w.count;
-  $('ovReach').textContent = `${w.radiusKm} km`;
+  $('ovRivers').textContent = `${Math.round(DATA.rivers.meta.total_km)} km`;
+  $('ovBasin').textContent = `${Math.round(w.basinKm2).toLocaleString('en')} km\u00b2`;
   $('ovState').textContent = 'state';
 
   const layers = {
     stations: () => stationLayer, water: () => waterLayer,
-    reach: () => reachLayer, selangor: () => stateLayer,
+    rivers: () => riverLayer, basin: () => basinLayer, selangor: () => stateLayer,
   };
   document.querySelectorAll('[data-mapov]').forEach((i) => {
     i.onchange = () => {
@@ -318,8 +337,13 @@ function buildLegend() {
     <div class="ml-row"><span class="ml-line" style="--lc:${color};--ld:${dash}"></span>
       <span>${label} <span class="ml-rng">${note}</span></span></div>`;
   $('mapLegendBounds').innerHTML =
-    line('#ffffff', '5px', 'Selangor', 'LUAS jurisdiction')
-    + line('#f5e01c', '4px', 'Dengkil reach', `${w.radiusKm} km`);
+    line('#f5e01c', '5px', 'Langat catchment',
+      `${Math.round(w.basinKm2).toLocaleString('en')} km\u00b2`)
+    + line('#ffffff', '5px', 'Selangor', 'LUAS jurisdiction')
+    + `<div class="ml-row"><span class="ml-line solid" style="--lc:#0aa3d9"></span>
+        <span>Sungai Langat <span class="ml-rng">main channel</span></span></div>`
+    + `<div class="ml-row"><span class="ml-line solid thin" style="--lc:#45bfe0"></span>
+        <span>Tributaries <span class="ml-rng">${DATA.rivers.features.length - 1} reaches</span></span></div>`;
 
   L.DomEvent.disableClickPropagation(document.querySelector('.map-br'));
 }

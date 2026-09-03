@@ -1,7 +1,8 @@
-# Fail perantaraan ETL (dimuat turun semula oleh skrip scripts/01*)
+# Fail perantaraan ETL (dimuat turun semula oleh skrip dalam scripts/)
 *_raw.json
 *_raw.geojson
 waterbodies_selangor_full.geojson
+hybas_*.zip
 
 # OS / editor
 Thumbs.db

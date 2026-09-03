@@ -131,8 +131,8 @@ function renderHeadline(budgets, head, cond, reading) {
       <div class="k-lab">Receiving environment</div>
       <div class="k-val" style="font-size:25px">${(w.total / 1e6).toFixed(1)}<span class="k-unit">km²</span></div>
       <div class="k-sub">${w.groups.treatment.n} treatment &amp; oxidation basins</div>
-      <div class="k-note">Open water within ${w.radiusKm} km that receives and retains
-        discharge before it reaches the main channel. Source: Digital Earth.</div>
+      <div class="k-note">Open water across the Sungai Langat catchment that receives and
+        retains discharge before it reaches the main channel. Source: Digital Earth.</div>
     </div>
 
     <div class="card kpi">

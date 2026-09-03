@@ -31,12 +31,23 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             super().log_message(fmt, *args)
 
 
-socketserver.TCPServer.allow_reuse_address = True
-with socketserver.TCPServer(('', PORT), Handler) as httpd:
+class Server(socketserver.ThreadingTCPServer):
+    """Threaded: the browser opens several connections at once, and the data
+    files are large enough that serving them one at a time stalls the page."""
+
+    # On Windows SO_REUSEADDR lets a SECOND server bind a port that is already
+    # served, and requests then land on either one at random. Keep the TIME_WAIT
+    # convenience on POSIX; on Windows let the bind fail loudly instead.
+    allow_reuse_address = os.name != 'nt'
+    daemon_threads = True
+
+
+with Server(('', PORT), Handler) as httpd:
     url = f'http://localhost:{PORT}'
     print(f'Portal WQI LUAS  ->  {url}\nTekan Ctrl+C untuk berhenti.')
-    try:
-        webbrowser.open(url)
-    except Exception:
-        pass
+    if os.environ.get('NO_BROWSER') != '1':
+        try:
+            webbrowser.open(url)
+        except Exception:
+            pass
     httpd.serve_forever()

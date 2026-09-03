@@ -12,6 +12,8 @@ export const DATA = {
   months: [],
   basin: null,
   water: null,
+  catchment: null,
+  rivers: null,
   selangor: null,
   focus: null,
 };
@@ -31,17 +33,21 @@ export async function loadAll(onStep) {
   onStep?.(0.5, 'Loading national basin trend…');
   DATA.basin = await J('data/basin_pollution.json');
 
-  onStep?.(0.7, 'Loading receiving water bodies…');
+  onStep?.(0.65, 'Loading the Sungai Langat catchment…');
+  DATA.catchment = await J('data/langat_basin.geojson');
+  DATA.rivers = await J('data/langat_rivers.geojson');
+
+  onStep?.(0.75, 'Loading receiving water bodies…');
   /* A FeatureCollection: the map draws the outlines, everything else reads
      the properties, so both views are served off one file. */
-  const wb = await J('data/waterbodies_dengkil.geojson');
+  const wb = await J('data/waterbodies_langat.geojson');
   DATA.water = {
     meta: wb.meta,
     bodies: wb.features.map((f) => f.properties),
     geo: wb,
   };
 
-  onStep?.(0.8, 'Loading the Selangor boundary…');
+  onStep?.(0.82, 'Loading the Selangor boundary…');
   DATA.selangor = await J('data/selangor_boundary.geojson');
 
   onStep?.(0.85, 'Computing indices…');
@@ -133,7 +139,7 @@ const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'
 export const fmtMonth = (m) => `${MONTHS_EN[+m.split('-')[1] - 1]} ${m.split('-')[0]}`;
 
 /* ============================================================
-   Receiving water bodies around the Dengkil reach
+   Receiving water bodies across the Sungai Langat catchment
    Source: Digital Earth malaysia_water_bodies.geojson, clipped by
    scripts/02_build_waterbodies.py.
    ============================================================ */
@@ -166,7 +172,7 @@ export function waterSummary() {
   return {
     bodies, groups, total,
     count: bodies.length,
-    radiusKm: DATA.water?.meta?.radius_km ?? 15,
+    basinKm2: DATA.water?.meta?.basin_km2 ?? DATA.catchment?.meta?.area_km2 ?? null,
     largest: bodies.slice(0, 12),
   };
 }

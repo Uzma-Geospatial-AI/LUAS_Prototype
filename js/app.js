@@ -99,11 +99,12 @@ function updatePills() {
     download('luas-sesams-register.csv', registerAsCsv(), 'text/csv');
 
   /* What the app is actually running on, said once, at the top */
-  const w = DATA.water?.meta ?? {};
+  const basin = DATA.catchment?.features?.[0]?.properties ?? {};
   $('tbStatus').innerHTML =
-    `data.gov.my &amp; Digital Earth · ${DATA.stations.length} stations · `
+    `Sungai Langat catchment · ${Math.round(basin.area_km2 ?? 0).toLocaleString('en')} km² · `
+    + `${DATA.stations.length} stations · `
     + `record ${fmtMonth(DATA.months[0])} – ${fmtMonth(DATA.months[latestIdx()])} · `
-    + `${(DATA.water?.bodies?.length ?? 0)} water bodies within ${w.radius_km ?? 15} km of Dengkil`;
+    + `${(DATA.water?.bodies?.length ?? 0)} water bodies · data.gov.my &amp; Digital Earth`;
   $('p2Measure').onchange = (e) => renderNational(e.target.value);
 
   /* Changing the target class ripples through every phase */

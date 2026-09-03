@@ -1,19 +1,26 @@
-"""Build the receiving-water-body dataset for the Dengkil reach.
+"""Build the receiving-water-body dataset for the Sungai Langat catchment.
 
 Source: Digital Earth `malaysia_water_bodies.geojson` (121 MB, 30,207 polygons),
         https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/malaysia_water_bodies.geojson
 
 The full national file is far too large to ship to a browser, so it is clipped
-to the Sungai Langat reach around the Dengkil monitoring station. Outlines are
-KEPT — the map draws the actual water surface rather than a symbol standing in
-for it — but simplified to roughly the width of a Sentinel-2 pixel, which is
-finer than anything the eye separates at the zooms this reach is viewed at.
+to the catchment — every water body whose run-off reaches Sungai Langat. That is
+the boundary that means something hydrologically; the radius around a station
+this used to use was only ever a convenience.
+
+Outlines are KEPT — the map draws the actual water surface rather than a symbol
+standing in for it — but simplified to roughly the width of a Sentinel-2 pixel,
+which is finer than anything the eye separates at the zooms this is viewed at.
 
 Wastewater and oxidation ponds matter most here — they are treatment assets that
 sit between a licensed discharge and the river, and their surface area is a
-first-order proxy for retention capacity.
+first-order proxy for retention capacity. Each body also carries its distance to
+the nearest mapped river, which says how directly it drains to a channel.
 
-Run 01_fetch_waterbodies.py first to download the source file.
+Run in order:
+    01_fetch_waterbodies.py     the national source file
+    06_fetch_langat_basin.py    the catchment, used here as the clip
+    07_fetch_langat_rivers.py   the river network, used here for distances
 """
 import json
 import math
@@ -24,10 +31,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(os.path.dirname(HERE), 'data')
 
 SRC = os.environ.get('WATERBODIES_SRC', 'waterbodies_raw.geojson')
-
-# Sungai Langat at Dengkil (the Phase 1 station) and the reach radius kept.
-STATION = (101.68380, 2.85971)
-RADIUS_KM = 15.0
+BASIN = os.path.join(OUT, 'langat_basin.geojson')
+RIVERS = os.path.join(OUT, 'langat_rivers.geojson')
 
 MPD = 111320.0
 
@@ -77,9 +82,45 @@ def centroid(geom):
     return sum(xs) / len(xs), sum(ys) / len(ys)
 
 
-def km_from_station(lon, lat):
+def in_ring(pt, ring):
+    x, y = pt
+    inside, j = False, len(ring) - 1
+    for i in range(len(ring)):
+        xi, yi = ring[i]
+        xj, yj = ring[j]
+        if (yi > y) != (yj > y) and x < (xj - xi) * (y - yi) / (yj - yi) + xi:
+            inside = not inside
+        j = i
+    return inside
+
+
+def in_basin(pt, polys):
+    for rings in polys:
+        if in_ring(pt, rings[0]) and not any(in_ring(pt, h) for h in rings[1:]):
+            return True
+    return False
+
+
+def km_to_river(lon, lat, segments):
+    """Distance to the nearest mapped river, in km.
+
+    Planar at this latitude, which is good to well under a metre over the few
+    kilometres that ever matter here."""
     kx = math.cos(math.radians(lat)) * MPD
-    return math.hypot((lon - STATION[0]) * kx, (lat - STATION[1]) * MPD) / 1000.0
+    px, py = lon * kx, lat * MPD
+    best = float("inf")
+    for ax, ay, bx, by in segments:
+        ax, ay, bx, by = ax * kx, ay * MPD, bx * kx, by * MPD
+        dx, dy = bx - ax, by - ay
+        if dx == 0 and dy == 0:
+            d = (px - ax) ** 2 + (py - ay) ** 2
+        else:
+            t = ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)
+            t = 0.0 if t < 0 else (1.0 if t > 1 else t)
+            d = (px - ax - t * dx) ** 2 + (py - ay - t * dy) ** 2
+        if d < best:
+            best = d
+    return math.sqrt(best) / 1000.0
 
 
 # ---------------- Geometry simplification ----------------
@@ -176,6 +217,24 @@ def count_coords(geom):
     return n
 
 
+# ---------------- The catchment is the clip, the rivers give the distances ----------------
+basin = json.load(open(BASIN, encoding='utf-8'))
+bgeom = basin['features'][0]['geometry']
+BPOLYS = (bgeom['coordinates'] if bgeom['type'] == 'MultiPolygon'
+          else [bgeom['coordinates']])
+BBOX = basin['features'][0]['properties']['bbox']
+print('catchment: %s km2 - bbox %s'
+      % (basin['features'][0]['properties']['area_km2'], BBOX))
+
+rivers = json.load(open(RIVERS, encoding='utf-8'))
+SEGMENTS = []
+for ft in rivers['features']:
+    c = ft['geometry']['coordinates']
+    for (x1, y1), (x2, y2) in zip(c, c[1:]):
+        SEGMENTS.append((x1, y1, x2, y2))
+print('river segments for distance: %d over %s km'
+      % (len(SEGMENTS), rivers['meta']['total_km']))
+
 # ---------------- Read ----------------
 # Accepts either the raw national file (one Feature per line) or an already
 # clipped FeatureCollection.
@@ -222,8 +281,9 @@ for ft in feats_in:
     if not g or g.get('type') not in ('Polygon', 'MultiPolygon'):
         continue
     lon, lat = centroid(g)
-    d = km_from_station(lon, lat)
-    if d > RADIUS_KM:
+    if not (BBOX[0] <= lon <= BBOX[2] and BBOX[1] <= lat <= BBOX[3]):
+        continue
+    if not in_basin((lon, lat), BPOLYS):
         continue
     kind = p.get('kind') or p.get('water') or p.get('natural') or 'water'
     area = geom_area_m2(g, lat)          # measured at full resolution
@@ -241,7 +301,7 @@ for ft in feats_in:
         'kind': kind,
         'group': KIND_GROUPS.get(kind, 'other'),
         'area_m2': round(area),
-        'km': round(d, 2),
+        'km': round(km_to_river(lon, lat, SEGMENTS), 2),   # to the nearest river
         'lon': round(lon, 5),
         'lat': round(lat, 5),
     }
@@ -258,7 +318,7 @@ feats_out.sort(key=lambda ft: -ft['properties']['area_m2'])
 
 total_area = sum(ft['properties']['area_m2'] for ft in feats_out)
 
-print('within', RADIUS_KM, 'km of Dengkil:', len(feats_out))
+print('inside the Langat catchment:', len(feats_out))
 print('by group :', Counter(ft['properties']['group'] for ft in feats_out).most_common())
 print('by kind  :', Counter(ft['properties']['kind'] for ft in feats_out).most_common(10))
 print('total surface area: %.2f km2' % (total_area / 1e6))
@@ -272,18 +332,20 @@ payload = {
     'meta': {
         'source': 'Digital Earth · malaysia_water_bodies.geojson',
         'url': 'https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/malaysia_water_bodies.geojson',
-        'station': 'LGT06 Sungai Langat at Dengkil',
-        'radius_km': RADIUS_KM,
+        'clip': ('Sungai Langat catchment (HydroBASINS %s)'
+                 % basin['features'][0]['properties']['hybas_id']),
+        'basin_km2': basin['features'][0]['properties']['area_km2'],
         'simplify_m': round(SIMPLIFY_DEG * MPD),
-        'note': ('Clipped from the 30,207-polygon national file to the Dengkil reach. '
-                 'Outlines are kept and simplified to about %d m, so the map draws the '
-                 'water surface itself. Surface areas are computed from the '
-                 'full-resolution geometry, before simplification.'
+        'note': ('Clipped from the 30,207-polygon national file to the Sungai Langat '
+                 'catchment. Outlines are kept and simplified to about %d m, so the map '
+                 'draws the water surface itself. Surface areas are computed from the '
+                 'full-resolution geometry, before simplification. "km" is the distance '
+                 'to the nearest mapped river, not to any station.'
                  % round(SIMPLIFY_DEG * MPD)),
     },
     'features': feats_out,
 }
-path = os.path.join(OUT, 'waterbodies_dengkil.geojson')
+path = os.path.join(OUT, 'waterbodies_langat.geojson')
 with open(path, 'w', encoding='utf-8') as f:
     json.dump(payload, f, ensure_ascii=False, separators=(',', ':'))
 print('wrote', path, '-', round(os.path.getsize(path) / 1024, 1), 'KB')

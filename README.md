@@ -1,8 +1,9 @@
 # LUAS System — Sungai Langat
 
 A three-phase water quality and discharge load management system for
-**Lembaga Urus Air Selangor (LUAS)**, built around the Sungai Langat monitoring station at
-**Dengkil**.
+**Lembaga Urus Air Selangor (LUAS)**, covering the **Sungai Langat catchment** — the
+2,140 km² of Selangor whose run-off reaches the river — and assessed at the monitoring
+station at **Dengkil**.
 
 Fully static — no backend, no build step, no API keys.
 
@@ -15,6 +16,20 @@ The three phases are reading pages behind the same sidebar.
 | **1 · Station Assessment** | Six DOE parameters → WQI → does the reach hold **Class II**? |
 | **2 · Quality Monitoring** | How often does each parameter breach the standard, how does each one trend against it, and where does the basin sit nationally? |
 | **3 · LEDS · TMDL · SESAMS** | What load may the reach carry, what is it carrying now, and **how much is left to licence**? |
+
+### The focus area
+
+Everything on the map is clipped to the **Sungai Langat catchment**: the land whose run-off
+reaches the river, and therefore the area whose discharge the load budget has to account for.
+It comes from HydroSHEDS HydroBASINS at level 8, where the Langat comes out as a single basin
+(HYBAS_ID 4080020780) draining straight to the Strait of Malacca, so nothing upstream has to be
+gathered. HydroSHEDS delineates from 15 arc-second flow direction, so its 2,140 km² differs a
+little from the ~2,350 km² DID usually quotes; replace `data/langat_basin.geojson` with the DID
+delineation if you have it and re-run the water body build.
+
+Every `waterway=river` inside that catchment drains to Sungai Langat — that is what a catchment
+is — so the polygon is the only filter the river network needs, and no drainage topology has to
+be worked out.
 
 ---
 
@@ -49,8 +64,9 @@ one, and the NDWI / NDTI / NDCI / LST reference folded away.
 | Layer | What it is |
 |---|---|
 | Monitoring stations | 16 stations, drawn as their WQI and coloured by DOE class |
-| Water bodies | 505 Digital Earth outlines, coloured by type |
-| Dengkil reach | the 15 km radius the water bodies were clipped to |
+| Water bodies | 1,101 Digital Earth outlines, coloured by type |
+| Sungai Langat & tributaries | 682 km of mapped channel; the main channel is drawn heavier |
+| Langat catchment | 2,140 km², the clip for everything else on the map |
 | Selangor boundary | the state LUAS is responsible for, Federal Territories excluded |
 
 **Bottom centre — the month.** The record runs 56 months, and the slider moves the whole map
@@ -58,7 +74,7 @@ through it: every station marker and every chip repaints. Play steps through the
 reach can be watched deteriorating and recovering rather than read one month at a time.
 
 **Bottom right — legend.** The five WQI classes with their index bands, the water body types
-actually present, and what the two dashed lines mean.
+actually present, and what the boundary and river lines mean.
 
 Clicking a station gives its six parameters against the target-class limits with a pass/fail
 verdict; the Dengkil marker opens the Phase 1 assessment.
@@ -119,16 +135,17 @@ sub-index, and a pass/fail against Class II — parameter by parameter.
 ## Phase 2 — Quality monitoring and pollution
 
 - **Exceedance frequency** per parameter across the record, worst first.
-- **Receiving water bodies** — 505 lakes, ponds, treatment basins and wetlands within 15 km of
-  the station, clipped from the Digital Earth national file, grouped by type with surface areas.
+- **Receiving water bodies** — 1,101 lakes, ponds, treatment basins and wetlands across the
+  catchment, clipped from the Digital Earth national file, grouped by type with surface areas.
   Their outlines are drawn on the map.
 - **Parameter trends** against the standard, one chart per parameter.
 - **National context** — basin pollution status from data.gov.my, by parameter and year.
 
 > Outlines are clipped from the 30,207-polygon national file and simplified with Douglas-Peucker
-> to about 11 m — roughly a Sentinel-2 pixel — which keeps 38% of the vertices and the file at
-> 190 KB. Surface areas are measured on the full-resolution geometry, before simplification, so
-> the load model is unaffected by it.
+> to about 11 m — roughly a Sentinel-2 pixel — which keeps 35% of the vertices and the file at
+> 362 KB. Surface areas are measured on the full-resolution geometry, before simplification, so
+> the load model is unaffected by it. Each body carries its distance to the nearest mapped river,
+> which says how directly it drains to a channel.
 
 ---
 
@@ -182,8 +199,10 @@ Add, edit, suspend, delete, export to JSON/CSV, import back.
 | Dataset | Source | Status |
 |---|---|---|
 | National river basin pollution, 198 records 2000–2021 | [`data.gov.my` · `water_pollution_basin`](https://api.data.gov.my/data-catalogue?id=water_pollution_basin) | **Real** |
+| Sungai Langat catchment, 2,140 km² | [HydroSHEDS · HydroBASINS Asia level 8](https://www.hydrosheds.org/products/hydrobasins) | **Real** |
+| River network, 489 reaches, 682 km | [OpenStreetMap](https://www.openstreetmap.org) via Overpass | **Real** |
 | Selangor state boundary, land only, 13 parts | [DOSM · `administrative_1_state.geojson`](https://github.com/dosm-malaysia/data-open) | **Real** |
-| Water bodies, 505 outlines within 15 km of Dengkil | [Digital Earth · `malaysia_water_bodies.geojson`](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/malaysia_water_bodies.geojson) | **Real** |
+| Water bodies, 1,101 outlines in the catchment | [Digital Earth · `malaysia_water_bodies.geojson`](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/malaysia_water_bodies.geojson) | **Real** |
 | Satellite imagery | Esri · Google · EOX Sentinel-2 cloudless · NASA GIBS | **Real** |
 | Station parameter readings, 16 stations × 56 months | Generated for demonstration | ⚠️ **SAMPLE** |
 | Effluent discharge licences | Five worked examples | ⚠️ **SAMPLE** |
@@ -216,11 +235,13 @@ code changes.
 ## Rebuilding the data
 
 ```bash
-python scripts/01_fetch_waterbodies.py      # 121 MB Digital Earth national file
-python scripts/02_build_waterbodies.py      # clip to the reach, keep and simplify outlines
-python scripts/03_fetch_basin_pollution.py  # data.gov.my water_pollution_basin
-python scripts/04_build_stations.py         # stations (REPLACE with real readings)
-python scripts/05_fetch_selangor_boundary.py  # DOSM state boundary
+python scripts/01_fetch_waterbodies.py        # 121 MB Digital Earth national file
+python scripts/06_fetch_langat_basin.py      # HydroSHEDS catchment — run before 02
+python scripts/07_fetch_langat_rivers.py     # OSM rivers inside the catchment
+python scripts/02_build_waterbodies.py       # clip to the catchment, simplify outlines
+python scripts/03_fetch_basin_pollution.py   # data.gov.my water_pollution_basin
+python scripts/04_build_stations.py          # stations (REPLACE with real readings)
+python scripts/05_fetch_selangor_boundary.py # DOSM state boundary
 ```
 
 ---
@@ -241,7 +262,7 @@ js/satellite.js           imagery layer catalogue + spectral index reference
 js/phase3.js              TMDL budget + licence register
 js/app.js                 routing and bootstrap
 data/*.json               processed data
-data/*.geojson            water body outlines, Selangor boundary
+data/*.geojson            catchment, rivers, water bodies, Selangor boundary
 scripts/*.py              ETL pipeline
 serve.py                  local development server
 ```
@@ -256,6 +277,8 @@ Dependencies load from CDN at runtime — no `npm install`:
 WQI formula and INWQS: Department of Environment Malaysia ·
 Effluent standards: EQ (Industrial Effluent) Regulations 2009 ·
 Open data: [data.gov.my](https://data.gov.my) ·
+Catchment: HydroSHEDS HydroBASINS (CC BY 4.0) ·
+Rivers: OpenStreetMap contributors (ODbL) ·
 State boundary: Department of Statistics Malaysia ·
 Water bodies: Digital Earth ·
 Imagery: Esri, Google, EOX Sentinel-2 cloudless, NASA EOSDIS GIBS

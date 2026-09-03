@@ -526,6 +526,8 @@ select{cursor:pointer}
 .ml-dot{width:10px;height:10px;border-radius:50%;flex:none;border:1px solid rgba(0,0,0,.14)}
 .ml-line{width:22px;height:0;flex:none;border-top:2.2px dashed var(--lc);
   outline:1px solid rgba(0,0,0,.12);outline-offset:-1px}
+.ml-line.solid{border-top-style:solid;border-top-width:3px}
+.ml-line.solid.thin{border-top-width:1.6px}
 .ml-rng{font-family:var(--fm);font-size:9.5px;color:var(--muted-2);margin-left:5px}
 
 /* --- Station markers --- */

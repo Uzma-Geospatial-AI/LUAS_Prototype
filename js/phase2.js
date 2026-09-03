@@ -92,7 +92,7 @@ function renderWaterBodies() {
   }).join('');
 
   $('p2WaterNote').textContent =
-    `${w.count} water bodies within ${w.radiusKm} km of the station \u00b7 `
+    `${w.count} water bodies in the ${w.basinKm2} km² Sungai Langat catchment \u00b7 `
     + `${km2(w.total)} km\u00b2 total open water surface`;
 
 }
