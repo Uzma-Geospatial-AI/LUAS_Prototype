@@ -4,8 +4,10 @@ Source: Digital Earth `malaysia_water_bodies.geojson` (121 MB, 30,207 polygons),
         https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/malaysia_water_bodies.geojson
 
 The full national file is far too large to ship to a browser, so it is clipped
-to the Sungai Langat reach around the Dengkil monitoring station and reduced to
-what the load model needs: type, name, surface area and distance to the station.
+to the Sungai Langat reach around the Dengkil monitoring station. Outlines are
+KEPT — the map draws the actual water surface rather than a symbol standing in
+for it — but simplified to roughly the width of a Sentinel-2 pixel, which is
+finer than anything the eye separates at the zooms this reach is viewed at.
 
 Wastewater and oxidation ponds matter most here — they are treatment assets that
 sit between a licensed discharge and the river, and their surface area is a
@@ -29,9 +31,14 @@ RADIUS_KM = 15.0
 
 MPD = 111320.0
 
+# Douglas-Peucker tolerance in degrees. 1e-4 deg is about 11 m at this latitude,
+# roughly a Sentinel-2 pixel. Areas are measured before this runs.
+SIMPLIFY_DEG = 1.0e-4
+COORD_DP = 5          # 5 decimal places is about 1.1 m
+
 
 def ring_area_m2(ring, lat0):
-    """Planar shoelace area in m², good enough at this latitude and scale."""
+    """Planar shoelace area in m2, good enough at this latitude and scale."""
     kx = math.cos(math.radians(lat0)) * MPD
     a = 0.0
     for (x1, y1), (x2, y2) in zip(ring, ring[1:] + ring[:1]):
@@ -41,13 +48,13 @@ def ring_area_m2(ring, lat0):
 
 def geom_area_m2(geom, lat0):
     if geom['type'] == 'Polygon':
-        rings = [geom['coordinates']]
+        polys = [geom['coordinates']]
     elif geom['type'] == 'MultiPolygon':
-        rings = geom['coordinates']
+        polys = geom['coordinates']
     else:
         return 0.0
     total = 0.0
-    for poly in rings:
+    for poly in polys:
         if not poly:
             continue
         total += ring_area_m2([tuple(p) for p in poly[0]], lat0)
@@ -61,7 +68,8 @@ def centroid(geom):
 
     def walk(c):
         if isinstance(c[0], (int, float)):
-            xs.append(c[0]); ys.append(c[1])
+            xs.append(c[0])
+            ys.append(c[1])
         else:
             for p in c:
                 walk(p)
@@ -72,6 +80,100 @@ def centroid(geom):
 def km_from_station(lon, lat):
     kx = math.cos(math.radians(lat)) * MPD
     return math.hypot((lon - STATION[0]) * kx, (lat - STATION[1]) * MPD) / 1000.0
+
+
+# ---------------- Geometry simplification ----------------
+def perp_distance(p, a, b):
+    """Perpendicular distance from p to segment ab, in degrees."""
+    (px, py), (ax, ay), (bx, by) = p, a, b
+    dx, dy = bx - ax, by - ay
+    if dx == 0 and dy == 0:
+        return math.hypot(px - ax, py - ay)
+    t = ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)
+    t = max(0.0, min(1.0, t))
+    return math.hypot(px - (ax + t * dx), py - (ay + t * dy))
+
+
+def simplify(points, tol):
+    """Douglas-Peucker, iterative — recursion overflows on the long river rings."""
+    if len(points) < 3:
+        return points
+    keep = [False] * len(points)
+    keep[0] = keep[-1] = True
+    stack = [(0, len(points) - 1)]
+    while stack:
+        i, j = stack.pop()
+        if j <= i + 1:
+            continue
+        worst, worst_i = -1.0, i
+        for k in range(i + 1, j):
+            d = perp_distance(points[k], points[i], points[j])
+            if d > worst:
+                worst, worst_i = d, k
+        if worst > tol:
+            keep[worst_i] = True
+            stack.append((i, worst_i))
+            stack.append((worst_i, j))
+    return [p for p, k in zip(points, keep) if k]
+
+
+def clean_ring(ring, tol):
+    """Simplify one ring, keeping it closed and still an area."""
+    pts = [tuple(p[:2]) for p in ring]
+    if len(pts) > 1 and pts[0] == pts[-1]:
+        pts = pts[:-1]
+    if len(pts) < 3:
+        return None
+
+    out = simplify(pts + [pts[0]], tol)
+    if len(out) > 1 and out[0] == out[-1]:
+        out = out[:-1]
+    if len(out) < 3:
+        out = pts                      # too small to survive — keep the outline
+
+    out = [[round(x, COORD_DP), round(y, COORD_DP)] for x, y in out]
+
+    # Rounding can collapse neighbouring vertices onto each other.
+    dedup = [out[0]]
+    for p in out[1:]:
+        if p != dedup[-1]:
+            dedup.append(p)
+    if len(dedup) < 3:
+        return None
+    return dedup + [dedup[0]]
+
+
+def clean_geom(geom, tol):
+    if geom['type'] == 'Polygon':
+        polys = [geom['coordinates']]
+    elif geom['type'] == 'MultiPolygon':
+        polys = geom['coordinates']
+    else:
+        return None
+    out = []
+    for poly in polys:
+        rings = [r for r in (clean_ring(ring, tol) for ring in poly) if r]
+        if rings:
+            out.append(rings)
+    if not out:
+        return None
+    if geom['type'] == 'Polygon':
+        return {'type': 'Polygon', 'coordinates': out[0]}
+    return {'type': 'MultiPolygon', 'coordinates': out}
+
+
+def count_coords(geom):
+    n = 0
+
+    def walk(c):
+        nonlocal n
+        if isinstance(c[0], (int, float)):
+            n += 1
+        else:
+            for p in c:
+                walk(p)
+    walk(geom['coordinates'])
+    return n
 
 
 # ---------------- Read ----------------
@@ -111,21 +213,30 @@ KIND_GROUPS = {
     'oxbow': 'channel',
 }
 
-out = []
+feats_out = []
+raw_pts = simp_pts = 0
+
 for ft in feats_in:
     g = ft.get('geometry')
     p = ft.get('properties', {})
-    if not g:
+    if not g or g.get('type') not in ('Polygon', 'MultiPolygon'):
         continue
     lon, lat = centroid(g)
     d = km_from_station(lon, lat)
     if d > RADIUS_KM:
         continue
     kind = p.get('kind') or p.get('water') or p.get('natural') or 'water'
-    area = geom_area_m2(g, lat)
+    area = geom_area_m2(g, lat)          # measured at full resolution
     if area < 400 and not p.get('name'):
-        continue                     # drop slivers with no identity
-    rec = {
+        continue                         # drop slivers with no identity
+
+    geom = clean_geom(g, SIMPLIFY_DEG)
+    if geom is None:
+        continue
+    raw_pts += count_coords(g)
+    simp_pts += count_coords(geom)
+
+    props = {
         'id': p.get('id') or p.get('osm_id'),
         'kind': kind,
         'group': KIND_GROUPS.get(kind, 'other'),
@@ -135,30 +246,44 @@ for ft in feats_in:
         'lat': round(lat, 5),
     }
     if p.get('name'):
-        rec['name'] = p['name']
-    out.append({k: v for k, v in rec.items() if v is not None})
+        props['name'] = p['name']
+    feats_out.append({
+        'type': 'Feature',
+        'properties': {k: v for k, v in props.items() if v is not None},
+        'geometry': geom,
+    })
 
-out.sort(key=lambda r: -r['area_m2'])
+# Largest first, so a small pond still draws on top of the wetland it sits in.
+feats_out.sort(key=lambda ft: -ft['properties']['area_m2'])
 
-print('within', RADIUS_KM, 'km of Dengkil:', len(out))
-print('by group :', Counter(r['group'] for r in out).most_common())
-print('by kind  :', Counter(r['kind'] for r in out).most_common(10))
-print('total surface area: %.2f km2' % (sum(r['area_m2'] for r in out) / 1e6))
+total_area = sum(ft['properties']['area_m2'] for ft in feats_out)
+
+print('within', RADIUS_KM, 'km of Dengkil:', len(feats_out))
+print('by group :', Counter(ft['properties']['group'] for ft in feats_out).most_common())
+print('by kind  :', Counter(ft['properties']['kind'] for ft in feats_out).most_common(10))
+print('total surface area: %.2f km2' % (total_area / 1e6))
 print('treatment ponds   : %.2f km2' %
-      (sum(r['area_m2'] for r in out if r['group'] == 'treatment') / 1e6))
+      (sum(ft['properties']['area_m2'] for ft in feats_out
+           if ft['properties']['group'] == 'treatment') / 1e6))
+print('vertices: %d -> %d (%.0f%% kept)' % (raw_pts, simp_pts, 100.0 * simp_pts / max(1, raw_pts)))
 
 payload = {
+    'type': 'FeatureCollection',
     'meta': {
         'source': 'Digital Earth · malaysia_water_bodies.geojson',
         'url': 'https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/malaysia_water_bodies.geojson',
         'station': 'LGT06 Sungai Langat at Dengkil',
         'radius_km': RADIUS_KM,
+        'simplify_m': round(SIMPLIFY_DEG * MPD),
         'note': ('Clipped from the 30,207-polygon national file to the Dengkil reach. '
-                 'Geometry is reduced to centroid, surface area and type — the portal '
-                 'needs the areas, not the outlines.'),
+                 'Outlines are kept and simplified to about %d m, so the map draws the '
+                 'water surface itself. Surface areas are computed from the '
+                 'full-resolution geometry, before simplification.'
+                 % round(SIMPLIFY_DEG * MPD)),
     },
-    'bodies': out,
+    'features': feats_out,
 }
-path = os.path.join(OUT, 'waterbodies_dengkil.json')
-json.dump(payload, open(path, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
-print('size KB', round(os.path.getsize(path) / 1024, 1))
+path = os.path.join(OUT, 'waterbodies_dengkil.geojson')
+with open(path, 'w', encoding='utf-8') as f:
+    json.dump(payload, f, ensure_ascii=False, separators=(',', ':'))
+print('wrote', path, '-', round(os.path.getsize(path) / 1024, 1), 'KB')

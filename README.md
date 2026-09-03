@@ -39,7 +39,9 @@ One full-height Leaflet map, and a panel that folds away.
 - **Stations** — every monitoring station as its WQI, coloured by DOE class. Click one for its
   six parameters against the target-class limits and a pass/fail verdict; the Dengkil marker
   opens the Phase 1 assessment.
-- **Water bodies** — the Digital Earth polygons, each sized by surface area.
+- **Water bodies** — the Digital Earth polygons drawn as their actual outlines, coloured by
+  type. Below zoom 13 a 1 ha pond is smaller than a pixel, so the outline carries the colour
+  itself until the shape is large enough to read.
 - **Legend** — the five WQI classes and the water body types actually present in the reach.
 
 Both overlays can be switched off. Each view has its own URL fragment
@@ -95,11 +97,16 @@ sub-index, and a pass/fail against Class II — parameter by parameter.
 ## Phase 2 — Quality monitoring and pollution
 
 - **Exceedance frequency** per parameter across the record, worst first.
-- **Receiving water bodies** — 449 lakes, ponds, treatment basins and wetlands within 15 km of
+- **Receiving water bodies** — 505 lakes, ponds, treatment basins and wetlands within 15 km of
   the station, clipped from the Digital Earth national file, grouped by type with surface areas.
-  They are drawn on the map.
+  Their outlines are drawn on the map.
 - **Parameter trends** against the standard, one chart per parameter.
 - **National context** — basin pollution status from data.gov.my, by parameter and year.
+
+> Outlines are clipped from the 30,207-polygon national file and simplified with Douglas-Peucker
+> to about 11 m — roughly a Sentinel-2 pixel — which keeps 38% of the vertices and the file at
+> 190 KB. Surface areas are measured on the full-resolution geometry, before simplification, so
+> the load model is unaffected by it.
 
 ---
 
@@ -164,7 +171,7 @@ system ever gets a backend, this is the one place that needs wiring to it.
 | Dataset | Source | Status |
 |---|---|---|
 | National river basin pollution, 198 records 2000–2021 | [`data.gov.my` · `water_pollution_basin`](https://api.data.gov.my/data-catalogue?id=water_pollution_basin) | **Real** |
-| Water bodies, 449 within 15 km of Dengkil | [Digital Earth · `malaysia_water_bodies.geojson`](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/malaysia_water_bodies.geojson) | **Real** |
+| Water bodies, 505 outlines within 15 km of Dengkil | [Digital Earth · `malaysia_water_bodies.geojson`](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/malaysia_water_bodies.geojson) | **Real** |
 | Satellite imagery | Esri · Google · EOX Sentinel-2 cloudless · NASA GIBS | **Real** |
 | Station parameter readings, 16 stations × 56 months | Generated for demonstration | ⚠️ **SAMPLE** |
 | Effluent discharge licences | Five worked examples | ⚠️ **SAMPLE** |
@@ -198,7 +205,7 @@ code changes.
 
 ```bash
 python scripts/01_fetch_waterbodies.py      # 121 MB Digital Earth national file
-python scripts/02_build_waterbodies.py      # clip to the Dengkil reach, compute areas
+python scripts/02_build_waterbodies.py      # clip to the reach, keep and simplify outlines
 python scripts/03_fetch_basin_pollution.py  # data.gov.my water_pollution_basin
 python scripts/04_build_stations.py         # stations (REPLACE with real readings)
 ```
@@ -222,6 +229,7 @@ js/phase3.js              TMDL budget + licence register
 js/feedback.js            general feedback box
 js/app.js                 routing and bootstrap
 data/*.json               processed data
+data/*.geojson            water body outlines
 scripts/*.py              ETL pipeline
 serve.py                  local development server
 ```

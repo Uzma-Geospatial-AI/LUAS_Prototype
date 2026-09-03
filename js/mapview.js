@@ -31,18 +31,27 @@ export function initMap() {
   L.control.zoom({ position: 'bottomright' }).addTo(map);
   L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
 
-  /* --- Water bodies from the Digital Earth file --- */
-  const w = waterSummary();
-  waterLayer = L.layerGroup(w.bodies.map((b) => {
-    const g = WATER_GROUPS[b.group] ?? WATER_GROUPS.other;
-    const r = Math.max(2, Math.min(13, Math.sqrt(b.area_m2 / Math.PI) / 10));
-    return L.circleMarker([b.lat, b.lon], {
-      radius: r, fillColor: g.color, color: 'rgba(255,255,255,.65)',
-      weight: 0.8, fillOpacity: 0.42,
-    }).bindTooltip(
-      `<b>${b.name ? esc(b.name) : 'Unnamed water body'}</b><br>`
-      + `${esc(g.label)} · ${(b.area_m2 / 1e4).toFixed(2)} ha`, { sticky: true });
-  })).addTo(map);
+  /* --- Water bodies: the Digital Earth outlines themselves --- */
+  waterLayer = L.geoJSON(DATA.water.geo, {
+    style: waterStyle,
+    onEachFeature: (f, layer) => {
+      const b = f.properties;
+      const g = WATER_GROUPS[b.group] ?? WATER_GROUPS.other;
+      layer.bindTooltip(
+        `<b>${b.name ? esc(b.name) : 'Unnamed water body'}</b><br>`
+        + `${esc(g.label)} · ${esc(b.kind)}<br>`
+        + `${(b.area_m2 / 1e4).toFixed(2)} ha · ${b.km.toFixed(1)} km from the station`,
+        { sticky: true });
+      layer.on({
+        mouseover: (e) => e.target.setStyle({ weight: 1.8, fillOpacity: 0.8 }),
+        mouseout: (e) => waterLayer.resetStyle(e.target),
+      });
+    },
+  }).addTo(map);
+
+  /* A 1 ha pond is sub-pixel across the whole basin, so the outline has to
+     carry the colour itself until the zoom makes the shape readable. */
+  map.on('zoomend', () => waterLayer.setStyle(waterStyle));
 
   stationLayer = L.layerGroup().addTo(map);
   paintStations();
@@ -53,6 +62,16 @@ export function initMap() {
 
   map.fitBounds(L.latLngBounds(DATA.stations.map((x) => [x.lat, x.lon])).pad(0.16));
   return map;
+}
+
+function waterStyle(f) {
+  const g = WATER_GROUPS[f.properties.group] ?? WATER_GROUPS.other;
+  const wide = (map?.getZoom() ?? 11) < 13;
+  return {
+    fillColor: g.color, fillOpacity: wide ? 0.85 : 0.6,
+    color: wide ? g.color : '#ffffff',
+    weight: wide ? 1.9 : 0.8, opacity: wide ? 0.9 : 0.8,
+  };
 }
 
 /* ---------------- Stations ---------------- */

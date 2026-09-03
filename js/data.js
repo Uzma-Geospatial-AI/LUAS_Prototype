@@ -31,7 +31,14 @@ export async function loadAll(onStep) {
   DATA.basin = await J('data/basin_pollution.json');
 
   onStep?.(0.7, 'Loading receiving water bodies…');
-  DATA.water = await J('data/waterbodies_dengkil.json');
+  /* A FeatureCollection: the map draws the outlines, everything else reads
+     the properties, so both views are served off one file. */
+  const wb = await J('data/waterbodies_dengkil.geojson');
+  DATA.water = {
+    meta: wb.meta,
+    bodies: wb.features.map((f) => f.properties),
+    geo: wb,
+  };
 
   onStep?.(0.85, 'Computing indices…');
   derive();
