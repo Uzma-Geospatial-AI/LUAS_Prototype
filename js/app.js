@@ -3,16 +3,19 @@
    ============================================================ */
 import { DATA, loadAll, basinStats } from './data.js';
 import { WQI_CLASSES, PARAM_META, thresholdText } from './wqi.js';
-import { initMap, getMonthIdx, refreshMapSize, focusStation } from './mapview.js';
+import { initMap, getMonthIdx, refreshMapSize, focusStation, BASEMAPS } from './mapview.js';
 import { renderDashboard, renderNational, renderSources, resizeCharts } from './dashboard.js';
-import { initSat, resizeSat } from './satellite.js';
+import { WATER_INDICES } from './satellite.js';
 import { initEntry, resizePickMap } from './entry.js';
 
 const nf = (n) => n.toLocaleString('en-MY');
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-let satReady = false, dashReady = false, srcReady = false, guideReady = false;
+let dashReady = false, srcReady = false, guideReady = false;
+
+/* Old deep links from when Sources and Satellite were separate views */
+const VIEW_ALIAS = { sources: 'dashboard', satellite: 'map', peta: 'map', punca: 'dashboard' };
 
 /* ---------------- Clock ---------------- */
 function tick() {
@@ -37,12 +40,6 @@ function show(view) {
   if (view === 'dashboard') {
     if (!dashReady) { renderDashboard(getMonthIdx()); renderNational('bod5'); dashReady = true; }
     else resizeCharts();
-  }
-  if (view === 'sources') {
-    if (!srcReady) { renderSources(1500); srcReady = true; } else resizeCharts();
-  }
-  if (view === 'satellite') {
-    if (!satReady) { initSat(); satReady = true; } else resizeSat();
   }
   if (view === 'entry') { initEntry(); resizePickMap(); }
   if (view === 'guide' && !guideReady) { renderGuide(); guideReady = true; }
@@ -75,6 +72,24 @@ function renderGuide() {
 
   document.getElementById('srcMetaCount').textContent =
     `${nf(DATA.sources.features.length)} locations in the 1.5 km riparian zone`;
+
+  /* Satellite imagery layers available in the map's Base map menu */
+  document.getElementById('satTable').innerHTML = Object.values(BASEMAPS)
+    .filter((d) => d.group === 'sat')
+    .map((d) => `<tr>
+      <td><b>${esc(d.label)}</b></td>
+      <td class="num">${esc(d.res)}</td>
+      <td style="font-size:11.5px;color:var(--muted)">${esc(d.src)}</td>
+    </tr>`).join('');
+
+  document.getElementById('idxList').innerHTML = WATER_INDICES.map((x) => `
+    <div class="idx-item">
+      <div class="ii-h">${x.name}</div>
+      <code style="display:inline-block;margin-top:5px">${x.formula}</code>
+      <div class="ramp" style="background:${x.ramp}"></div>
+      <div class="ramp-lbl"><span>${x.lo}</span><span>${x.hi}</span></div>
+      <div class="ii-b">${x.body}</div>
+    </div>`).join('');
 
   /* Parameter weight chart */
   const W = [
@@ -146,6 +161,21 @@ function dim(hex) {
   });
   document.getElementById('measureSelect').onchange = (e) => renderNational(e.target.value);
 
+  /* Dashboard sub-tabs: Water Quality / Pollution Sources */
+  document.querySelectorAll('#dashTabs button').forEach((b) => {
+    b.onclick = () => {
+      document.querySelectorAll('#dashTabs button').forEach((x) => x.classList.remove('active'));
+      b.classList.add('active');
+      document.querySelectorAll('#v-dashboard .tab-pane').forEach((x) => x.classList.remove('active'));
+      document.getElementById(`dtab-${b.dataset.dtab}`).classList.add('active');
+      if (b.dataset.dtab === 'sources') {
+        if (!srcReady) { renderSources(1500); srcReady = true; } else resizeCharts();
+      } else {
+        resizeCharts();
+      }
+    };
+  });
+
   /* The map's month slider refreshes the dashboard */
   document.addEventListener('monthchange', (e) => {
     if (dashReady) renderDashboard(e.detail);
@@ -154,9 +184,9 @@ function dim(hex) {
   /* Table row click → open that station on the map */
   document.addEventListener('gotostation', (e) => { show('map'); focusStation(e.detail); });
 
-  window.addEventListener('resize', () => { refreshMapSize(); resizeSat(); resizePickMap(); });
+  window.addEventListener('resize', () => { refreshMapSize(); resizePickMap(); });
 
-  const h = location.hash.slice(1);
+  const h = VIEW_ALIAS[location.hash.slice(1)] ?? location.hash.slice(1);
   if (h && document.getElementById(`v-${h}`)) show(h);
 
   document.getElementById('loader').classList.add('hide');

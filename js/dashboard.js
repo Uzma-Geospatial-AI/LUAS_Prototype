@@ -3,6 +3,7 @@
    ============================================================ */
 import { DATA, readingAt, basinStats, basinTrend, sourceStats } from './data.js';
 import { WQI_CLASSES, wqiClass, wqiColor, PARAM_META, siColor } from './wqi.js';
+import { sourceSwatch } from './symbols.js';
 
 const INK = { secondary: '#5f6880', muted: '#8b93a8', grid: '#eaedf3', axis: '#cfd5e3' };
 const charts = {};
@@ -295,9 +296,9 @@ export function renderSources(maxDist = 1500) {
   const entries = Object.entries(src).sort((a, b) => b[1].n - a[1].n);
   const total = entries.reduce((t, [, c]) => t + c.n, 0);
 
-  document.getElementById('srcCards').innerHTML = entries.map(([, c]) => `
+  document.getElementById('srcCards').innerHTML = entries.map(([k, c]) => `
     <div class="src-card" style="--sc:${c.color}">
-      <div class="sc-ic" style="background:${c.color}1f">${c.icon}</div>
+      <div class="sc-ic" style="background:${c.color}1f">${sourceSwatch(k, c.color, 19)}</div>
       <div class="sc-n">${esc(c.label)}</div>
       <div class="sc-v" style="color:${c.color}">${nf(c.n)}</div>
       <div class="sc-d">${((c.n / total) * 100).toFixed(1)}% of all sources ·
@@ -382,8 +383,8 @@ export function renderSources(maxDist = 1500) {
     const p = f.properties, c = DATA.srcCats[p.cat];
     const rc = p.risk >= 4 ? '#d92d20' : p.risk >= 3 ? '#ef7d1a' : p.risk >= 2 ? '#f2c40c' : '#17a04a';
     return `<tr>
-      <td><span class="badge" style="background:${c.color}">${c.icon}</span>
-          <span style="margin-left:6px">${esc(c.label)}</span></td>
+      <td style="display:flex;align-items:center;gap:7px">
+          ${sourceSwatch(p.cat, c.color, 16)}<span>${esc(c.label)}</span></td>
       <td>${p.name ? esc(p.name) : '<span style="color:var(--muted-2)">(unnamed)</span>'}</td>
       <td style="font-size:11.5px;color:var(--muted)">${esc(p.district ?? '—')}</td>
       <td class="num">${p.dist}</td>

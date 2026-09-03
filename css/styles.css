@@ -290,24 +290,6 @@ h1,h2,h3,h4{margin:0;font-weight:650;letter-spacing:-.01em;line-height:1.25}
 .spark-box h4{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;
   color:var(--muted);margin-bottom:8px}
 
-/* Map controls */
-.map-ctrl{
-  position:absolute;top:12px;left:12px;z-index:600;display:flex;gap:7px;flex-wrap:wrap;
-  max-width:calc(100% - 380px);
-}
-.mc{
-  background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:var(--r);
-  padding:6px 11px;font-size:12px;box-shadow:var(--shadow-sm);display:flex;
-  align-items:center;gap:8px;backdrop-filter:blur(8px);
-}
-.mc label{color:var(--muted);font-size:11px;font-weight:550}
-.mc select,.mc input[type=range]{border:0;background:none;font-family:inherit;
-  font-size:12px;color:var(--text);outline:none}
-.mc select{cursor:pointer;font-weight:550}
-.mc input[type=range]{accent-color:var(--navy-2);width:128px;cursor:pointer}
-.mc .val{font-family:var(--fm);font-weight:600;font-size:11.5px;color:var(--navy);
-  min-width:52px;text-align:center;background:var(--surface-2);padding:1px 6px;border-radius:4px}
-
 /* ---------------- Cards / KPI ---------------- */
 .grid{display:grid;gap:14px}
 .kpis{grid-template-columns:repeat(auto-fit,minmax(196px,1fr))}
@@ -409,10 +391,7 @@ table.data .num{font-family:var(--fm);text-align:right;font-weight:550}
 .chip.active{background:var(--navy);border-color:var(--navy);color:#fff}
 .chip .cd{width:8px;height:8px;border-radius:50%}
 
-/* Satellite view */
-.sat-grid{display:grid;grid-template-columns:1fr 320px;gap:14px;align-items:start}
-#satmap{height:calc(100vh - var(--header-h) - 150px);min-height:440px;border-radius:var(--r);
-  overflow:hidden;background:#0e1220}
+/* Spectral index reference (WQI Guide) */
 .idx-item{padding:11px 0;border-bottom:1px solid var(--line)}
 .idx-item:last-child{border-bottom:0}
 .idx-item .ii-h{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600}
@@ -473,7 +452,6 @@ table.data .num{font-family:var(--fm);text-align:right;font-weight:550}
 
 @media(max-width:1180px){
   .detail{width:300px}
-  .sat-grid{grid-template-columns:1fr}
 }
 @media(max-width:840px){
   .map-wrap{height:calc(100vh - var(--header-h) - 34px)}
@@ -485,7 +463,6 @@ table.data .num{font-family:var(--fm);text-align:right;font-weight:550}
   .tb-period input[type=range]{flex:1;width:auto}
   .detail{width:calc(100% - 20px);top:auto;bottom:10px;right:10px;max-height:58%}
   .map-legend{bottom:8px;right:8px;width:186px}
-  .map-ctrl{max-width:calc(100% - 24px)}
   .page{padding:16px 13px 32px}
   .header-meta{display:none}
 }
@@ -609,3 +586,33 @@ table.data .num{font-family:var(--fm);text-align:right;font-weight:550}
   animation:slideIn .25s;
 }
 @media(max-width:1180px){ .entry-grid{grid-template-columns:1fr} .preview{position:static} }
+
+/* ============================================================
+   Icon-only nav button (WQI Guide)
+   ============================================================ */
+.nav button.nav-icon{
+  margin-left:auto;padding:10px 13px;border-radius:8px 8px 0 0;
+}
+.nav button.nav-icon svg{width:17px;height:17px;opacity:1}
+.nav button.nav-icon:hover{background:rgba(255,255,255,.1)}
+
+/* Acquisition-date row for the daily satellite layers */
+.date-row{
+  display:none;align-items:center;justify-content:space-between;gap:9px;
+  margin-top:10px;padding:8px 10px;background:var(--surface-2);
+  border:1px solid var(--line);border-radius:var(--r-sm);
+}
+.date-row label{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;
+  font-weight:650;color:var(--muted)}
+.date-row input{
+  border:1px solid var(--line);border-radius:5px;padding:4px 7px;
+  font-family:var(--fm);font-size:11.5px;background:var(--surface);color:var(--text);
+}
+.date-row input:focus{outline:none;border-color:var(--cyan-2)}
+
+/* Shaped category symbols */
+.src-swatch{display:inline-flex;align-items:center;justify-content:center;flex:none;
+  line-height:0;vertical-align:middle}
+.leaflet-marker-icon.src-sym{background:none;border:0}
+.src-card .sc-ic{display:grid;place-items:center}
+.ml-cat{gap:8px}

@@ -31,12 +31,10 @@ php -S localhost:8000
 
 | View | Contents |
 |---|---|
-| **Interactive Map** | A full-width map with one compact toolbar: **Base map** (nine layers, five of them satellite), **Layers**, **Sources** (category filter + riparian distance), **Station** (searchable — picking one flies the map to it and opens its panel), and a 56-month **Period** slider that repaints the river and stations. The station panel shows all six sub-indices, the WQI trend and 3 km land-use pressure. A collapsible legend sits at the bottom right. |
-| **Dashboard** | Basin KPIs, WQI trend across four river reaches, headwaters→estuary profile, five-class distribution, mean sub-indices, national basin trend (data.gov.my 2000–2021), and the full readings table. |
-| **Pollution Sources** | Five land-use categories, counts by distance band, distance-to-watercourse histogram, and the 120 highest-risk locations with their real OSM names. |
-| **Satellite Observation** | Eight satellite layers — Esri, Google, EOX Sentinel-2 cloudless and five daily NASA GIBS layers with a date picker — plus river/station/source overlays and a spectral index reference (NDWI, NDTI, NDCI, LST). |
+| **Interactive Map** | A full-width map with one compact toolbar: **Base map** (13 layers — four cartographic, five high-resolution satellite mosaics, four daily NASA GIBS layers with a date picker), **Layers**, **Sources** (category filter + riparian distance), **Station** (searchable — picking one flies the map to it and opens its panel), and a 56-month **Period** slider. The station panel shows all six sub-indices, the WQI trend and 3 km land-use pressure. A collapsible legend sits at the bottom right. |
+| **Dashboard** | Two tabs. *Water Quality*: basin KPIs, WQI trend across four river reaches, headwaters→estuary profile, five-class distribution, mean sub-indices, national basin trend (data.gov.my 2000–2021) and the full readings table. *Pollution Sources*: five land-use categories, counts by distance band, distance-to-watercourse histogram and the 120 highest-risk locations with their real OSM names. |
 | **Data Entry** | Key in water quality readings with a live WQI calculation, or report a pollution source by clicking the map. Export to files that merge straight into the shipped datasets. |
-| **WQI Guide** | The five pollution index levels (INWQS), the full DOE formula, parameter weights, per-parameter thresholds, and the provenance of every dataset. |
+| **WQI Guide** (📖 icon) | The five pollution index levels (INWQS), the full DOE formula, parameter weights, per-parameter thresholds, the satellite imagery and spectral index reference, and the provenance of every dataset. |
 
 ---
 
@@ -53,7 +51,9 @@ php -S localhost:8000
 This five-colour ramp passes colour-vision-deficiency separation checks (deutan/protan/tritan),
 and every use of it also carries a text or numeric label — colour is never the sole carrier of
 meaning. The five pollution source categories use a separate categorical palette validated
-across all pairs.
+across all pairs, and each category also carries **its own map shape** — square for industry,
+circle for eateries, house for housing, diamond for treatment plants, triangle for waste and
+disturbed land — so they stay tellable apart on a busy satellite basemap and in greyscale.
 
 ---
 
@@ -250,7 +250,8 @@ js/wqi.js                   DOE WQI formula + the five classes
 js/data.js                  data loading, derivation, spatial queries
 js/mapview.js               Leaflet map, base maps, layers, detail panel
 js/dashboard.js             Chart.js charts and tables
-js/satellite.js             satellite layers + spectral index reference
+js/satellite.js             daily GIBS layers + spectral index reference
+js/symbols.js               per-category map shapes
 js/store.js                 localStorage store, export/import
 js/entry.js                 data entry forms with live computation
 js/app.js                   routing + bootstrap

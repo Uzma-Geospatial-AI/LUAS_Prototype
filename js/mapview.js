@@ -4,10 +4,12 @@
 import { DATA, readingAt, pressureAround } from './data.js';
 import { computeWQI, wqiClass, wqiColor, WQI_CLASSES, PARAM_META, paramStatus, siColor } from './wqi.js';
 import { store } from './store.js';
+import { GIBS_LAYERS, gibsLayer } from './satellite.js';
+import { sourceIcon, sourceSwatch } from './symbols.js';
 
 let map, layers = {}, base = {}, stationLayer, riverLayer, srcCluster;
 let myReadingLayer, mySourceLayer, riverSegs = null;
-let monthIdx = 0, selected = null, sparkChart = null;
+let monthIdx = 0, selected = null, sparkChart = null, currentBase = 'osm';
 
 const LANGAT_CENTER = [2.955, 101.63];
 const STATION_ZOOM = 14.5;   // zoom level a selected station opens at
@@ -99,15 +101,24 @@ export const BASEMAPS = {
   },
 };
 
+/* Daily NASA GIBS imagery joins the same picker; those layers are rebuilt on
+   every date change, so they are constructed lazily in setBase(). */
+Object.assign(BASEMAPS, GIBS_LAYERS);
+
 let labelOverlay = null;
 const makeLabelOverlay = () => L.tileLayer(
   'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
   { maxZoom: 19, opacity: 0.92, attribution: 'Labels: Esri' });
 
 function makeBases() {
-  for (const [k, def] of Object.entries(BASEMAPS)) base[k] = def.make();
+  for (const [k, def] of Object.entries(BASEMAPS)) {
+    if (!def.daily) base[k] = def.make();
+  }
   return base;
 }
+
+const pad2 = (n) => String(n).padStart(2, '0');
+const isoDate = (d) => `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
 
 /* ---------------- Helpers ---------------- */
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -199,10 +210,14 @@ function paintSources() {
     const p = f.properties;
     if (!srcFilter.has(p.cat) || p.dist > maxDistFilter) continue;
     const cat = cats[p.cat];
-    const m = L.circleMarker([f.geometry.coordinates[1], f.geometry.coordinates[0]], {
-      radius: 3 + p.risk * 1.1, fillColor: cat.color, color: '#fff', weight: 1,
-      fillOpacity: 0.85, opacity: 0.9,
+    /* Size carries the risk score; shape and colour carry the category. */
+    const size = Math.round(15 + p.risk * 2.2);
+    const m = L.marker([f.geometry.coordinates[1], f.geometry.coordinates[0]], {
+      icon: sourceIcon(p.cat, cat.color, size),
+      riseOnHover: true,
     });
+    m.bindTooltip(`<b>${p.name ? esc(p.name) : esc(cat.label)}</b><br>${cat.icon} ${esc(cat.label)}
+      · ${p.dist} m from water`, { direction: 'top', offset: [0, -size / 2] });
     m.bindPopup(
       `<div class="pop-head" style="background:${cat.color}">${cat.icon} ${esc(cat.label)}</div>
        <div class="pop">
@@ -257,8 +272,8 @@ export function paintUserData() {
   mySourceLayer.clearLayers();
   for (const s of store.sources()) {
     const cat = DATA.srcCats[s.cat] ?? { color: '#5f6880', label: s.cat, icon: '📍', pol: '—' };
-    L.circleMarker([s.lat, s.lon], {
-      radius: 7, fillColor: cat.color, color: '#fff', weight: 2.5, fillOpacity: 0.95,
+    L.marker([s.lat, s.lon], {
+      icon: sourceIcon(s.cat, cat.color, 26), zIndexOffset: 650, riseOnHover: true,
     }).bindPopup(
       `<div class="pop-head" style="background:${cat.color}">${cat.icon} ${esc(cat.label)}</div>
        <div class="pop">
@@ -540,18 +555,30 @@ function buildToolbar() {
   document.getElementById('satGrid').innerHTML =
     Object.keys(BASEMAPS).filter((k) => BASEMAPS[k].group === 'sat').map(btn).join('');
 
+  const dateInput = document.getElementById('satDate');
+  dateInput.value = isoDate(new Date(Date.now() - 2 * 864e5));   // GIBS lags ~1-2 days
+  dateInput.max = isoDate(new Date(Date.now() - 864e5));
+  dateInput.min = '2012-01-01';
+
   const setBase = (k, close = false) => {
     document.querySelectorAll('[data-base]').forEach((x) =>
       x.classList.toggle('active', x.dataset.base === k));
-    Object.values(base).forEach((l) => map.removeLayer(l));
+    Object.values(base).forEach((l) => { if (l) map.removeLayer(l); });
+
+    const d = BASEMAPS[k];
+    /* Daily imagery is date-dependent, so rebuild it each time. */
+    if (d.daily) base[k] = gibsLayer(d, dateInput.value);
     base[k].addTo(map);
     base[k].bringToBack();
-    const d = BASEMAPS[k];
+    currentBase = k;
+
     document.getElementById('baseCurrent').textContent = d.label;
+    document.getElementById('satDateRow').style.display = d.daily ? 'flex' : 'none';
     document.getElementById('baseInfo').innerHTML =
       `<div class="bi-t">${d.label} <span class="badge soft">${d.res}</span></div>
        <div class="bi-s">${esc(d.src)}</div>
        <div class="bi-n">${esc(d.note)}</div>`;
+
     const lblRow = document.getElementById('labelRow');
     const lblBox = document.getElementById('labelToggle');
     lblRow.style.display = d.group === 'sat' ? 'flex' : 'none';
@@ -561,8 +588,9 @@ function buildToolbar() {
     if (close) closeMenus();
   };
   document.querySelectorAll('[data-base]').forEach((b) => {
-    b.onclick = () => setBase(b.dataset.base, true);
+    b.onclick = () => setBase(b.dataset.base, !BASEMAPS[b.dataset.base].daily);
   });
+  dateInput.onchange = () => { if (BASEMAPS[currentBase].daily) setBase(currentBase); };
   setBase('osm');
 
   document.getElementById('labelToggle').onchange = (e) => {
@@ -608,8 +636,8 @@ function buildToolbar() {
   document.getElementById('catList').innerHTML = Object.entries(cats).map(([k, c]) => `
     <label class="layer-item">
       <input type="checkbox" data-cat="${k}" checked>
-      <span class="layer-swatch" style="background:${c.color}"></span>
-      <span>${c.icon} ${esc(c.label)}</span>
+      ${sourceSwatch(k, c.color, 17)}
+      <span>${esc(c.label)}</span>
     </label>`).join('');
   document.querySelectorAll('input[data-cat]').forEach((i) => {
     i.onchange = () => {
@@ -696,9 +724,9 @@ function buildLegend() {
       </span>
     </div>`).join('');
 
-  document.getElementById('legendCats').innerHTML = Object.values(DATA.srcCats).map((c) => `
+  document.getElementById('legendCats').innerHTML = Object.entries(DATA.srcCats).map(([k, c]) => `
     <div class="ml-cat" title="${esc(c.pol)}">
-      <span class="dot" style="background:${c.color}"></span>${esc(c.label)}
+      ${sourceSwatch(k, c.color, 16)}${esc(c.label)}
     </div>`).join('');
 
   const box = document.getElementById('mapLegend');

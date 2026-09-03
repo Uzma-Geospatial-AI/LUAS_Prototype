@@ -4,6 +4,7 @@
 import { DATA, nearestWatercourse, districtOf, riskScore } from './data.js';
 import { computeWQI, wqiClass, PARAM_META, paramStatus, siColor } from './wqi.js';
 import { store, readingsAsStationsJson, sourcesAsGeoJson, readingsAsCsv, download } from './store.js';
+import { sourceIcon, sourceSwatch } from './symbols.js';
 
 let pickMap = null, pickMarker = null, ready = false;
 
@@ -221,7 +222,12 @@ function buildCategorySelect() {
     const c = cats[$('sCat').value];
     $('sCatHint').textContent = `Typical pollutants: ${c.pol}`;
   };
-  $('sCat').onchange = () => { hint(); updateSourcePreview(); };
+  $('sCat').onchange = () => {
+    hint();
+    const lat = num($('sLat').value), lon = num($('sLon').value);
+    if (!Number.isNaN(lat) && !Number.isNaN(lon)) setPick(lat, lon, false);
+    else updateSourcePreview();
+  };
   hint();
 }
 
@@ -252,9 +258,9 @@ function setPick(lat, lon, writeInputs = true) {
     $('sLon').value = lon.toFixed(5);
   }
   if (pickMarker) pickMap.removeLayer(pickMarker);
-  pickMarker = L.circleMarker([lat, lon], {
-    radius: 8, fillColor: DATA.srcCats[$('sCat').value]?.color ?? '#d92d20',
-    color: '#fff', weight: 3, fillOpacity: 1,
+  const catKey = $('sCat').value;
+  pickMarker = L.marker([lat, lon], {
+    icon: sourceIcon(catKey, DATA.srcCats[catKey]?.color ?? '#d92d20', 30),
   }).addTo(pickMap);
   updateSourcePreview();
 }
@@ -288,7 +294,8 @@ function updateSourcePreview() {
     <div class="pv-head" style="background:linear-gradient(130deg,${cat.color},${shade(cat.color, -30)})">
       <div class="pv-lab">Computed risk score</div>
       <div class="pv-val">${risk.toFixed(2)}</div>
-      <div class="pv-cls">${cat.icon} ${esc(cat.label)}</div>
+      <div class="pv-cls" style="display:flex;align-items:center;justify-content:center;gap:7px">
+        ${sourceSwatch($('sCat').value, '#fff', 17)}${esc(cat.label)}</div>
       <div class="pv-use">Category load ${cat.load}/5 weighted by proximity to water</div>
     </div>
     <div class="si-list" style="padding:8px 0">
@@ -393,8 +400,8 @@ export function renderRecords() {
   $('recSources').innerHTML = srcs.length ? srcs.map((s) => {
     const cat = DATA.srcCats[s.cat] ?? { color: '#5f6880', label: s.cat, icon: '📍' };
     return `<tr>
-      <td><span class="badge" style="background:${cat.color}">${cat.icon}</span>
-        <span style="margin-left:6px">${esc(cat.label)}</span></td>
+      <td style="display:flex;align-items:center;gap:7px">
+        ${sourceSwatch(s.cat, cat.color, 16)}<span>${esc(cat.label)}</span></td>
       <td><b>${esc(s.name)}</b></td>
       <td class="num">${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}</td>
       <td class="num">${s.dist ?? '—'}</td>
