@@ -1,28 +1,28 @@
-name: Deploy portal WQI ke GitHub Pages
+name: Validate and deploy the WQI portal
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
-# Kebenaran yang diperlukan oleh actions/deploy-pages
+# Permissions required by actions/deploy-pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Satu penerbitan pada satu masa; jangan batalkan yang sedang berjalan
+# One publish at a time; never cancel one that is already running
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
   # ---------------------------------------------------------------
-  # 1. Semakan kewarasan — laman statik, jadi tiada langkah binaan.
-  #    Kita sahkan sintaks JS dan integriti setiap fail data.
+  # 1. Sanity checks — it is a static site, so there is nothing to
+  #    build. We verify JS syntax and the integrity of every dataset.
   # ---------------------------------------------------------------
-  semak:
-    name: Semak sintaks & data
+  validate:
+    name: Validate syntax and data
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,71 +31,75 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Semak sintaks modul JavaScript
+      - name: Check JavaScript module syntax
         run: |
           for f in js/*.js; do
             node --check "$f" && echo "  ok  $f"
           done
 
-      - name: Sahkan JSON / GeoJSON boleh dihuraikan
+      - name: Verify every JSON / GeoJSON file parses
         run: |
           python3 - <<'PY'
           import json, glob, sys, os
-          gagal = 0
+          failed = 0
           for f in sorted(glob.glob('data/*.json') + glob.glob('data/*.geojson')):
               try:
                   d = json.load(open(f, encoding='utf-8'))
               except Exception as e:
-                  print(f'  GAGAL  {f}: {e}'); gagal += 1; continue
+                  print(f'  FAILED  {f}: {e}'); failed += 1; continue
               if isinstance(d, list):
                   n = len(d)
               else:
                   n = len(d.get('features') or d.get('stations') or [])
-              print(f'  ok  {f:44} {os.path.getsize(f)//1024:>6} KB  {n:>6} rekod')
-          sys.exit(1 if gagal else 0)
+              print(f'  ok  {f:44} {os.path.getsize(f)//1024:>6} KB  {n:>6} records')
+          sys.exit(1 if failed else 0)
           PY
 
-      - name: Sahkan formula WQI terhadap kes rujukan DOE
+      - name: Verify the WQI formula against one reference case per class
         run: |
           node --input-type=module -e "
           import { computeWQI, wqiClass } from './js/wqi.js';
-          const kes = [
-            { r: { do: 7.8, bod: 1.2, cod: 8,   ss: 15,  an: 0.05, ph: 6.9 }, kelas: 'I'   },
-            { r: { do: 6.5, bod: 2.5, cod: 18,  ss: 40,  an: 0.25, ph: 7.0 }, kelas: 'II'  },
-            { r: { do: 5.2, bod: 4.0, cod: 30,  ss: 70,  an: 0.80, ph: 6.8 }, kelas: 'III' },
-            { r: { do: 3.0, bod: 8.0, cod: 60,  ss: 200, an: 2.40, ph: 6.5 }, kelas: 'IV'  },
-            { r: { do: 1.2, bod: 18,  cod: 120, ss: 600, an: 3.80, ph: 5.2 }, kelas: 'V'   },
+          const cases = [
+            { r: { do: 7.8, bod: 1.2, cod: 8,   ss: 15,  an: 0.05, ph: 6.9 }, cls: 'I'   },
+            { r: { do: 6.5, bod: 2.5, cod: 18,  ss: 40,  an: 0.25, ph: 7.0 }, cls: 'II'  },
+            { r: { do: 5.2, bod: 4.0, cod: 30,  ss: 70,  an: 0.80, ph: 6.8 }, cls: 'III' },
+            { r: { do: 3.0, bod: 8.0, cod: 60,  ss: 200, an: 2.40, ph: 6.5 }, cls: 'IV'  },
+            { r: { do: 1.2, bod: 18,  cod: 120, ss: 600, an: 3.80, ph: 5.2 }, cls: 'V'   },
           ];
-          let gagal = 0;
-          for (const k of kes) {
+          let failed = 0;
+          for (const k of cases) {
             const { wqi } = computeWQI(k.r);
             const c = wqiClass(wqi).id;
-            const ok = c === k.kelas;
-            if (!ok) gagal++;
-            console.log(\`  \${ok ? 'ok  ' : 'GAGAL'} WQI \${wqi.toFixed(1).padStart(5)} -> Kelas \${c} (dijangka \${k.kelas})\`);
+            const ok = c === k.cls;
+            if (!ok) failed++;
+            console.log(\`  \${ok ? 'ok   ' : 'FAILED'} WQI \${wqi.toFixed(1).padStart(5)} -> Class \${c} (expected \${k.cls})\`);
           }
-          process.exit(gagal ? 1 : 0);
+          process.exit(failed ? 1 : 0);
           "
 
-      - name: Sahkan setiap fail yang dirujuk index.html wujud
+      - name: Verify every local file referenced by the app exists
         run: |
           python3 - <<'PY'
           import re, os, sys
           html = open('index.html', encoding='utf-8').read()
-          rujukan = set(re.findall(r'(?:src|href)="(?!https?:|#)([^"]+)"', html))
-          rujukan |= set(re.findall(r"'(data/[^']+)'", open('js/data.js', encoding='utf-8').read()))
-          hilang = [r for r in sorted(rujukan) if not os.path.exists(r)]
-          for r in sorted(rujukan):
-              print(('  ok  ' if r not in hilang else '  HILANG  ') + r)
-          sys.exit(1 if hilang else 0)
+          refs = set(re.findall(r'(?:src|href)="(?!https?:|#)([^"]+)"', html))
+          js = open('js/data.js', encoding='utf-8').read()
+          refs |= set(re.findall(r"'(data/[^']+)'", js))
+          app = open('js/app.js', encoding='utf-8').read()
+          refs |= set(re.findall(r"from '\./([^']+)'", app))
+          refs = {r if not r.endswith('.js') or r.startswith('js/') else 'js/' + r for r in refs}
+          missing = [r for r in sorted(refs) if not os.path.exists(r)]
+          for r in sorted(refs):
+              print(('  ok  ' if r not in missing else '  MISSING  ') + r)
+          sys.exit(1 if missing else 0)
           PY
 
   # ---------------------------------------------------------------
-  # 2. Terbitkan direktori repo secara terus (laman statik).
+  # 2. Publish the repository directory as-is (static site).
   # ---------------------------------------------------------------
-  terbit:
-    name: Terbitkan ke GitHub Pages
-    needs: semak
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: validate
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -105,11 +109,11 @@ jobs:
 
       - uses: actions/configure-pages@v5
 
-      - name: Muat naik artifak laman
+      - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
 
-      - name: Terbitkan
+      - name: Publish
         id: deploy
         uses: actions/deploy-pages@v4

@@ -1,32 +1,123 @@
 /* ============================================================
-   mapview.js — Peta interaktif WQI Lembangan Sungai Langat
+   mapview.js — Interactive WQI map for the Langat River Basin
    ============================================================ */
 import { DATA, readingAt, pressureAround } from './data.js';
-import { wqiClass, wqiColor, WQI_CLASSES, PARAM_META, paramStatus } from './wqi.js';
+import { computeWQI, wqiClass, wqiColor, WQI_CLASSES, PARAM_META, paramStatus, siColor } from './wqi.js';
+import { store } from './store.js';
 
 let map, layers = {}, base = {}, stationLayer, riverLayer, srcCluster;
+let myReadingLayer, mySourceLayer, riverSegs = null;
 let monthIdx = 0, selected = null, sparkChart = null;
 
 const LANGAT_CENTER = [2.955, 101.63];
 
-/* ---------------- Basemaps ---------------- */
+const BASE_ICON = {
+  street: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/></svg>',
+  topo:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m3 18 6-9 4 5 3-4 5 8z"/></svg>',
+  dark:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>',
+  light:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6 19 19M19 5l-1.4 1.4M6.4 17.6 5 19"/></svg>',
+  sat:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18z"/></svg>',
+};
+
+/* ---------------- Base maps & satellite imagery ---------------- */
+export const BASEMAPS = {
+  /* --- Cartographic --- */
+  osm: {
+    label: 'Street Map', group: 'map', icon: 'street',
+    res: 'Vector', src: 'OpenStreetMap',
+    note: 'Full street map — best for identifying place and road names.',
+    make: () => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }),
+  },
+  topo: {
+    label: 'Topographic', group: 'map', icon: 'topo',
+    res: 'Vector + contours', src: 'OpenTopoMap',
+    note: 'Contour lines and drainage channels — useful for understanding flow direction and catchment.',
+    make: () => L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+      maxZoom: 17, attribution: '&copy; OpenTopoMap (CC-BY-SA)' }),
+  },
+  dark: {
+    label: 'Dark', group: 'map', icon: 'dark',
+    res: 'Vector', src: 'CARTO Dark Matter',
+    note: 'Low-contrast ground so the WQI colours and source markers carry all the emphasis.',
+    make: () => L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 20, attribution: '&copy; OpenStreetMap, &copy; CARTO' }),
+  },
+  light: {
+    label: 'Light', group: 'map', icon: 'light',
+    res: 'Vector', src: 'CARTO Positron',
+    note: 'Minimal pale ground — suits printing and report figures.',
+    make: () => L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 20, attribution: '&copy; OpenStreetMap, &copy; CARTO' }),
+  },
+
+  /* --- Satellite / aerial --- */
+  esri: {
+    label: 'Esri World Imagery', group: 'sat', icon: 'sat',
+    res: '≈ 0.3 – 1 m', src: 'Esri · Maxar · Earthstar Geographics',
+    note: 'The highest-resolution openly available mosaic. Individual buildings, factory roofs, ' +
+          'retention ponds and river banks are all distinguishable.',
+    make: () => L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      { maxZoom: 19, attribution: 'Imagery: Esri, Maxar, Earthstar Geographics' }),
+  },
+  clarity: {
+    label: 'Esri Clarity', group: 'sat', icon: 'sat',
+    res: '≈ 0.3 – 1 m', src: 'Esri World Imagery (Clarity)',
+    note: 'An alternative capture of the same area, often from a different date. Compare against ' +
+          'Esri World Imagery to spot land-use change.',
+    make: () => L.tileLayer(
+      'https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      { maxZoom: 19, attribution: 'Imagery: Esri Clarity, Maxar' }),
+  },
+  gsat: {
+    label: 'Google Satellite', group: 'sat', icon: 'sat',
+    res: '≈ 0.15 – 1 m', src: 'Google',
+    note: 'Google satellite and aerial imagery without labels — often the most recent coverage of ' +
+          'the Klang Valley. For production use, move to the official Google Maps Platform.',
+    make: () => L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+      subdomains: ['0', '1', '2', '3'], maxZoom: 21, attribution: 'Imagery: &copy; Google' }),
+  },
+  ghyb: {
+    label: 'Google Hybrid', group: 'sat', icon: 'sat',
+    res: '≈ 0.15 – 1 m', src: 'Google',
+    note: 'Google imagery with road and place names on top — the easiest way to confirm a ' +
+          'specific premises beside the river.',
+    make: () => L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+      subdomains: ['0', '1', '2', '3'], maxZoom: 21, attribution: 'Imagery: &copy; Google' }),
+  },
+  s2: {
+    label: 'Sentinel-2 Cloudless', group: 'sat', icon: 'sat',
+    res: '10 m', src: 'EOX IT Services · ESA Copernicus (CC BY-NC-SA 4.0)',
+    note: 'A cloud-free annual mosaic from Sentinel-2. Coarser, but radiometrically consistent — ' +
+          'the correct basis for spectral indices such as NDWI.',
+    make: () => L.tileLayer(
+      'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2021_3857/default/g/{z}/{y}/{x}.jpg',
+      { maxZoom: 16,
+        attribution: 'Sentinel-2 cloudless 2021 by EOX (modified Copernicus Sentinel data)' }),
+  },
+};
+
+let labelOverlay = null;
+const makeLabelOverlay = () => L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+  { maxZoom: 19, opacity: 0.92, attribution: 'Labels: Esri' });
+
 function makeBases() {
-  base.osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19, attribution: '&copy; Penyumbang OpenStreetMap',
-  });
-  base.sat = L.tileLayer(
-    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    { maxZoom: 19, attribution: 'Imej satelit: Esri, Maxar, Earthstar Geographics' });
-  base.topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-    maxZoom: 17, attribution: '&copy; OpenTopoMap (CC-BY-SA)',
-  });
-  base.dark = L.tileLayer(
-    'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    { maxZoom: 20, attribution: '&copy; OpenStreetMap, &copy; CARTO' });
+  for (const [k, def] of Object.entries(BASEMAPS)) base[k] = def.make();
   return base;
 }
 
-/* ---------------- Pewarnaan sungai mengikut WQI ---------------- */
+/* ---------------- Helpers ---------------- */
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmtKm = (m) => (m >= 1000 ? (m / 1000).toFixed(2) + ' km' : m + ' m');
+const riskColor = (r) => (r >= 4 ? '#d92d20' : r >= 3 ? '#ef7d1a' : r >= 2 ? '#f2c40c' : '#17a04a');
+
+const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+export const fmtMonth = (m) => `${MONTHS_EN[+m.split('-')[1] - 1]} ${m.split('-')[0]}`;
+
+/* ---------------- Colouring the river by WQI ---------------- */
 function nearestStation(lon, lat, list) {
   let best = null, bd = Infinity;
   for (const s of list) {
@@ -41,30 +132,26 @@ function buildRiver() {
   const feats = [];
   for (const f of DATA.river.features) {
     const c = f.geometry.coordinates;
-    // pecah kepada sub-segmen ~8 titik supaya warna berperingkat
-    const STEP = 6;
+    const STEP = 6;   // short runs so the colour grades along the reach
     for (let i = 0; i < c.length - 1; i += STEP) {
       const part = c.slice(i, Math.min(c.length, i + STEP + 1));
       if (part.length < 2) continue;
       const mid = part[Math.floor(part.length / 2)];
-      const st = nearestStation(mid[0], mid[1], mains);
-      feats.push({ coords: part.map((p) => [p[1], p[0]]), st });
+      feats.push({ coords: part.map((p) => [p[1], p[0]]), st: nearestStation(mid[0], mid[1], mains) });
     }
   }
   return feats;
 }
 
-function paintRiver(segs) {
+function paintRiver() {
   riverLayer.clearLayers();
-  for (const s of segs) {
+  for (const s of riverSegs) {
     const wqi = readingAt(s.st, monthIdx).wqi;
-    const c = wqiColor(wqi);
-    L.polyline(s.coords, {
-      color: '#12305a', weight: 8, opacity: 0.28, interactive: false,
-    }).addTo(riverLayer);
-    L.polyline(s.coords, { color: c, weight: 4.5, opacity: 0.98 })
+    L.polyline(s.coords, { color: '#12305a', weight: 8, opacity: 0.28, interactive: false })
+      .addTo(riverLayer);
+    L.polyline(s.coords, { color: wqiColor(wqi), weight: 4.5, opacity: 0.98 })
       .bindTooltip(
-        `<b>Sungai Langat</b><br>Stesen rujukan: ${s.st.code} — ${s.st.name}` +
+        `<b>Sungai Langat</b><br>Reference station: ${s.st.code} — ${esc(s.st.name)}` +
         `<br>WQI ${wqi.toFixed(1)} · ${wqiClass(wqi).label} (${wqiClass(wqi).status})`,
         { sticky: true })
       .on('click', () => selectStation(s.st))
@@ -72,13 +159,12 @@ function paintRiver(segs) {
   }
 }
 
-/* ---------------- Penanda stesen ---------------- */
+/* ---------------- Station markers ---------------- */
 function stationIcon(wqi, active) {
-  const c = wqiColor(wqi);
   const sz = active ? 26 : 20;
   return L.divIcon({
     className: '',
-    html: `<div class="stn-marker" style="width:${sz}px;height:${sz}px;background:${c};
+    html: `<div class="stn-marker" style="width:${sz}px;height:${sz}px;background:${wqiColor(wqi)};
       ${active ? 'box-shadow:0 0 0 5px rgba(34,35,95,.28),0 1px 6px rgba(0,0,0,.45);' : ''}
       display:grid;place-items:center;color:#fff;font:700 ${active ? 10 : 9}px 'JetBrains Mono',monospace;
       ">${Math.round(wqi)}</div>`,
@@ -90,20 +176,18 @@ function paintStations() {
   stationLayer.clearLayers();
   for (const s of DATA.stations) {
     const r = readingAt(s, monthIdx);
-    const m = L.marker([s.lat, s.lon], {
-      icon: stationIcon(r.wqi, selected?.code === s.code),
-      zIndexOffset: 500,
-    });
-    m.bindTooltip(
-      `<b>${s.code}</b> — ${s.name}<br>WQI ${r.wqi.toFixed(1)} · ${wqiClass(r.wqi).status}`,
-      { direction: 'top', offset: [0, -12] });
-    m.on('click', () => selectStation(s));
-    m.addTo(stationLayer);
+    L.marker([s.lat, s.lon], {
+      icon: stationIcon(r.wqi, selected?.code === s.code), zIndexOffset: 500,
+    })
+      .bindTooltip(`<b>${s.code}</b> — ${esc(s.name)}<br>WQI ${r.wqi.toFixed(1)} · ${wqiClass(r.wqi).status}`,
+        { direction: 'top', offset: [0, -12] })
+      .on('click', () => selectStation(s))
+      .addTo(stationLayer);
   }
 }
 
-/* ---------------- Punca pencemaran ---------------- */
-let srcFilter = new Set(Object.keys({}));
+/* ---------------- Pollution sources ---------------- */
+let srcFilter = new Set();
 let maxDistFilter = 1500;
 
 function paintSources() {
@@ -112,41 +196,93 @@ function paintSources() {
   const marks = [];
   for (const f of DATA.sources.features) {
     const p = f.properties;
-    if (!srcFilter.has(p.cat)) continue;
-    if (p.dist > maxDistFilter) continue;
+    if (!srcFilter.has(p.cat) || p.dist > maxDistFilter) continue;
     const cat = cats[p.cat];
-    const rad = 3 + p.risk * 1.1;
     const m = L.circleMarker([f.geometry.coordinates[1], f.geometry.coordinates[0]], {
-      radius: rad, fillColor: cat.color, color: '#fff', weight: 1,
+      radius: 3 + p.risk * 1.1, fillColor: cat.color, color: '#fff', weight: 1,
       fillOpacity: 0.85, opacity: 0.9,
     });
     m.bindPopup(
-      `<div class="pop-head" style="background:${cat.color}">${cat.icon} ${cat.label}</div>
+      `<div class="pop-head" style="background:${cat.color}">${cat.icon} ${esc(cat.label)}</div>
        <div class="pop">
-         <div class="pt">${p.name ? esc(p.name) : '(tiada nama dalam OSM)'}</div>
-         <div class="ps">Daerah ${esc(p.district ?? '—')} · OSM ID ${p.id}</div>
-         <div class="pr"><span>Jarak ke alur air</span><span>${p.dist} m</span></div>
+         <div class="pt">${p.name ? esc(p.name) : '(unnamed in OSM)'}</div>
+         <div class="ps">${esc(p.district ?? '—')} district · OSM ID ${p.id}</div>
+         <div class="pr"><span>Distance to watercourse</span><span>${p.dist} m</span></div>
          ${p.dist_langat != null
-        ? `<div class="pr"><span>Jarak ke Sg. Langat</span><span>${fmtKm(p.dist_langat)}</span></div>` : ''}
-         <div class="pr"><span>Skor risiko</span><span style="color:${riskColor(p.risk)}">${p.risk.toFixed(2)} / 5</span></div>
+        ? `<div class="pr"><span>Distance to Sg. Langat</span><span>${fmtKm(p.dist_langat)}</span></div>` : ''}
+         <div class="pr"><span>Risk score</span><span style="color:${riskColor(p.risk)}">${p.risk.toFixed(2)} / 5</span></div>
          <div class="pr" style="display:block;margin-top:7px;border-top:1px solid #eef0f5;padding-top:7px">
-           <span style="color:#5f6880;font-size:10.5px">PENCEMAR UTAMA</span><br>
-           <span style="font-family:inherit;font-weight:500;font-size:11.5px">${cat.pol}</span>
+           <span style="color:#5f6880;font-size:10.5px">PRINCIPAL POLLUTANTS</span><br>
+           <span style="font-family:inherit;font-weight:500;font-size:11.5px">${esc(cat.pol)}</span>
          </div>
-       </div>`, { maxWidth: 260 });
+       </div>`, { maxWidth: 262 });
     marks.push(m);
   }
   srcCluster.addLayers(marks);
   const cnt = document.getElementById('srcCount');
-  if (cnt) cnt.textContent = marks.length.toLocaleString('ms-MY');
+  if (cnt) cnt.textContent = marks.length.toLocaleString('en-MY');
 }
 
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) =>
-  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const fmtKm = (m) => (m >= 1000 ? (m / 1000).toFixed(2) + ' km' : m + ' m');
-const riskColor = (r) => (r >= 4 ? '#d92d20' : r >= 3 ? '#ef7d1a' : r >= 2 ? '#f2c40c' : '#17a04a');
+/* ---------------- User-entered data ---------------- */
+export function paintUserData() {
+  if (!myReadingLayer) return;
 
-/* ---------------- Panel butiran stesen ---------------- */
+  myReadingLayer.clearLayers();
+  for (const r of store.readings()) {
+    if (typeof r.lat !== 'number' || typeof r.lon !== 'number') continue;
+    const { wqi, si } = computeWQI(r);
+    const c = wqiClass(wqi);
+    L.marker([r.lat, r.lon], {
+      zIndexOffset: 700,
+      icon: L.divIcon({
+        className: '',
+        html: `<div style="width:21px;height:21px;background:${c.color};border:2.5px solid #fff;
+          transform:rotate(45deg);box-shadow:0 1px 5px rgba(0,0,0,.45);display:grid;place-items:center">
+          <span style="transform:rotate(-45deg);color:#fff;font:700 8.5px 'JetBrains Mono',monospace">
+          ${Math.round(wqi)}</span></div>`,
+        iconSize: [21, 21], iconAnchor: [10.5, 10.5],
+      }),
+    }).bindPopup(
+      `<div class="pop-head" style="background:${c.color}">My reading · ${esc(r.t)}</div>
+       <div class="pop">
+         <div class="pt">${esc(r.stationName ?? r.station)}</div>
+         <div class="ps">${esc(r.station)} · saved in this browser</div>
+         <div class="pr"><span>WQI</span><span style="color:${c.color}">${wqi.toFixed(1)} · ${c.label}</span></div>
+         ${Object.keys(PARAM_META).map((k) => `<div class="pr"><span>${PARAM_META[k].short}</span>
+            <span>${r[k]}<b style="color:${siColor(si[k])};margin-left:6px">${si[k].toFixed(0)}</b></span></div>`).join('')}
+       </div>`, { maxWidth: 262 }).addTo(myReadingLayer);
+  }
+
+  mySourceLayer.clearLayers();
+  for (const s of store.sources()) {
+    const cat = DATA.srcCats[s.cat] ?? { color: '#5f6880', label: s.cat, icon: '📍', pol: '—' };
+    L.circleMarker([s.lat, s.lon], {
+      radius: 7, fillColor: cat.color, color: '#fff', weight: 2.5, fillOpacity: 0.95,
+    }).bindPopup(
+      `<div class="pop-head" style="background:${cat.color}">${cat.icon} ${esc(cat.label)}</div>
+       <div class="pop">
+         <div class="pt">${esc(s.name || '(unnamed)')}</div>
+         <div class="ps">Reported by you · ${esc((s.created ?? '').slice(0, 10))}</div>
+         <div class="pr"><span>Distance to watercourse</span><span>${s.dist != null ? s.dist + ' m' : '—'}</span></div>
+         <div class="pr"><span>District</span><span>${esc(s.district ?? '—')}</span></div>
+         <div class="pr"><span>Risk score</span><span style="color:${riskColor(s.risk ?? 0)}">${(s.risk ?? 0).toFixed(2)} / 5</span></div>
+         ${s.note ? `<div class="pr" style="display:block;margin-top:7px;border-top:1px solid #eef0f5;padding-top:7px">
+            <span style="color:#5f6880;font-size:10.5px">NOTES</span><br>
+            <span style="font-family:inherit;font-weight:500;font-size:11.5px">${esc(s.note)}</span></div>` : ''}
+       </div>`, { maxWidth: 262 }).addTo(mySourceLayer);
+  }
+
+  for (const [key, layer] of [['myReadings', myReadingLayer], ['mySources', mySourceLayer]]) {
+    const input = document.querySelector(`[data-layer="${key}"]`);
+    const row = input?.closest('.layer-item');
+    if (!row) continue;
+    const n = layer.getLayers().length;
+    row.style.display = n ? 'flex' : 'none';
+    row.querySelector('.cnt').textContent = n;
+  }
+}
+
+/* ---------------- Station detail panel ---------------- */
 export function selectStation(s) {
   selected = s;
   paintStations();
@@ -158,15 +294,13 @@ export function selectStation(s) {
 
   const rows = Object.keys(PARAM_META).map((k) => {
     const m = PARAM_META[k];
-    const v = r.raw[k];
-    const si = r.si[k];
-    const st = paramStatus(k, v);
+    const v = r.raw[k], si = r.si[k], st = paramStatus(k, v);
     return `<tr>
       <td class="pn">${m.name}${m.unit ? `<span class="pu">${m.unit}</span>` : ''}</td>
       <td><span class="dot-st st-${st}"></span><span class="pv">${v}</span></td>
       <td>
-        <span class="pv" style="color:${si >= 76 ? '#17a04a' : si >= 52 ? '#f2c40c' : '#d92d20'}">${si.toFixed(0)}</span>
-        <div class="si-bar"><i style="width:${si}%;background:${si >= 76 ? '#17a04a' : si >= 52 ? '#f2c40c' : '#d92d20'}"></i></div>
+        <span class="pv" style="color:${siColor(si)}">${si.toFixed(0)}</span>
+        <div class="si-bar"><i style="width:${si}%;background:${siColor(si)}"></i></div>
       </td></tr>`;
   }).join('');
 
@@ -174,10 +308,12 @@ export function selectStation(s) {
   document.getElementById('detailHead').style.background =
     `linear-gradient(120deg,${cls.color},${shade(cls.color, -28)})`;
   document.getElementById('detailHead').innerHTML = `
-    <button class="close" onclick="document.getElementById('detail').classList.remove('open')">×</button>
-    <div class="code">${s.code} · ${s.river}</div>
+    <button class="close" id="detailClose" aria-label="Close">×</button>
+    <div class="code">${esc(s.code)} · ${esc(s.river)}</div>
     <h3>${esc(s.name)}</h3>
-    <div class="loc">Daerah ${s.district} · ${s.lat.toFixed(4)}, ${s.lon.toFixed(4)}</div>`;
+    <div class="loc">${esc(s.district)} district · ${s.lat.toFixed(4)}, ${s.lon.toFixed(4)}</div>`;
+  document.getElementById('detailClose').onclick =
+    () => document.getElementById('detail').classList.remove('open');
 
   document.getElementById('detailBody').innerHTML = `
     <div class="wqi-hero">
@@ -188,31 +324,31 @@ export function selectStation(s) {
       </div>
     </div>
     <table class="param-tbl">
-      <thead><tr><th>Parameter</th><th>Bacaan</th><th>Sub-indeks</th></tr></thead>
+      <thead><tr><th>Parameter</th><th>Reading</th><th>Sub-index</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
     <div class="spark-box">
-      <h4>Arah aliran WQI · ${DATA.months[0]} – ${DATA.months[DATA.months.length - 1]}</h4>
+      <h4>WQI trend · ${DATA.months[0]} – ${DATA.months[DATA.months.length - 1]}</h4>
       <div style="height:112px"><canvas id="spark"></canvas></div>
       <div style="display:flex;justify-content:space-between;margin-top:9px;font-size:11.5px">
-        <span style="color:var(--muted)">Purata 12 bulan</span>
+        <span style="color:var(--muted)">12-month mean</span>
         <span style="font-family:var(--fm);font-weight:600">${s.avg12.toFixed(1)}
           <span class="k-trend ${s.delta > 1 ? 'trend-up' : s.delta < -1 ? 'trend-down' : 'trend-flat'}"
             style="margin:0 0 0 5px">${s.delta >= 0 ? '▲' : '▼'} ${Math.abs(s.delta).toFixed(1)}</span></span>
       </div>
     </div>
     <div class="spark-box">
-      <h4>Tekanan guna tanah dalam radius 3 km</h4>
+      <h4>Land-use pressure within 3 km</h4>
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
-        <span style="font-size:11.5px;color:var(--muted)">Indeks beban terkumpul</span>
-        <span style="font-family:var(--fm);font-weight:700;font-size:16px;color:${pr.load > 900 ? '#d92d20' : pr.load > 400 ? '#ef7d1a' : '#17a04a'}">${pr.load.toLocaleString('ms-MY')}</span>
+        <span style="font-size:11.5px;color:var(--muted)">Cumulative load index</span>
+        <span style="font-family:var(--fm);font-weight:700;font-size:16px;color:${pr.load > 900 ? '#d92d20' : pr.load > 400 ? '#ef7d1a' : '#17a04a'}">${pr.load.toLocaleString('en-MY')}</span>
       </div>
       ${topCats.map(([k, n]) => `
         <div style="display:flex;align-items:center;gap:8px;padding:3px 0;font-size:11.5px">
           <span style="width:9px;height:9px;border-radius:2px;background:${cats[k].color};flex:none"></span>
-          <span style="flex:1">${cats[k].label}</span>
-          <span style="font-family:var(--fm);font-weight:600">${n.toLocaleString('ms-MY')}</span>
-        </div>`).join('') || '<div style="font-size:11.5px;color:var(--muted)">Tiada punca direkod berhampiran.</div>'}
+          <span style="flex:1">${esc(cats[k].label)}</span>
+          <span style="font-family:var(--fm);font-weight:600">${n.toLocaleString('en-MY')}</span>
+        </div>`).join('') || '<div style="font-size:11.5px;color:var(--muted)">No sources recorded nearby.</div>'}
     </div>`;
 
   drawSpark(s);
@@ -253,18 +389,12 @@ function drawSpark(s) {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: (c) => `WQI ${c.parsed.y.toFixed(1)} · ${wqiClass(c.parsed.y).status}`,
-          },
-        },
+        tooltip: { callbacks: { label: (c) => `WQI ${c.parsed.y.toFixed(1)} · ${wqiClass(c.parsed.y).status}` } },
       },
       scales: {
         x: { display: false },
-        y: {
-          min: 0, max: 100, ticks: { stepSize: 25, font: { size: 9 }, color: '#8b93a8' },
-          grid: { color: '#eef0f5' }, border: { display: false },
-        },
+        y: { min: 0, max: 100, ticks: { stepSize: 25, font: { size: 9 }, color: '#8b93a8' },
+          grid: { color: '#eef0f5' }, border: { display: false } },
       },
     },
   });
@@ -274,154 +404,169 @@ function drawSpark(s) {
 export function initMap() {
   makeBases();
   map = L.map('map', {
-    center: LANGAT_CENTER, zoom: 11, layers: [base.osm],
-    zoomControl: false, preferCanvas: true,
+    center: LANGAT_CENTER, zoom: 11, zoomControl: false, preferCanvas: true,
   });
-  L.control.zoom({ position: 'bottomright' }).addTo(map);
+  L.control.zoom({ position: 'topright' }).addTo(map);      // bottom-right holds the legend
   L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
 
-  /* --- Badan air --- */
-  layers.waterLangat = L.geoJSON(DATA.waterLangat, {
-    style: { color: '#0aa3d9', weight: 0.7, fillColor: '#45bfe0', fillOpacity: 0.45 },
-    onEachFeature: (f, l) => {
-      const p = f.properties;
-      l.bindTooltip(`<b>${p.name ? esc(p.name) : 'Badan air'}</b><br>Jenis: ${p.kind}`,
-        { sticky: true });
-    },
-  });
-  layers.waterSelangor = L.geoJSON(DATA.waterSelangor, {
-    style: { color: '#7aa8c4', weight: 0.5, fillColor: '#9fc7dd', fillOpacity: 0.35 },
-  });
   layers.districts = L.geoJSON(DATA.districts, {
     style: { color: '#22235f', weight: 1.8, opacity: 0.8, dashArray: '7 5',
       fill: true, fillColor: '#22235f', fillOpacity: 0.035 },
     onEachFeature: (f, l) => l.bindTooltip(
-      `<b>Daerah ${esc(f.properties.name)}</b><br>Sempadan pentadbiran · OpenStreetMap`,
+      `<b>${esc(f.properties.name)} district</b><br>Administrative boundary · OpenStreetMap`,
       { sticky: true }),
   });
 
+  layers.waterLangat = L.geoJSON(DATA.waterLangat, {
+    style: { color: '#0aa3d9', weight: 0.7, fillColor: '#45bfe0', fillOpacity: 0.45 },
+    onEachFeature: (f, l) => l.bindTooltip(
+      `<b>${f.properties.name ? esc(f.properties.name) : 'Water body'}</b><br>Type: ${esc(f.properties.kind)}`,
+      { sticky: true }),
+  });
+  layers.waterSelangor = L.geoJSON(DATA.waterSelangor, {
+    style: { color: '#7aa8c4', weight: 0.5, fillColor: '#9fc7dd', fillOpacity: 0.35 },
+  });
   layers.tributaries = L.geoJSON(DATA.tributaries, {
     style: { color: '#3c8fb5', weight: 1.4, opacity: 0.7 },
-    onEachFeature: (f, l) => {
-      if (f.properties.name) l.bindTooltip(esc(f.properties.name), { sticky: true });
-    },
+    onEachFeature: (f, l) => { if (f.properties.name) l.bindTooltip(esc(f.properties.name), { sticky: true }); },
   });
 
   riverLayer = L.layerGroup();
   stationLayer = L.layerGroup();
+  myReadingLayer = L.layerGroup();
+  mySourceLayer = L.layerGroup();
   srcCluster = L.markerClusterGroup({
     maxClusterRadius: 46, disableClusteringAtZoom: 15,
     spiderfyOnMaxZoom: true, chunkedLoading: true,
   });
-  layers.river = riverLayer;
-  layers.stations = stationLayer;
-  layers.sources = srcCluster;
+  Object.assign(layers, {
+    river: riverLayer, stations: stationLayer, sources: srcCluster,
+    myReadings: myReadingLayer, mySources: mySourceLayer,
+  });
 
-  const segs = buildRiver();
-  paintRiver(segs);
+  riverSegs = buildRiver();
+  paintRiver();
   paintStations();
-
   srcFilter = new Set(Object.keys(DATA.srcCats));
+
+  buildSidebar();
+  buildLegend();
   paintSources();
 
-  // susunan lalai
   layers.districts.addTo(map);
   layers.waterLangat.addTo(map);
   layers.tributaries.addTo(map);
   riverLayer.addTo(map);
   srcCluster.addTo(map);
   stationLayer.addTo(map);
+  myReadingLayer.addTo(map);
+  mySourceLayer.addTo(map);
 
   map.fitBounds(L.geoJSON(DATA.river).getBounds().pad(0.06));
 
-  buildSidebar(segs);
+  paintUserData();
+  document.addEventListener('userdata', paintUserData);
   return map;
 }
 
-/* ---------------- Sidebar / kawalan ---------------- */
-function buildSidebar(segs) {
+/* ---------------- Sidebar controls ---------------- */
+function buildSidebar() {
   const cats = DATA.srcCats;
 
-  /* Basemap */
-  document.querySelectorAll('[data-base]').forEach((b) => {
-    b.onclick = () => {
-      document.querySelectorAll('[data-base]').forEach((x) => x.classList.remove('active'));
-      b.classList.add('active');
-      Object.values(base).forEach((l) => map.removeLayer(l));
-      base[b.dataset.base].addTo(map);
-      base[b.dataset.base].bringToBack();
-    };
-  });
+  /* Base maps + satellite imagery */
+  const btn = (k) => {
+    const d = BASEMAPS[k];
+    return `<button class="base-btn" data-base="${k}" title="${esc(d.note)}">
+      ${BASE_ICON[d.icon]}${d.label}</button>`;
+  };
+  document.getElementById('baseGrid').innerHTML =
+    Object.keys(BASEMAPS).filter((k) => BASEMAPS[k].group === 'map').map(btn).join('');
+  document.getElementById('satGrid').innerHTML =
+    Object.keys(BASEMAPS).filter((k) => BASEMAPS[k].group === 'sat').map(btn).join('');
 
-  /* Lapisan */
-  const layerBox = document.getElementById('layerList');
+  const setBase = (k) => {
+    document.querySelectorAll('[data-base]').forEach((x) =>
+      x.classList.toggle('active', x.dataset.base === k));
+    Object.values(base).forEach((l) => map.removeLayer(l));
+    base[k].addTo(map);
+    base[k].bringToBack();
+    const d = BASEMAPS[k];
+    document.getElementById('baseInfo').innerHTML =
+      `<div class="bi-t">${d.label} <span class="badge soft">${d.res}</span></div>
+       <div class="bi-s">${esc(d.src)}</div>
+       <div class="bi-n">${esc(d.note)}</div>`;
+    const lblRow = document.getElementById('labelRow');
+    const lblBox = document.getElementById('labelToggle');
+    lblRow.style.display = d.group === 'sat' ? 'flex' : 'none';
+    labelOverlay ??= makeLabelOverlay();
+    if (d.group === 'sat' && lblBox.checked) labelOverlay.addTo(map);
+    else if (map.hasLayer(labelOverlay)) map.removeLayer(labelOverlay);
+  };
+  document.querySelectorAll('[data-base]').forEach((b) => { b.onclick = () => setBase(b.dataset.base); });
+  setBase('osm');
+
+  document.getElementById('labelToggle').onchange = (e) => {
+    labelOverlay ??= makeLabelOverlay();
+    if (e.target.checked) labelOverlay.addTo(map);
+    else map.removeLayer(labelOverlay);
+  };
+
+  /* Data layers */
   const defs = [
-    ['districts', 'Sempadan daerah lembangan', '#22235f', 'line', DATA.districts.features.length],
-    ['river', 'Sungai Langat (WQI)', 'linear-gradient(90deg,#0aa3d9,#17a04a,#f2c40c,#ef7d1a,#d92d20)', 'line', DATA.river.features.length],
-    ['stations', 'Stesen pemantauan', '#22235f', 'box', DATA.stations.length],
-    ['sources', 'Punca pencemaran', '#d92d20', 'box', DATA.sources.features.length],
-    ['tributaries', 'Anak sungai & terusan', '#3c8fb5', 'line', DATA.tributaries.features.length],
-    ['waterLangat', 'Badan air — Langat', '#45bfe0', 'box', DATA.waterLangat.features.length],
-    ['waterSelangor', 'Badan air — Selangor lain', '#9fc7dd', 'box', DATA.waterSelangor.features.length],
+    ['districts', 'Basin district boundaries', '#22235f', 'line', DATA.districts.features.length],
+    ['river', 'Langat River (WQI)', 'linear-gradient(90deg,#0aa3d9,#17a04a,#f2c40c,#ef7d1a,#d92d20)', 'line', DATA.river.features.length],
+    ['stations', 'Monitoring stations', '#22235f', 'box', DATA.stations.length],
+    ['sources', 'Pollution sources', '#4a3aa7', 'box', DATA.sources.features.length],
+    ['tributaries', 'Tributaries & canals', '#3c8fb5', 'line', DATA.tributaries.features.length],
+    ['waterLangat', 'Water bodies — Langat', '#45bfe0', 'box', DATA.waterLangat.features.length],
+    ['waterSelangor', 'Water bodies — rest of Selangor', '#9fc7dd', 'box', DATA.waterSelangor.features.length],
+    ['myReadings', 'My readings (this browser)', '#22235f', 'box', 0],
+    ['mySources', 'My reported sources', '#4a3aa7', 'box', 0],
   ];
-  layerBox.innerHTML = defs.map(([k, lab, col, sh, n]) => `
-    <label class="layer-item">
+  document.getElementById('layerList').innerHTML = defs.map(([k, lab, col, sh, n]) => `
+    <label class="layer-item"${k.startsWith('my') ? ' style="display:none"' : ''}>
       <input type="checkbox" data-layer="${k}" ${k === 'waterSelangor' ? '' : 'checked'}>
       <span class="layer-swatch ${sh === 'line' ? 'line' : ''}" style="background:${col}"></span>
       <span>${lab}</span>
-      <span class="cnt" ${k === 'sources' ? 'id="srcCount"' : ''}>${n.toLocaleString('ms-MY')}</span>
+      <span class="cnt" ${k === 'sources' ? 'id="srcCount"' : ''}>${n.toLocaleString('en-MY')}</span>
     </label>`).join('');
-  layerBox.querySelectorAll('input[data-layer]').forEach((i) => {
+  document.querySelectorAll('input[data-layer]').forEach((i) => {
     i.onchange = () => {
       const l = layers[i.dataset.layer];
-      i.checked ? l.addTo(map) : map.removeLayer(l);
+      if (i.checked) l.addTo(map); else map.removeLayer(l);
     };
   });
 
-  /* Legenda WQI */
-  document.getElementById('legendList').innerHTML = WQI_CLASSES.map((c) => `
-    <div class="legend-row" title="${c.use}">
-      <span class="legend-chip" style="background:${c.color}">${c.id}</span>
-      <span>
-        <div class="lr-t">${c.status}</div>
-        <div class="lr-s">${c.max > 100 ? '92.7 – 100' : `${c.min < 0 ? '0' : c.min} – ${c.max}`}</div>
-      </span>
-    </div>`).join('');
-
-  /* Kategori punca */
+  /* Source categories */
   document.getElementById('catList').innerHTML = Object.entries(cats).map(([k, c]) => `
     <label class="layer-item">
       <input type="checkbox" data-cat="${k}" checked>
       <span class="layer-swatch" style="background:${c.color}"></span>
-      <span>${c.icon} ${c.label}</span>
+      <span>${c.icon} ${esc(c.label)}</span>
     </label>`).join('');
   document.querySelectorAll('input[data-cat]').forEach((i) => {
     i.onchange = () => {
-      i.checked ? srcFilter.add(i.dataset.cat) : srcFilter.delete(i.dataset.cat);
+      if (i.checked) srcFilter.add(i.dataset.cat); else srcFilter.delete(i.dataset.cat);
       paintSources();
     };
   });
 
-  /* Slider bulan */
+  /* Month slider */
   const slider = document.getElementById('monthSlider');
   slider.max = DATA.months.length - 1;
   slider.value = monthIdx = DATA.months.length - 1;
   const label = document.getElementById('monthLabel');
-  const fmtMonth = (m) => {
-    const [y, mm] = m.split('-');
-    return `${['Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogo', 'Sep', 'Okt', 'Nov', 'Dis'][+mm - 1]} ${y}`;
-  };
   label.textContent = fmtMonth(DATA.months[monthIdx]);
   slider.oninput = () => {
     monthIdx = +slider.value;
     label.textContent = fmtMonth(DATA.months[monthIdx]);
-    paintRiver(segs);
+    paintRiver();
     paintStations();
     if (selected) selectStation(selected);
     document.dispatchEvent(new CustomEvent('monthchange', { detail: monthIdx }));
   };
 
-  /* Slider jarak riparian */
+  /* Riparian distance filter */
   const dist = document.getElementById('distSlider');
   dist.oninput = () => {
     maxDistFilter = +dist.value;
@@ -430,14 +575,36 @@ function buildSidebar(segs) {
     paintSources();
   };
 
-  /* Pilih stesen dari senarai */
+  /* Station picker */
   document.getElementById('stationSelect').innerHTML =
-    '<option value="">— Pilih stesen —</option>' +
-    DATA.stations.map((s) => `<option value="${s.code}">${s.code} · ${s.name}</option>`).join('');
+    '<option value="">— Select a station —</option>' +
+    DATA.stations.map((s) => `<option value="${s.code}">${s.code} · ${esc(s.name)}</option>`).join('');
   document.getElementById('stationSelect').onchange = (e) => {
     const s = DATA.stations.find((x) => x.code === e.target.value);
     if (s) { map.setView([s.lat, s.lon], 14); selectStation(s); }
   };
+}
+
+/* ---------------- Floating legend (bottom right) ---------------- */
+function buildLegend() {
+  document.getElementById('legendList').innerHTML = WQI_CLASSES.map((c) => `
+    <div class="ml-row" title="${esc(c.use)}">
+      <span class="ml-chip" style="background:${c.color}">${c.id}</span>
+      <span>
+        <div class="ml-t">${c.status}</div>
+        <div class="ml-s">${c.max > 100 ? '92.7 – 100' : `${c.min < 0 ? '0' : c.min} – ${c.max}`}</div>
+      </span>
+    </div>`).join('');
+
+  document.getElementById('legendCats').innerHTML = Object.values(DATA.srcCats).map((c) => `
+    <div class="ml-cat" title="${esc(c.pol)}">
+      <span class="dot" style="background:${c.color}"></span>${esc(c.label)}
+    </div>`).join('');
+
+  const box = document.getElementById('mapLegend');
+  document.getElementById('legendHead').onclick = () => box.classList.toggle('collapsed');
+  L.DomEvent.disableClickPropagation(box);
+  L.DomEvent.disableScrollPropagation(box);
 }
 
 export function getMonthIdx() { return monthIdx; }
@@ -446,3 +613,4 @@ export function focusStation(code) {
   const s = DATA.stations.find((x) => x.code === code);
   if (s) { map.setView([s.lat, s.lon], 14); selectStation(s); }
 }
+export function flyTo(lat, lon, zoom = 15) { map?.setView([lat, lon], zoom); }

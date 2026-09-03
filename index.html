@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="ms">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Portal Indeks Kualiti Air (WQI) — Lembangan Sungai Langat | LUAS</title>
-<meta name="description" content="Portal pemantauan Indeks Kualiti Air (WQI) Lembangan Sungai Langat — Lembaga Urus Air Selangor. Data badan air, pencerapan satelit dan pemetaan punca pencemaran.">
+<title>Water Quality Index (WQI) Portal — Langat River Basin | LUAS</title>
+<meta name="description" content="Water Quality Index (WQI) monitoring portal for the Langat River Basin — Lembaga Urus Air Selangor. Water body data, satellite observation and pollution source mapping.">
 
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,20 +18,20 @@
 </head>
 <body>
 
-<!-- ========== Skrin muat ========== -->
+<!-- ========== Loading screen ========== -->
 <div class="loader" id="loader">
   <div class="l-in">
     <svg class="logo" style="width:64px;height:64px" viewBox="0 0 100 140" aria-hidden="true">
       <use href="#luasmark"></use>
     </svg>
-    <div style="font-size:15px;font-weight:650;margin-top:14px">Portal Indeks Kualiti Air</div>
+    <div style="font-size:15px;font-weight:650;margin-top:14px">Water Quality Index Portal</div>
     <div style="font-size:11.5px;color:#9ea6d0;margin-top:3px">Lembaga Urus Air Selangor</div>
     <div class="l-bar"><i id="lbar"></i></div>
-    <div class="l-txt" id="ltxt">Memulakan…</div>
+    <div class="l-txt" id="ltxt">Starting…</div>
   </div>
 </div>
 
-<!-- ========== Simbol logo LUAS ========== -->
+<!-- ========== LUAS logo symbol ========== -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="luasmark" viewBox="0 0 100 140">
     <rect x="4" y="4" width="92" height="132" rx="46" fill="#22235f"/>
@@ -48,9 +48,9 @@
 
 <!-- ========== Topbar ========== -->
 <div class="topbar">
-  <div class="gov"><span class="dot"></span> Portal Rasmi · Agensi Kerajaan Negeri Selangor</div>
+  <div class="gov"><span class="dot"></span> Official Portal · Selangor State Government Agency</div>
   <div class="topbar-right">
-    <span>Data terbuka: <a href="https://data.gov.my" target="_blank" rel="noopener">data.gov.my</a></span>
+    <span>Open data: <a href="https://data.gov.my" target="_blank" rel="noopener">data.gov.my</a></span>
     <span id="clock"></span>
   </div>
 </div>
@@ -61,69 +61,69 @@
     <svg class="logo" viewBox="0 0 100 140"><use href="#luasmark"></use></svg>
     <div class="brand">
       <div class="org">Lembaga Urus Air Selangor</div>
-      <h1>Portal Indeks Kualiti Air (WQI)</h1>
-      <div class="sub">Lembangan Sungai Langat · Selangor Darul Ehsan</div>
+      <h1>Water Quality Index (WQI) Portal</h1>
+      <div class="sub">Langat River Basin · Selangor Darul Ehsan</div>
     </div>
     <div class="header-meta">
-      <div class="pill"><span class="live-dot"></span> <b id="pillStations">—</b> stesen aktif</div>
-      <div class="pill">Purata WQI <b id="pillWqi">—</b></div>
-      <div class="pill"><b id="pillSources">—</b> punca dipetakan</div>
+      <div class="pill"><span class="live-dot"></span> <b id="pillStations">—</b> active stations</div>
+      <div class="pill">Mean WQI <b id="pillWqi">—</b></div>
+      <div class="pill"><b id="pillSources">—</b> sources mapped</div>
     </div>
   </div>
 
   <nav class="nav" id="nav">
-    <button data-view="peta" class="active">
+    <button data-view="map" class="active">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/></svg>
-      Peta Interaktif</button>
+      Interactive Map</button>
     <button data-view="dashboard">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m7 14 4-5 3 3 5-7"/></svg>
-      Papan Pemuka</button>
-    <button data-view="punca">
+      Dashboard</button>
+    <button data-view="sources">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
-      Punca Pencemaran</button>
-    <button data-view="satelit">
+      Pollution Sources</button>
+    <button data-view="satellite">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2a10 10 0 0 1 10 10M12 6a6 6 0 0 1 6 6"/><path d="M2 12a10 10 0 0 0 10 10M6 12a6 6 0 0 0 6 6"/></svg>
-      Pencerapan Satelit</button>
-    <button data-view="panduan">
+      Satellite Observation</button>
+    <button data-view="entry">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+      Data Entry</button>
+    <button data-view="guide">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-      Panduan WQI</button>
+      WQI Guide</button>
   </nav>
 </header>
 
-<!-- ================= PETA ================= -->
-<section class="view active" id="v-peta">
+<!-- ================= MAP ================= -->
+<section class="view active" id="v-map">
   <div class="map-wrap">
     <aside class="sidebar">
       <div class="side-sec">
-        <h3>Peta Asas</h3>
-        <div class="base-grid">
-          <button class="base-btn active" data-base="osm">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3-6-3z"/></svg>Peta Jalan</button>
-          <button class="base-btn" data-base="sat">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18z"/></svg>Satelit</button>
-          <button class="base-btn" data-base="topo">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m3 18 6-9 4 5 3-4 5 8z"/></svg>Topografi</button>
-          <button class="base-btn" data-base="dark">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>Gelap</button>
-        </div>
+        <h3>Base Map</h3>
+        <div class="base-grid" id="baseGrid"></div>
       </div>
 
       <div class="side-sec">
-        <h3>Lapisan Data</h3>
+        <h3>Satellite Imagery</h3>
+        <div class="base-grid" id="satGrid"></div>
+        <label class="layer-item" id="labelRow" style="margin-top:9px;display:none">
+          <input type="checkbox" id="labelToggle">
+          <span class="layer-swatch" style="background:#8b93a8"></span>
+          <span>Place &amp; boundary labels</span>
+        </label>
+        <div class="base-info" id="baseInfo"></div>
+      </div>
+
+      <div class="side-sec">
+        <h3>Data Layers</h3>
         <div id="layerList"></div>
       </div>
 
       <div class="side-sec">
-        <h3>Aras Indeks Pencemaran</h3>
-        <div id="legendList"></div>
-      </div>
-
-      <div class="side-sec">
-        <h3>Kategori Punca Pencemaran</h3>
+        <h3>Pollution Source Categories</h3>
         <div id="catList"></div>
         <div style="margin-top:11px">
           <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:5px">
-            <span>Jarak maksimum ke alur air</span><b id="distLabel" style="font-family:var(--fm);color:var(--navy)">1.5 km</b>
+            <span>Max distance to watercourse</span><b id="distLabel" style="font-family:var(--fm);color:var(--navy)">1.5 km</b>
           </div>
           <input type="range" id="distSlider" min="50" max="1500" step="50" value="1500"
                  style="width:100%;accent-color:var(--navy-2)">
@@ -131,7 +131,7 @@
       </div>
 
       <div class="side-sec" style="border-bottom:0">
-        <h3>Lompat ke Stesen</h3>
+        <h3>Jump to Station</h3>
         <select id="stationSelect" style="width:100%;padding:7px 9px;border:1px solid var(--line);
           border-radius:var(--r-sm);font-family:inherit;font-size:12px;background:var(--surface)"></select>
       </div>
@@ -142,9 +142,19 @@
 
       <div class="map-ctrl">
         <div class="mc">
-          <label>Tempoh</label>
+          <label>Period</label>
           <input type="range" id="monthSlider" min="0" max="0" value="0">
           <span class="val" id="monthLabel">—</span>
+        </div>
+      </div>
+
+      <!-- Floating legend, bottom right -->
+      <div class="map-legend" id="mapLegend">
+        <div class="ml-head" id="legendHead">Water Quality Index<span class="chev">▾</span></div>
+        <div class="ml-body">
+          <div id="legendList"></div>
+          <div class="ml-sub">Pollution sources</div>
+          <div id="legendCats"></div>
         </div>
       </div>
 
@@ -156,76 +166,76 @@
   </div>
 </section>
 
-<!-- ================= PAPAN PEMUKA ================= -->
+<!-- ================= DASHBOARD ================= -->
 <section class="view" id="v-dashboard">
   <div class="page">
     <div class="grid kpis" id="kpis" style="margin-bottom:6px"></div>
 
     <div class="section-title">
-      <h2>Arah Aliran Kualiti Air</h2>
-      <span class="st-sub">Purata WQI mengikut segmen sungai · <span id="periodLabel"></span></span>
+      <h2>Water Quality Trend</h2>
+      <span class="st-sub">Mean WQI by river reach · <span id="periodLabel"></span></span>
     </div>
     <div class="grid" style="grid-template-columns:1.65fr 1fr">
       <div class="card pad0">
-        <div class="card-head"><h3>WQI hulu hingga muara mengikut masa</h3>
-          <div class="card-sub">Dikira dengan formula rasmi DOE Malaysia daripada enam parameter</div></div>
+        <div class="card-head"><h3>WQI from headwaters to estuary over time</h3>
+          <div class="card-sub">Computed with the official DOE Malaysia formula from six parameters</div></div>
         <div class="chart-box lg"><canvas id="cSegTrend"></canvas></div>
       </div>
       <div class="card pad0">
-        <div class="card-head"><h3>Sub-indeks purata lembangan</h3>
-          <div class="card-sub">Nilai rendah menunjukkan parameter yang paling menekan WQI</div></div>
+        <div class="card-head"><h3>Basin mean sub-indices</h3>
+          <div class="card-sub">Low values identify the parameters depressing WQI the most</div></div>
         <div class="chart-box lg"><canvas id="cSubIdx"></canvas></div>
       </div>
     </div>
 
     <div class="section-title">
-      <h2>Profil Sungai &amp; Taburan Kelas</h2>
-      <span class="st-sub">Keadaan pada bulan dipilih</span>
+      <h2>River Profile &amp; Class Distribution</h2>
+      <span class="st-sub">Conditions in the selected month</span>
     </div>
     <div class="grid" style="grid-template-columns:1.65fr 1fr">
       <div class="card pad0">
-        <div class="card-head"><h3>Profil WQI sepanjang Sungai Langat</h3>
-          <div class="card-sub">Disusun dari hulu (Hulu Langat) ke muara (Kuala Langat)</div></div>
+        <div class="card-head"><h3>WQI profile along the Langat River</h3>
+          <div class="card-sub">Ordered from headwaters (Hulu Langat) to estuary (Kuala Langat)</div></div>
         <div class="chart-box"><canvas id="cProfile"></canvas></div>
       </div>
       <div class="card pad0">
-        <div class="card-head"><h3>Taburan stesen mengikut kelas</h3>
-          <div class="card-sub">Lima aras indeks pencemaran (INWQS)</div></div>
+        <div class="card-head"><h3>Stations by class</h3>
+          <div class="card-sub">Five pollution index levels (INWQS)</div></div>
         <div class="chart-box"><canvas id="cClassBar"></canvas></div>
       </div>
     </div>
 
     <div class="section-title">
-      <h2>Konteks Kebangsaan</h2>
-      <span class="st-sub">Data terbuka rasmi daripada data.gov.my</span>
+      <h2>National Context</h2>
+      <span class="st-sub">Official open data from data.gov.my</span>
     </div>
     <div class="card pad0">
       <div class="card-head" style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap">
         <div>
-          <h3>Status pencemaran lembangan sungai Malaysia</h3>
+          <h3>Pollution status of Malaysian river basins</h3>
           <div class="card-sub" id="natNote"></div>
         </div>
         <select id="measureSelect" style="padding:6px 10px;border:1px solid var(--line);
           border-radius:var(--r-sm);font-family:inherit;font-size:12px;background:var(--surface)">
           <option value="bod5">Parameter: BOD₅</option>
           <option value="nh3n">Parameter: NH₃-N</option>
-          <option value="ss">Parameter: Pepejal Terampai (SS)</option>
+          <option value="ss">Parameter: Suspended Solids (SS)</option>
         </select>
       </div>
       <div class="chart-box lg"><canvas id="cNational"></canvas></div>
     </div>
 
     <div class="section-title">
-      <h2>Bacaan Stesen</h2>
-      <span class="st-sub">Klik mana-mana baris untuk membukanya pada peta</span>
+      <h2>Station Readings</h2>
+      <span class="st-sub">Click any row to open it on the map</span>
     </div>
     <div class="card pad0 tbl-scroll">
       <table class="data">
         <thead><tr>
-          <th>Kod</th><th>Stesen</th><th>Sungai</th><th>Daerah</th>
+          <th>Code</th><th>Station</th><th>River</th><th>District</th>
           <th>DO<br>mg/L</th><th>BOD₅<br>mg/L</th><th>COD<br>mg/L</th>
           <th>SS<br>mg/L</th><th>NH₃-N<br>mg/L</th><th>pH</th>
-          <th>WQI</th><th>Kelas</th>
+          <th>WQI</th><th>Class</th>
         </tr></thead>
         <tbody id="stationTable"></tbody>
       </table>
@@ -233,46 +243,47 @@
   </div>
 </section>
 
-<!-- ================= PUNCA PENCEMARAN ================= -->
-<section class="view" id="v-punca">
+<!-- ================= POLLUTION SOURCES ================= -->
+<section class="view" id="v-sources">
   <div class="page">
     <div class="notice info" style="margin-bottom:16px">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-      <div><b>Kaedah.</b> Setiap lokasi guna tanah daripada OpenStreetMap dalam koridor Sungai Langat
-      diukur jarak tegaknya ke alur air terdekat (sungai, terusan atau parit). Skopnya dihadkan
-      kepada tiga daerah yang membentuk Lembangan Sungai Langat — <b>Hulu Langat, Sepang dan
-      Kuala Langat</b> — dan hanya lokasi dalam <b>zon riparian 1.5 km</b> disenaraikan di sini. Skor risiko menggabungkan beban pencemar tipikal
-      bagi kategori tersebut dengan kedekatannya kepada alur air — bukan ukuran pelepasan sebenar.</div>
+      <div><b>Method.</b> Every OpenStreetMap land-use location in the Langat corridor is measured
+      by its perpendicular distance to the nearest watercourse (river, canal or drain). Scope is
+      limited to the three districts that form the Langat River Basin — <b>Hulu Langat, Sepang and
+      Kuala Langat</b> — and only locations inside the <b>1.5 km riparian zone</b> are listed here.
+      The risk score combines a category's typical pollutant load with its proximity to a
+      watercourse — it is not a measurement of actual discharge.</div>
     </div>
 
     <div class="section-title">
-      <h2>Punca Pencemaran Mengikut Kategori</h2>
-      <span class="st-sub">Guna tanah di sepanjang koridor Sungai Langat</span>
+      <h2>Pollution Sources by Category</h2>
+      <span class="st-sub">Land use along the Langat River corridor</span>
     </div>
     <div class="src-grid" id="srcCards"></div>
 
     <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:16px">
       <div class="card pad0">
-        <div class="card-head"><h3>Bilangan lokasi mengikut kategori</h3>
-          <div class="card-sub">Warna penuh = dalam 250 m dari alur air (risiko larian terus)</div></div>
+        <div class="card-head"><h3>Locations by category</h3>
+          <div class="card-sub">Solid fill = within 250 m of a watercourse (direct run-off risk)</div></div>
         <div class="chart-box"><canvas id="cSrcBar"></canvas></div>
       </div>
       <div class="card pad0">
-        <div class="card-head"><h3>Taburan jarak ke alur air</h3>
-          <div class="card-sub">Semakin hampir, semakin tinggi kebarangkalian pencemar masuk terus ke sungai</div></div>
+        <div class="card-head"><h3>Distance to nearest watercourse</h3>
+          <div class="card-sub">The closer a source sits, the more likely pollutants enter the river directly</div></div>
         <div class="chart-box"><canvas id="cSrcDist"></canvas></div>
       </div>
     </div>
 
     <div class="section-title">
-      <h2>Senarai Lokasi Berisiko Tinggi</h2>
+      <h2>Highest-Risk Locations</h2>
       <span class="st-sub" id="srcTableNote"></span>
     </div>
     <div class="card pad0 tbl-scroll" style="max-height:560px;overflow-y:auto">
       <table class="data">
         <thead><tr>
-          <th>Kategori</th><th>Nama lokasi</th><th>Daerah</th><th>Jarak ke alur air (m)</th>
-          <th>Jarak ke Sg. Langat (m)</th><th>Skor risiko</th><th>Pencemar utama</th>
+          <th>Category</th><th>Location name</th><th>District</th><th>Distance to watercourse (m)</th>
+          <th>Distance to Sg. Langat (m)</th><th>Risk score</th><th>Principal pollutants</th>
         </tr></thead>
         <tbody id="srcTable"></tbody>
       </table>
@@ -280,22 +291,15 @@
   </div>
 </section>
 
-<!-- ================= SATELIT ================= -->
-<section class="view" id="v-satelit">
+<!-- ================= SATELLITE ================= -->
+<section class="view" id="v-satellite">
   <div class="page">
     <div class="sat-grid">
       <div>
         <div class="map-ctrl" style="position:static;max-width:none;margin-bottom:11px">
-          <div class="mc" style="flex-wrap:wrap;gap:5px">
-            <button class="base-btn active" data-sat="esri" style="padding:5px 10px;flex-direction:row">Esri Resolusi Tinggi</button>
-            <button class="base-btn" data-sat="modis_terra" style="padding:5px 10px;flex-direction:row">MODIS Terra</button>
-            <button class="base-btn" data-sat="modis_aqua" style="padding:5px 10px;flex-direction:row">MODIS Aqua</button>
-            <button class="base-btn" data-sat="viirs" style="padding:5px 10px;flex-direction:row">VIIRS NOAA-20</button>
-            <button class="base-btn" data-sat="bands721" style="padding:5px 10px;flex-direction:row">Warna Palsu 7-2-1</button>
-            <button class="base-btn" data-sat="nightlights" style="padding:5px 10px;flex-direction:row">Cahaya Malam</button>
-          </div>
+          <div class="mc" style="flex-wrap:wrap;gap:5px" id="satBtns"></div>
           <div class="mc" id="satDateRow">
-            <label>Tarikh cerapan</label>
+            <label>Acquisition date</label>
             <input type="date" id="satDate" style="font-family:var(--fm);font-size:12px">
           </div>
         </div>
@@ -306,127 +310,326 @@
         <div class="card" id="satInfo"></div>
 
         <div class="card" style="margin-top:14px">
-          <h3>Lapisan Tindanan</h3>
-          <div class="card-sub">Rujukan darat di atas imej satelit</div>
+          <h3>Reference Overlays</h3>
+          <div class="card-sub">Ground reference drawn over the imagery</div>
           <label class="layer-item"><input type="checkbox" data-satov="river" checked>
-            <span class="layer-swatch line" style="background:#f5e01c"></span><span>Sungai Langat</span></label>
+            <span class="layer-swatch line" style="background:#f5e01c"></span><span>Langat River</span></label>
           <label class="layer-item"><input type="checkbox" data-satov="stations" checked>
-            <span class="layer-swatch" style="background:#22235f"></span><span>Stesen pemantauan</span></label>
+            <span class="layer-swatch" style="background:#22235f"></span><span>Monitoring stations</span></label>
           <label class="layer-item"><input type="checkbox" data-satov="sources">
-            <span class="layer-swatch" style="background:#d92d20"></span><span>Punca risiko tinggi (≤ 300 m)</span></label>
+            <span class="layer-swatch" style="background:#4a3aa7"></span><span>High-risk sources (≤ 300 m)</span></label>
         </div>
 
         <div class="card" style="margin-top:14px">
-          <h3>Indeks Spektrum Kualiti Air</h3>
-          <div class="card-sub">Kaedah penderiaan jauh yang berkaitan dengan parameter WQI</div>
+          <h3>Water Quality Spectral Indices</h3>
+          <div class="card-sub">Remote sensing methods that relate to WQI parameters</div>
           <div id="idxList"></div>
         </div>
 
         <div class="notice warn" style="margin-top:14px">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
-          <div>Lapisan harian NASA GIBS ialah <b>250–500 m per piksel</b> — cukup untuk kepulan sedimen
-          di muara dan kejadian banjir, tetapi terlalu kasar untuk satu segmen sungai.
-          Untuk NDWI/NDTI/NDCI pada 10–20 m, sambungkan Sentinel-2 melalui Copernicus Data Space
-          (lihat <code>README.md</code> § Sentinel-2).</div>
+          <div>NASA GIBS daily layers are <b>250–500 m per pixel</b> — enough for estuary sediment
+          plumes and flood events, but too coarse for a single river reach. For NDWI/NDTI/NDCI at
+          10–20 m, connect Sentinel-2 through the Copernicus Data Space
+          (see <code>README.md</code> § Sentinel-2).</div>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ================= PANDUAN ================= -->
-<section class="view" id="v-panduan">
+<!-- ================= DATA ENTRY ================= -->
+<section class="view" id="v-entry">
+  <div class="page">
+    <div class="notice info" style="margin-bottom:16px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+      <div><b>How this works.</b> This portal is a static site with no backend, so entries are saved
+      in <b>this browser only</b> (<code>localStorage</code>) and are visible to you alone. They appear
+      immediately on the map, dashboard and tables alongside the loaded data. Use
+      <b>Export</b> to produce a file that can be merged into <code>data/stations.json</code> or
+      <code>data/pollution_sources.geojson</code> and committed to the repository — that is how an
+      entry becomes permanent and shared.</div>
+    </div>
+
+    <div class="tabs" id="entryTabs">
+      <button data-tab="reading" class="active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M3 3v18h18"/><path d="m7 14 4-5 3 3 5-7"/></svg>
+        Water Quality Reading</button>
+      <button data-tab="source">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+        Report a Pollution Source</button>
+      <button data-tab="records">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        My Records <span class="badge soft" id="recCount" style="margin-left:2px">0</span></button>
+    </div>
+
+    <!-- ---- Tab: water quality reading ---- -->
+    <div class="tab-pane active" id="tab-reading">
+      <div class="entry-grid">
+        <div class="card">
+          <h3>Sampling Record</h3>
+          <div class="card-sub">Enter the six DOE parameters — the WQI is computed live as you type</div>
+
+          <div class="form-grid" style="margin-bottom:15px">
+            <div class="field" style="grid-column:1/-1">
+              <label for="rStation">Monitoring station</label>
+              <select id="rStation"></select>
+              <div class="hint" id="rStationHint">Choose an existing station, or add a new one.</div>
+            </div>
+          </div>
+
+          <div id="newStationBox" style="display:none">
+            <div class="form-grid" style="margin-bottom:15px">
+              <div class="field">
+                <label for="rNewCode">Station code</label>
+                <input id="rNewCode" placeholder="e.g. LGT12" maxlength="10">
+              </div>
+              <div class="field">
+                <label for="rNewName">Station name</label>
+                <input id="rNewName" placeholder="e.g. Sungai Langat at Semenyih">
+              </div>
+              <div class="field">
+                <label for="rNewLat">Latitude <span class="unit">°N</span></label>
+                <input id="rNewLat" type="number" step="0.00001" placeholder="2.98932">
+              </div>
+              <div class="field">
+                <label for="rNewLon">Longitude <span class="unit">°E</span></label>
+                <input id="rNewLon" type="number" step="0.00001" placeholder="101.78734">
+              </div>
+              <div class="field">
+                <label for="rNewRiver">River</label>
+                <input id="rNewRiver" value="Sungai Langat">
+              </div>
+              <div class="field">
+                <label for="rNewSeg">River reach</label>
+                <select id="rNewSeg">
+                  <option value="hulu">Headwaters (hulu)</option>
+                  <option value="tengah" selected>Middle (tengah)</option>
+                  <option value="hilir">Lower (hilir)</option>
+                  <option value="muara">Estuary (muara)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="rDate">Sampling month</label>
+              <input id="rDate" type="month">
+              <div class="hint">Readings are aggregated monthly.</div>
+            </div>
+            <div class="field">
+              <label for="rTemp">Water temperature <span class="unit">°C</span></label>
+              <input id="rTemp" type="number" step="0.1" value="27">
+              <div class="hint">Used to convert DO to % saturation.</div>
+            </div>
+          </div>
+
+          <div style="margin:19px 0 11px;font-size:10.5px;text-transform:uppercase;
+            letter-spacing:.09em;font-weight:650;color:var(--muted)">DOE parameters</div>
+
+          <div class="form-grid" id="paramFields"></div>
+
+          <div class="btn-row">
+            <button class="btn btn-primary" id="rSave" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+              Save reading</button>
+            <button class="btn btn-ghost" id="rDemo">Fill sample values</button>
+            <button class="btn btn-ghost" id="rClear">Clear</button>
+            <span id="rMsg"></span>
+          </div>
+        </div>
+
+        <div class="preview" id="rPreview"></div>
+      </div>
+    </div>
+
+    <!-- ---- Tab: pollution source ---- -->
+    <div class="tab-pane" id="tab-source">
+      <div class="entry-grid">
+        <div class="card">
+          <h3>Pollution Source Report</h3>
+          <div class="card-sub">Record a premises or land use suspected of contributing pollutants</div>
+
+          <div class="form-grid">
+            <div class="field" style="grid-column:1/-1">
+              <label for="sName">Location name</label>
+              <input id="sName" placeholder="e.g. Kilang Getah Sungai Serai">
+            </div>
+            <div class="field" style="grid-column:1/-1">
+              <label for="sCat">Category</label>
+              <select id="sCat"></select>
+              <div class="hint" id="sCatHint"></div>
+            </div>
+            <div class="field">
+              <label for="sLat">Latitude <span class="unit">°N</span></label>
+              <input id="sLat" type="number" step="0.00001" placeholder="2.98932">
+            </div>
+            <div class="field">
+              <label for="sLon">Longitude <span class="unit">°E</span></label>
+              <input id="sLon" type="number" step="0.00001" placeholder="101.78734">
+            </div>
+            <div class="field" style="grid-column:1/-1">
+              <label for="sNote">Observation notes</label>
+              <textarea id="sNote" placeholder="e.g. Discharge pipe visible on the left bank; water discoloured after rainfall."></textarea>
+            </div>
+          </div>
+
+          <div style="margin:17px 0 9px;font-size:10.5px;text-transform:uppercase;
+            letter-spacing:.09em;font-weight:650;color:var(--muted)">
+            Click the map to set the coordinates</div>
+          <div class="pick-map" id="pickMap"></div>
+
+          <div class="btn-row">
+            <button class="btn btn-primary" id="sSave" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+              Save source</button>
+            <button class="btn btn-ghost" id="sClear">Clear</button>
+            <span id="sMsg"></span>
+          </div>
+        </div>
+
+        <div class="preview" id="sPreview"></div>
+      </div>
+    </div>
+
+    <!-- ---- Tab: my records ---- -->
+    <div class="tab-pane" id="tab-records">
+      <div class="card" style="margin-bottom:14px">
+        <h3>Export &amp; Import</h3>
+        <div class="card-sub">Move your entries out of this browser, or restore a saved set</div>
+        <div class="btn-row" style="margin-top:12px">
+          <button class="btn btn-primary" id="expReadings">Export readings (JSON)</button>
+          <button class="btn btn-primary" id="expSources">Export sources (GeoJSON)</button>
+          <button class="btn btn-ghost" id="expCsv">Export readings (CSV)</button>
+          <label class="btn btn-ghost" style="cursor:pointer">
+            Import JSON<input type="file" id="impFile" accept=".json,.geojson" hidden></label>
+          <button class="btn btn-danger" id="wipeAll">Delete all entries</button>
+        </div>
+        <div style="margin-top:11px;font-size:11.5px;color:var(--muted);line-height:1.55">
+          Exported readings use the same schema as <code>data/stations.json</code>; exported sources
+          use the same schema as <code>data/pollution_sources.geojson</code>. Merge them into those
+          files and commit to make the entries permanent and shared with everyone.
+        </div>
+      </div>
+
+      <div class="section-title"><h2>Saved Readings</h2>
+        <span class="st-sub" id="recReadNote"></span></div>
+      <div class="card pad0 tbl-scroll">
+        <table class="data">
+          <thead><tr><th>Month</th><th>Station</th><th>DO</th><th>BOD₅</th><th>COD</th>
+            <th>SS</th><th>NH₃-N</th><th>pH</th><th>WQI</th><th>Class</th><th></th></tr></thead>
+          <tbody id="recReadings"></tbody>
+        </table>
+      </div>
+
+      <div class="section-title"><h2>Saved Pollution Sources</h2>
+        <span class="st-sub" id="recSrcNote"></span></div>
+      <div class="card pad0 tbl-scroll">
+        <table class="data">
+          <thead><tr><th>Category</th><th>Name</th><th>Coordinates</th>
+            <th>Distance to watercourse (m)</th><th>Notes</th><th></th></tr></thead>
+          <tbody id="recSources"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= GUIDE ================= -->
+<section class="view" id="v-guide">
   <div class="page">
     <div class="section-title">
-      <h2>Lima Aras Indeks Pencemaran Air</h2>
-      <span class="st-sub">Piawaian Kualiti Air Kebangsaan Interim (INWQS), Jabatan Alam Sekitar Malaysia</span>
+      <h2>Five Water Pollution Index Levels</h2>
+      <span class="st-sub">Interim National Water Quality Standards (INWQS), Department of Environment Malaysia</span>
     </div>
     <div class="class-grid" id="classCards"></div>
 
     <div class="section-title">
-      <h2>Cara WQI Dikira</h2>
-      <span class="st-sub">Formula rasmi DOE Malaysia — dilaksanakan sepenuhnya dalam portal ini</span>
+      <h2>How WQI Is Calculated</h2>
+      <span class="st-sub">The official DOE Malaysia formula — implemented in full in this portal</span>
     </div>
     <div class="grid" style="grid-template-columns:1.1fr 1fr">
       <div class="card">
-        <h3>Formula berpemberat</h3>
-        <div class="card-sub">Enam sub-indeks digabungkan mengikut pemberat yang ditetapkan</div>
+        <h3>Weighted formula</h3>
+        <div class="card-sub">Six sub-indices combined at fixed weights</div>
         <div style="background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r);
           padding:13px 15px;font-family:var(--fm);font-size:12.5px;line-height:1.9;overflow-x:auto">
           WQI = 0.22·SI<sub>DO</sub> + 0.19·SI<sub>BOD</sub> + 0.16·SI<sub>COD</sub><br>
           &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; + 0.15·SI<sub>NH₃-N</sub> + 0.16·SI<sub>SS</sub> + 0.12·SI<sub>pH</sub>
         </div>
         <div style="margin-top:13px;font-size:12px;color:var(--muted);line-height:1.65">
-          Setiap sub-indeks (SI) menukar bacaan mentah kepada skala 0–100 melalui persamaan
-          <i>best-fit</i> DOE. Oksigen terlarut dinormalkan kepada peratus ketepuan sebelum
-          disubkan. Nilai akhir 0–100 kemudian dipetakan kepada lima kelas di atas.
+          Each sub-index (SI) converts a raw reading to a 0–100 scale through the DOE
+          <i>best-fit</i> equations. Dissolved oxygen is normalised to percent saturation before
+          being sub-indexed. The final 0–100 value then maps onto the five classes above.
         </div>
       </div>
       <div class="card pad0">
-        <div class="card-head"><h3>Pemberat parameter</h3>
-          <div class="card-sub">Sumbangan setiap parameter kepada skor akhir</div></div>
+        <div class="card-head"><h3>Parameter weights</h3>
+          <div class="card-sub">Each parameter's contribution to the final score</div></div>
         <div class="chart-box sm"><canvas id="cWeights"></canvas></div>
       </div>
     </div>
 
     <div class="section-title">
-      <h2>Ambang Parameter</h2>
-      <span class="st-sub">Julat status bagi setiap parameter (DOE)</span>
+      <h2>Parameter Thresholds</h2>
+      <span class="st-sub">Status bands for each parameter (DOE)</span>
     </div>
     <div class="card pad0 tbl-scroll">
       <table class="data">
-        <thead><tr><th>Parameter</th><th>Unit</th><th>Bersih</th><th>Sederhana tercemar</th><th>Tercemar</th><th>Peranan dalam sungai</th></tr></thead>
+        <thead><tr><th>Parameter</th><th>Unit</th><th>Clean</th><th>Slightly polluted</th><th>Polluted</th><th>Role in the river</th></tr></thead>
         <tbody id="threshTable"></tbody>
       </table>
     </div>
 
     <div class="section-title">
-      <h2>Sumber Data</h2>
-      <span class="st-sub">Semua data dalam portal ini dan asal-usulnya</span>
+      <h2>Data Sources</h2>
+      <span class="st-sub">Everything in this portal and where it came from</span>
     </div>
     <div class="card pad0 tbl-scroll">
       <table class="data">
-        <thead><tr><th>Set data</th><th>Sumber</th><th>Liputan</th><th>Kegunaan dalam portal</th></tr></thead>
+        <thead><tr><th>Dataset</th><th>Source</th><th>Coverage</th><th>Use in the portal</th></tr></thead>
         <tbody>
-          <tr><td><b>Pencemaran lembangan sungai</b></td>
+          <tr><td><b>River basin pollution</b></td>
             <td><a href="https://api.data.gov.my/data-catalogue?id=water_pollution_basin" target="_blank" rel="noopener">data.gov.my · water_pollution_basin</a></td>
-            <td>198 rekod · 2000–2021 · Malaysia</td>
-            <td>Konteks kebangsaan pada Papan Pemuka</td></tr>
-          <tr><td><b>Badan air Malaysia</b></td>
+            <td>198 records · 2000–2021 · Malaysia</td>
+            <td>National context on the Dashboard</td></tr>
+          <tr><td><b>Malaysia water bodies</b></td>
             <td><a href="https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/malaysia_water_bodies.geojson" target="_blank" rel="noopener">Digital Earth · malaysia_water_bodies.geojson</a></td>
-            <td>30,207 poligon (121 MB) → dipangkas kepada Selangor</td>
-            <td>Lapisan tasik, kolam, takungan &amp; kolam kumbahan</td></tr>
-          <tr><td><b>Geometri Sungai Langat</b></td>
-            <td>OpenStreetMap melalui Overpass API</td><td>24 segmen · 2,157 bucu</td>
-            <td>Paksi sungai, diwarnakan mengikut WQI</td></tr>
-          <tr><td><b>Sempadan daerah lembangan</b></td>
+            <td>30,207 polygons (121 MB) → clipped to Selangor</td>
+            <td>Lakes, ponds, reservoirs &amp; wastewater pond layers</td></tr>
+          <tr><td><b>Langat River geometry</b></td>
+            <td>OpenStreetMap via Overpass API</td><td>24 segments · 2,157 vertices</td>
+            <td>River centreline, coloured by WQI</td></tr>
+          <tr><td><b>Basin district boundaries</b></td>
             <td>OpenStreetMap · relation admin_level=6</td><td>Hulu Langat, Sepang, Kuala Langat</td>
-            <td>Menghadkan skop analisis kepada Lembangan Sungai Langat</td></tr>
-          <tr><td><b>Anak sungai &amp; terusan</b></td>
-            <td>OpenStreetMap melalui Overpass API</td><td>960 alur</td>
-            <td>Rangkaian saliran; asas pengiraan jarak</td></tr>
-          <tr><td><b>Punca pencemaran</b></td>
-            <td>OpenStreetMap melalui Overpass API</td><td id="srcMetaCount">—</td>
-            <td>Anotasi kilang, kedai makan, perumahan &amp; lain-lain di tepi sungai</td></tr>
-          <tr><td><b>Imej satelit</b></td>
-            <td>NASA EOSDIS GIBS · Esri World Imagery</td><td>Harian sejak 2012 · mozek global</td>
-            <td>Paparan Pencerapan Satelit</td></tr>
-          <tr><td><b>Bacaan parameter stesen</b></td>
-            <td><b style="color:#b45309">Data contoh (simulasi)</b></td>
-            <td>16 stesen · 56 bulan (2021–2025)</td>
-            <td>Menggerakkan pengiraan WQI — <b>gantikan dengan bacaan rasmi DOE/LUAS</b></td></tr>
+            <td>Constrains analysis to the Langat River Basin</td></tr>
+          <tr><td><b>Tributaries &amp; canals</b></td>
+            <td>OpenStreetMap via Overpass API</td><td>960 watercourses</td>
+            <td>Drainage network; basis for distance calculations</td></tr>
+          <tr><td><b>Pollution sources</b></td>
+            <td>OpenStreetMap via Overpass API</td><td id="srcMetaCount">—</td>
+            <td>Annotates factories, eateries, housing &amp; others beside the river</td></tr>
+          <tr><td><b>Satellite imagery</b></td>
+            <td>NASA EOSDIS GIBS · Esri · Google · EOX Sentinel-2 cloudless</td>
+            <td>Daily since 2012 · global mosaics</td>
+            <td>Base maps and the Satellite Observation view</td></tr>
+          <tr><td><b>Station parameter readings</b></td>
+            <td><b style="color:#b45309">Sample data (simulated)</b></td>
+            <td>16 stations · 56 months (2021–2025)</td>
+            <td>Drives the WQI calculation — <b>replace with official DOE/LUAS readings</b></td></tr>
         </tbody>
       </table>
     </div>
 
     <div class="notice warn" style="margin-top:16px">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
-      <div><b>Notis ketulenan data.</b> Geometri sungai, badan air, lokasi guna tanah dan statistik
-      lembangan kebangsaan adalah <b>data sebenar</b> daripada sumber yang disenaraikan di atas.
-      <b>Bacaan parameter di 16 stesen pemantauan adalah data contoh</b> yang dijana mengikut profil
-      hulu-ke-hilir yang munasabah, semata-mata untuk menunjukkan fungsi portal. Ia bukan bacaan rasmi
-      dan tidak boleh digunakan untuk membuat keputusan. Fail <code>data/stations.json</code> menetapkan
-      skema yang perlu diisi dengan data pemantauan sebenar LUAS/DOE.</div>
+      <div><b>Data provenance notice.</b> River geometry, water bodies, district boundaries, land-use
+      locations and the national basin statistics are <b>real data</b> from the sources listed above.
+      <b>The parameter readings at the 16 monitoring stations are sample data</b>, generated along a
+      plausible upstream-to-downstream profile purely to demonstrate the portal. They are not
+      official readings and must not be used for decisions. <code>data/stations.json</code> defines
+      the schema to be filled with actual LUAS/DOE monitoring data.</div>
     </div>
   </div>
 </section>
@@ -434,13 +637,13 @@
 <footer class="footer">
   <div class="footer-col">
     <b>Lembaga Urus Air Selangor (LUAS)</b><br>
-    Portal Indeks Kualiti Air — Lembangan Sungai Langat.
-    Dibina dengan data terbuka daripada data.gov.my, OpenStreetMap, Digital Earth dan NASA EOSDIS.
+    Water Quality Index Portal — Langat River Basin.
+    Built on open data from data.gov.my, OpenStreetMap, Digital Earth and NASA EOSDIS.
   </div>
   <div class="footer-col" style="text-align:right">
-    Formula WQI: Jabatan Alam Sekitar Malaysia (DOE)<br>
-    Imej: NASA GIBS / Worldview · Esri World Imagery<br>
-    Peta: <a href="https://openstreetmap.org/copyright" target="_blank" rel="noopener">© Penyumbang OpenStreetMap</a>
+    WQI formula: Department of Environment Malaysia (DOE)<br>
+    Imagery: NASA GIBS / Worldview · Esri · Google · EOX Sentinel-2 cloudless<br>
+    Maps: <a href="https://openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>
   </div>
 </footer>
 

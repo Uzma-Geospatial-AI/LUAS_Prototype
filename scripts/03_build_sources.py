@@ -67,16 +67,16 @@ def nearest_river(lon, lat, rings=3):
 # ---------- 2. Kategorikan POI ----------
 # beban: anggaran relatif sumbangan pencemar (1-5) + pencemar utama
 CATS = {
-    'industri':  dict(label='Industri & Kilang', color='#4a3aa7', icon='🏭', load=5,
-                      pol='COD, logam berat, minyak & gris, sisa kimia terjadual'),
-    'makanan':   dict(label='Kedai Makan & Restoran', color='#e34948', icon='🍽', load=2,
-                      pol='Minyak & gris, BOD, sisa makanan, detergen'),
-    'perumahan': dict(label='Perumahan & Kumbahan Domestik', color='#eda100', icon='🏘', load=3,
-                      pol='Kumbahan domestik, NH₃-N, BOD, koliform'),
-    'kumbahan':  dict(label='Loji Kumbahan & Rawatan Air', color='#2a78d6', icon='🚰', load=4,
-                      pol='NH₃-N, BOD, pepejal terampai dari pelepasan efluen'),
-    'sisa':      dict(label='Sisa, Kuari & Tanah Terganggu', color='#1baf7a', icon='🚧', load=4,
-                      pol='Larut lesap (leachate), SS, kekeruhan, hakisan tanah'),
+    'industri':  dict(label='Industry & Factories', color='#4a3aa7', icon='🏭', load=5,
+                      pol='COD, heavy metals, oil & grease, scheduled chemical waste'),
+    'makanan':   dict(label='Eateries & Restaurants', color='#e34948', icon='🍽', load=2,
+                      pol='Oil & grease, BOD, food waste, detergents'),
+    'perumahan': dict(label='Housing & Domestic Sewage', color='#eda100', icon='🏘', load=3,
+                      pol='Domestic sewage, NH₃-N, BOD, coliforms'),
+    'kumbahan':  dict(label='Sewage & Water Treatment Plants', color='#2a78d6', icon='🚰', load=4,
+                      pol='NH₃-N, BOD, suspended solids from effluent discharge'),
+    'sisa':      dict(label='Waste, Quarry & Disturbed Land', color='#1baf7a', icon='🚧', load=4,
+                      pol='Leachate, suspended solids, turbidity, soil erosion'),
 }
 
 MAP = {

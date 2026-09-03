@@ -1,5 +1,5 @@
 /* ============================================================
-   data.js — Pemuatan & penyediaan data
+   data.js — Data loading and derivation
    ============================================================ */
 import { computeWQI, wqiClass } from './wqi.js';
 
@@ -24,25 +24,18 @@ const J = (u) => fetch(u).then((r) => {
 
 export async function loadAll(onStep) {
   const steps = [
-    ['data/stations.json',                  'stations'],
-    ['data/langat_river.geojson',           'river'],
-    ['data/districts.geojson',              'districts'],
-    ['data/pollution_sources.geojson',      'sources'],
-    ['data/waterbodies_langat.geojson',     'waterLangat'],
-    ['data/tributaries.geojson',            'tributaries'],
-    ['data/basin_pollution.json',           'basin'],
-    ['data/waterbodies_selangor.geojson',   'waterSelangor'],
+    ['data/stations.json',                  'stations',       'monitoring stations'],
+    ['data/langat_river.geojson',           'river',          'Langat River geometry'],
+    ['data/districts.geojson',              'districts',      'basin district boundaries'],
+    ['data/pollution_sources.geojson',      'sources',        'pollution sources'],
+    ['data/waterbodies_langat.geojson',     'waterLangat',    'Langat water bodies'],
+    ['data/tributaries.geojson',            'tributaries',    'tributaries and canals'],
+    ['data/basin_pollution.json',           'basin',          'national basin trend'],
+    ['data/waterbodies_selangor.geojson',   'waterSelangor',  'Selangor water bodies'],
   ];
-  const labels = {
-    stations: 'stesen pemantauan', river: 'geometri Sungai Langat',
-    sources: 'punca pencemaran', waterLangat: 'badan air Langat',
-    districts: 'sempadan daerah lembangan',
-    tributaries: 'anak sungai', basin: 'trend lembangan kebangsaan',
-    waterSelangor: 'badan air Selangor',
-  };
   let done = 0;
-  for (const [url, key] of steps) {
-    onStep?.(done / steps.length, `Memuat ${labels[key]}…`);
+  for (const [url, key, label] of steps) {
+    onStep?.(done / steps.length, `Loading ${label}…`);
     const j = await J(url);
     if (key === 'stations') {
       DATA.stations = j.stations;
@@ -55,11 +48,12 @@ export async function loadAll(onStep) {
   }
   DATA.srcCats = DATA.sources.meta.categories;
   derive();
-  onStep?.(1, 'Siap');
+  buildWaterwayIndex();
+  onStep?.(1, 'Ready');
   return DATA;
 }
 
-/* ---- Kira WQI bagi setiap bacaan setiap stesen ---- */
+/* ---- Compute WQI for every reading at every station ---- */
 function derive() {
   for (const s of DATA.stations) {
     s.wqiSeries = s.series.map((r) => {
@@ -68,7 +62,7 @@ function derive() {
     });
     s.latest = s.wqiSeries[s.wqiSeries.length - 1];
     s.cls = wqiClass(s.latest.wqi);
-    // purata 12 bulan terakhir & 12 bulan sebelumnya, untuk arah aliran
+    // trailing 12-month mean vs the 12 months before it, for direction of travel
     const n = s.wqiSeries.length;
     const avg = (a, b) => {
       const w = s.wqiSeries.slice(a, b);
@@ -81,13 +75,13 @@ function derive() {
   DATA.stations.sort((a, b) => a.code.localeCompare(b.code));
 }
 
-/* ---- Nilai stesen pada indeks bulan tertentu ---- */
+/* ---- One station's reading at a given month index ---- */
 export function readingAt(station, monthIdx) {
   const i = Math.max(0, Math.min(station.wqiSeries.length - 1, monthIdx));
   return station.wqiSeries[i];
 }
 
-/* ---- Statistik ringkas seluruh lembangan pada satu bulan ---- */
+/* ---- Basin-wide summary for one month ---- */
 export function basinStats(monthIdx, filterRiver = null) {
   const st = filterRiver
     ? DATA.stations.filter((s) => s.river === filterRiver)
@@ -107,7 +101,7 @@ export function basinStats(monthIdx, filterRiver = null) {
   };
 }
 
-/* ---- Agregat punca pencemaran ---- */
+/* ---- Pollution source aggregates ---- */
 export function sourceStats(maxDist = 1500) {
   const out = {};
   for (const k of Object.keys(DATA.srcCats)) {
@@ -117,6 +111,7 @@ export function sourceStats(maxDist = 1500) {
     const p = f.properties;
     if (p.dist > maxDist) continue;
     const o = out[p.cat];
+    if (!o) continue;
     o.n++;
     o.riskSum += p.risk;
     if (p.dist <= 250) o.near++;
@@ -124,7 +119,7 @@ export function sourceStats(maxDist = 1500) {
   return out;
 }
 
-/* Tekanan pencemaran di sekitar setiap stesen (radius km) */
+/* Land-use pressure within a radius of a station */
 export function pressureAround(station, radiusKm = 3) {
   const R = radiusKm * 1000;
   const kx = Math.cos((station.lat * Math.PI) / 180) * 111320;
@@ -143,7 +138,7 @@ export function pressureAround(station, radiusKm = 3) {
   return { counts: acc, load: Math.round(total) };
 }
 
-/* ---- Data trend lembangan kebangsaan (data.gov.my) ---- */
+/* ---- National basin trend (data.gov.my) ---- */
 export function basinTrend() {
   const byYear = {};
   for (const r of DATA.basin) {
@@ -155,4 +150,100 @@ export function basinTrend() {
   }
   const years = Object.keys(byYear).sort();
   return { years, byYear };
+}
+
+/* ============================================================
+   Watercourse distance index — used when a user reports a source
+   ============================================================ */
+const MPD = 111320;                 // metres per degree of latitude
+const CELL = 0.01;                  // ~1.1 km grid cells
+let wwSeg = [], wwGrid = null;
+
+function buildWaterwayIndex() {
+  wwSeg = [];
+  const push = (fc, named) => {
+    for (const f of fc.features) {
+      const g = f.geometry;
+      if (g.type !== 'LineString') continue;
+      const c = g.coordinates;
+      for (let i = 0; i < c.length - 1; i++) {
+        wwSeg.push([c[i][0], c[i][1], c[i + 1][0], c[i + 1][1], named ?? f.properties.name ?? null]);
+      }
+    }
+  };
+  push(DATA.river, 'Sungai Langat');
+  push(DATA.tributaries);
+
+  wwGrid = new Map();
+  wwSeg.forEach((s, i) => {
+    const x0 = Math.min(s[0], s[2]), x1 = Math.max(s[0], s[2]);
+    const y0 = Math.min(s[1], s[3]), y1 = Math.max(s[1], s[3]);
+    for (let gx = Math.floor(x0 / CELL); gx <= Math.floor(x1 / CELL); gx++) {
+      for (let gy = Math.floor(y0 / CELL); gy <= Math.floor(y1 / CELL); gy++) {
+        const k = `${gx}:${gy}`;
+        if (!wwGrid.has(k)) wwGrid.set(k, []);
+        wwGrid.get(k).push(i);
+      }
+    }
+  });
+}
+
+function pointSegMetres(lon, lat, s) {
+  const kx = Math.cos((lat * Math.PI) / 180) * MPD;
+  const ax = (s[0] - lon) * kx, ay = (s[1] - lat) * MPD;
+  const bx = (s[2] - lon) * kx, by = (s[3] - lat) * MPD;
+  const dx = bx - ax, dy = by - ay;
+  const L = dx * dx + dy * dy;
+  const t = L === 0 ? 0 : Math.max(0, Math.min(1, -(ax * dx + ay * dy) / L));
+  return Math.hypot(ax + t * dx, ay + t * dy);
+}
+
+/* Nearest watercourse to a point: { dist (m), name } */
+export function nearestWatercourse(lon, lat, maxRings = 4) {
+  if (!wwGrid) return { dist: null, name: null };
+  const gx0 = Math.floor(lon / CELL), gy0 = Math.floor(lat / CELL);
+  let best = Infinity, bestName = null, found = false;
+  for (let r = 0; r <= maxRings; r++) {
+    for (let gx = gx0 - r; gx <= gx0 + r; gx++) {
+      for (let gy = gy0 - r; gy <= gy0 + r; gy++) {
+        if (r > 0 && Math.abs(gx - gx0) !== r && Math.abs(gy - gy0) !== r) continue;
+        for (const i of wwGrid.get(`${gx}:${gy}`) ?? []) {
+          const d = pointSegMetres(lon, lat, wwSeg[i]);
+          if (d < best) { best = d; bestName = wwSeg[i][4]; }
+          found = true;
+        }
+      }
+    }
+    if (found && best < r * CELL * MPD) break;
+  }
+  return Number.isFinite(best)
+    ? { dist: Math.round(best), name: bestName }
+    : { dist: null, name: null };
+}
+
+/* Which basin district a point falls in (null if outside all three) */
+export function districtOf(lon, lat) {
+  const inRing = (x, y, ring) => {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i], [xj, yj] = ring[j];
+      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi + 1e-18) + xi) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  };
+  for (const f of DATA.districts?.features ?? []) {
+    for (const poly of f.geometry.coordinates) {
+      if (inRing(lon, lat, poly[0])) return f.properties.name;
+    }
+  }
+  return null;
+}
+
+/* Risk score for a reported source — same formula as the ETL pipeline */
+export function riskScore(cat, distM) {
+  const load = DATA.srcCats?.[cat]?.load ?? 3;
+  const prox = Math.max(0, 1 - (distM ?? 1500) / 1500);
+  return Math.round(load * (0.35 + 0.65 * prox ** 1.6) * 100) / 100;
 }
