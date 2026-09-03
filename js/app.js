@@ -135,7 +135,7 @@ function buildStationPicker() {
 
   /* An info bubble is 236px wide; near the right edge it opens leftwards */
   const placeTips = () => {
-    for (const el of document.querySelectorAll('.info')) {
+    for (const el of document.querySelectorAll('.tipmark')) {
       const r = el.getBoundingClientRect();
       el.classList.toggle('left', r.left + 248 > window.innerWidth);
     }
