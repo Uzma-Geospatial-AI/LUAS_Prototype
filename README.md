@@ -59,13 +59,15 @@ eight (four satellite mosaics, two daily NASA GIBS layers with a date picker, tw
 for when place names matter more than the imagery), the source and resolution of the current
 one, and the NDWI / NDTI / NDCI / LST reference folded away.
 
-**Bottom left — layers**, each labelled with its own count:
+**Bottom left — layer masters**, each labelled with its own count. A master commands a group
+of legend rows: switching it off clears the group, and it reads back as on, off or part-on from
+its members, so the two panels can never disagree.
 
 | Layer | What it is |
 |---|---|
 | Monitoring stations | 16 stations, drawn as their WQI and coloured by DOE class |
 | Water bodies | 1,101 Digital Earth outlines, coloured by type |
-| Pollution sources | 490 sites that can put a load into the river, one shape per category |
+| Pollution sources | 651 sites that can put a load into the river, one shape per category |
 | Sungai Langat & tributaries | 682 km of mapped channel; the main channel is drawn heavier |
 | Langat catchment | 2,140 km², the clip for everything else on the map |
 | Selangor boundary | the state LUAS is responsible for, Federal Territories excluded |
@@ -74,12 +76,18 @@ one, and the NDWI / NDTI / NDCI / LST reference folded away.
 through it: every station marker and every chip repaints. Play steps through the series so the
 reach can be watched deteriorating and recovering rather than read one month at a time.
 
-**Bottom right — legend**, which folds to a single pill when it is in the way. The five WQI
-classes with their index bands, the pollution source symbols, the water body types actually
-present, and what the boundary and river lines mean.
+**Bottom right — the legend, which is also the filter.** Every row is a switch: turn off
+*Slightly Polluted* and those stations leave the map, turn off *Ponds* and the ponds go. Twenty
+rows in four groups — the five WQI classes, the five pollution source categories, the water body
+types present, and the boundary and river lines. It folds to a single pill when it is in the
+way.
 
 Clicking a station gives its six parameters against the target-class limits with a pass/fail
 verdict; the Dengkil marker opens the Phase 1 assessment.
+
+Clicking a pollution source gives what it typically carries and **the water it actually reaches**
+— named, with a pin beside the distance. The pin centres the site and flashes that river or pond,
+switching its layer back on first if it had been filtered out.
 
 Water bodies are drawn as their real outlines. Below zoom 13 a 1 ha pond is smaller than a
 pixel, so the outline carries the colour itself until the shape is large enough to read.
@@ -106,11 +114,17 @@ bank read heaviest.
 | ⬟ pentagon | Construction & cleared land | Suspended solids, soil erosion, turbidity |
 | ● circle | Farms & aquaculture | BOD, NH₃-N, nutrients, animal waste |
 
-Two filters are applied, in this order: inside the catchment, then **within 1.5 km of a mapped
-river**. The second one matters. A factory 8 km from the nearest channel still discharges
+Two filters are applied, in this order: inside the catchment, then **within 1.5 km of the
+nearest receiving water**. The second one matters. A factory 8 km from any water still discharges
 somewhere, but it does so through a drain this dataset does not have, and drawing it as though
 its load arrives at the river would be a claim the data cannot support. That cut takes 3,441
-candidate sites down to 490.
+candidate sites down to 651.
+
+**Receiving water is not only the river.** A pond, an oxidation basin or an ex-mining lake is
+what many of these sites actually discharge into; the river only gets it afterwards. Distances
+are measured to rivers *and* water bodies, whichever is closer, and **410 of the 651 sites turn
+out to be nearer a water body than a channel** — measuring to the river alone overstated the
+distance and named the wrong feature.
 
 > ⚠️ **The risk score is a screening aid, not a measurement.** It is the category's load weight
 > — judgement, not metering — scaled by how close the site sits to a channel. Use it to order
@@ -231,7 +245,7 @@ Add, edit, suspend, delete, export to JSON/CSV, import back.
 | Dataset | Source | Status |
 |---|---|---|
 | National river basin pollution, 198 records 2000–2021 | [`data.gov.my` · `water_pollution_basin`](https://api.data.gov.my/data-catalogue?id=water_pollution_basin) | **Real** |
-| Pollution sources, 490 sites in the riparian zone | [OpenStreetMap](https://www.openstreetmap.org) via Overpass | **Real** (risk score is ⚠️ **derived**) |
+| Pollution sources, 651 sites in the riparian zone | [OpenStreetMap](https://www.openstreetmap.org) via Overpass | **Real** (risk score is ⚠️ **derived**) |
 | Sungai Langat catchment, 2,140 km² | [HydroSHEDS · HydroBASINS Asia level 8](https://www.hydrosheds.org/products/hydrobasins) | **Real** |
 | River network, 489 reaches, 682 km | [OpenStreetMap](https://www.openstreetmap.org) via Overpass | **Real** |
 | Selangor state boundary, land only, 13 parts | [DOSM · `administrative_1_state.geojson`](https://github.com/dosm-malaysia/data-open) | **Real** |
@@ -275,7 +289,7 @@ python scripts/02_build_waterbodies.py       # clip to the catchment, simplify o
 python scripts/03_fetch_basin_pollution.py   # data.gov.my water_pollution_basin
 python scripts/04_build_stations.py          # stations (REPLACE with real readings)
 python scripts/05_fetch_selangor_boundary.py # DOSM state boundary
-python scripts/08_build_pollution_sources.py # OSM sources in the riparian zone
+python scripts/08_build_pollution_sources.py # OSM sources — run after 02, 06 and 07
 ```
 
 ---

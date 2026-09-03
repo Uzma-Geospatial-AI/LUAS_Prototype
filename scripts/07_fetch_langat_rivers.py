@@ -148,7 +148,7 @@ for el in elements:
     raw_pts[0] += len(line)
     kept_pts[0] += len(dedup)
 
-    props = {'m': round(metres)}
+    props = {'id': el['id'], 'm': round(metres)}
     if name:
         props['name'] = name
         props['main'] = name.startswith(MAIN)

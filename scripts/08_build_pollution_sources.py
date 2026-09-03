@@ -10,16 +10,25 @@ Two filters, in this order:
 
   1. inside the Sungai Langat catchment — anything outside it drains somewhere
      else and is not LUAS's problem on this river;
-  2. within 1.5 km of a mapped river — the riparian zone. A factory 8 km from
-     the nearest channel still discharges somewhere, but it does so through a
-     drain this dataset does not have, and putting it on the map as though its
-     load arrives at the river would be a claim the data cannot support.
+  2. within 1.5 km of the nearest receiving water — the riparian zone. A
+     factory 8 km from any water still discharges somewhere, but it does so
+     through a drain this dataset does not have, and putting it on the map as
+     though its load arrives at the river would be a claim the data cannot
+     support.
+
+"Receiving water" is a river OR a water body. Half the sites here sit beside a
+pond, an oxidation basin or an ex-mining lake, and that is what actually
+receives them; the river only gets it afterwards. Measuring to the channel
+alone overstates the distance and names the wrong feature, so each source
+records which feature is nearest, how far, and where it is — enough for the map
+to fly to it and flash it.
 
 Each source carries a risk score: the category's relative load weight scaled by
-how close it sits to a channel. It is a screening aid for prioritising
-inspection, NOT a measured discharge — nothing here is metered.
+how close it sits to water. It is a screening aid for prioritising inspection,
+NOT a measured discharge — nothing here is metered.
 
-Run 06 and 07 first: the catchment is the clip and the rivers give the distances.
+Run 02, 06 and 07 first: the catchment is the clip, and the rivers and water
+bodies are what distances are measured to.
 """
 import json
 import math
@@ -34,6 +43,7 @@ OUT = os.path.join(ROOT, 'data')
 
 BASIN = os.path.join(OUT, 'langat_basin.geojson')
 RIVERS = os.path.join(OUT, 'langat_rivers.geojson')
+WATER = os.path.join(OUT, 'waterbodies_langat.geojson')
 CACHE = os.path.join(ROOT, 'sources_raw.json')
 
 OVERPASS = 'https://overpass-api.de/api/interpreter'
@@ -41,6 +51,12 @@ UA = 'LUAS-Prototype/1.0 (https://github.com/Uzma-Geospatial-AI/LUAS_Prototype)'
 
 BUFFER_M = 1500
 MPD = 111320.0
+
+# What to call an unnamed water body in the popup
+WATER_LABEL = {
+    'treatment': 'Treatment basin', 'storage': 'Lake or reservoir',
+    'pond': 'Pond', 'wetland': 'Wetland', 'channel': 'Channel', 'other': 'Open water',
+}
 
 # Relative load weight (1-5) and the pollutants each category is known for.
 # The weights are judgement, not measurement, and they only order the screening.
@@ -103,13 +119,37 @@ bgeom = basin['features'][0]['geometry']
 BPOLYS = bgeom['coordinates'] if bgeom['type'] == 'MultiPolygon' else [bgeom['coordinates']]
 BBOX = basin['features'][0]['properties']['bbox']
 
+# Every edge of every receiving water goes into one list, each tagged with the
+# feature it belongs to, so one sweep finds the nearest of either kind.
+SEG = []          # (x1, y1, x2, y2, kind, id, name, main)
+FEATURES = {}     # (kind, id) -> a point to fly to
+
 rivers = json.load(open(RIVERS, encoding='utf-8'))
-SEG = []
 for ft in rivers['features']:
-    main = bool(ft['properties'].get('main'))
+    pr = ft['properties']
+    fid = pr.get('id')
+    name = pr.get('name') or 'Unnamed river'
+    main = bool(pr.get('main'))
     c = ft['geometry']['coordinates']
+    mid = c[len(c) // 2]
+    FEATURES[('river', fid)] = (round(mid[0], 5), round(mid[1], 5))
     for (x1, y1), (x2, y2) in zip(c, c[1:]):
-        SEG.append((x1, y1, x2, y2, main))
+        SEG.append((x1, y1, x2, y2, 'river', fid, name, main))
+
+water = json.load(open(WATER, encoding='utf-8'))
+for ft in water['features']:
+    pr = ft['properties']
+    fid = pr.get('id')
+    if fid is None:
+        continue
+    name = pr.get('name') or WATER_LABEL.get(pr.get('group'), 'Water body')
+    FEATURES[('water', fid)] = (pr['lon'], pr['lat'])
+    g = ft['geometry']
+    polys = g['coordinates'] if g['type'] == 'MultiPolygon' else [g['coordinates']]
+    for poly in polys:
+        for ring in poly:
+            for (x1, y1), (x2, y2) in zip(ring, ring[1:]):
+                SEG.append((x1, y1, x2, y2, 'water', fid, name, False))
 
 # A grid so each source only tests the segments near it — 3,400 sources against
 # 4,100 segments is 14 million distance tests otherwise.
@@ -121,7 +161,7 @@ for i, s in enumerate(SEG):
     for gx in range(int(math.floor(x0 / CELL)), int(math.floor(x1 / CELL)) + 1):
         for gy in range(int(math.floor(y0 / CELL)), int(math.floor(y1 / CELL)) + 1):
             grid[(gx, gy)].append(i)
-print('river segments %d in %d grid cells' % (len(SEG), len(grid)))
+print('receiving-water edges %d in %d grid cells' % (len(SEG), len(grid)))
 
 
 def pt_seg_m(px, py, s):
@@ -134,9 +174,10 @@ def pt_seg_m(px, py, s):
     return math.hypot(ax + t * dx, ay + t * dy)
 
 
-def nearest_river(lon, lat, rings=2):
+def nearest_water(lon, lat, rings=2):
+    """Nearest receiving water of either kind, and the nearest main channel."""
     gx0, gy0 = int(math.floor(lon / CELL)), int(math.floor(lat / CELL))
-    best, best_main = 1e12, 1e12
+    best, hit, best_main = 1e12, None, 1e12
     for r in range(rings + 1):
         for gx in range(gx0 - r, gx0 + r + 1):
             for gy in range(gy0 - r, gy0 + r + 1):
@@ -146,12 +187,12 @@ def nearest_river(lon, lat, rings=2):
                     s = SEG[i]
                     d = pt_seg_m(lon, lat, s)
                     if d < best:
-                        best = d
-                    if s[4] and d < best_main:
+                        best, hit = d, s
+                    if s[7] and d < best_main:
                         best_main = d
         if best < r * CELL * MPD:
             break
-    return best, best_main
+    return best, hit, best_main
 
 
 # ---------------- Ask Overpass ----------------
@@ -195,12 +236,12 @@ for el in elements:
         n_outside_basin += 1
         continue
 
-    d_any, d_main = nearest_river(lon, lat)
+    d_any, hit, d_main = nearest_water(lon, lat)
     if d_any > BUFFER_M:
         n_far += 1
         continue
 
-    # Closeness to a channel, 1 at the bank and 0 at the buffer edge.
+    # Closeness to water, 1 at the bank and 0 at the buffer edge.
     prox = max(0.0, 1.0 - d_any / BUFFER_M)
     risk = round(CATS[cat]['load'] * (0.35 + 0.65 * prox ** 1.6), 2)
 
@@ -213,6 +254,12 @@ for el in elements:
     name = tags.get('name') or tags.get('operator')
     if name:
         props['name'] = name
+    if hit is not None:
+        kind, fid, wname = hit[4], hit[5], hit[6]
+        props['to'] = {'kind': kind, 'id': fid, 'name': wname}
+        at = FEATURES.get((kind, fid))
+        if at:
+            props['to']['at'] = list(at)
     if d_main < 1e11:
         props['dist_langat'] = round(d_main)
     feats.append({
@@ -229,8 +276,10 @@ print('dropped: %d uncategorised, %d outside the catchment, %d beyond %d m of a 
 print('kept %d sources in the riparian zone' % len(feats))
 for c, n in counts.most_common():
     print('  %-10s %4d  %s' % (c, n, CATS[c]['label']))
+kinds = Counter(f['properties'].get('to', {}).get('kind') for f in feats)
+print('nearest receiving water is a: %s' % dict(kinds))
 for b in (100, 250, 500, 1000, 1500):
-    print('  within %5d m of a river: %d'
+    print('  within %5d m of water: %d'
           % (b, sum(1 for f in feats if f['properties']['dist'] <= b)))
 
 payload = {
@@ -240,10 +289,12 @@ payload = {
         'url': 'https://www.openstreetmap.org',
         'licence': 'ODbL 1.0 © OpenStreetMap contributors',
         'buffer_m': BUFFER_M,
-        'clip': ('Sungai Langat catchment (HydroBASINS %s), then %d m of a mapped river'
-                 % (basin['features'][0]['properties']['hybas_id'], BUFFER_M)),
+        'clip': ('Sungai Langat catchment (HydroBASINS %s), then %d m of the nearest '
+                 'receiving water' % (basin['features'][0]['properties']['hybas_id'], BUFFER_M)),
         'categories': CATS,
-        'note': ('Risk is the category load weight scaled by closeness to a channel. '
+        'note': ('"to" is the nearest receiving water — a river or a water body, '
+                 'whichever is closer — with the id the map uses to find and flash it. '
+                 'Risk is the category load weight scaled by closeness to that water. '
                  'It is a screening aid for prioritising inspection, not a measured '
                  'discharge — none of these sources is metered.'),
     },

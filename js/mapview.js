@@ -1,11 +1,18 @@
 /* ============================================================
    mapview.js — Main display: the map
 
-   The landing view. Satellite imagery underneath, the monitoring stations
-   and the Digital Earth water bodies on top, and four corners that say what
-   is being looked at: the counts, the basemap, the layers, the month, and
-   the legend. Clicking a station gives its index, its class and its
-   target-class verdict.
+   The landing view. Satellite imagery underneath, the catchment and its
+   rivers, the monitoring stations, the water bodies and the pollution
+   sources on top, and four corners that say what is being looked at.
+
+   Visibility
+   ----------
+   Every drawable thing has an id — `wqi:III`, `water:pond`, `src:industri`,
+   `river:main`, `bound:catchment` — and `visible` holds the ids that are on.
+   A legend row toggles one id. A switch in the layers card is a master over a
+   group of ids: turning it off clears the whole group, and it reads back as
+   on, off or part-on from its members. One state, two ways into it, so the
+   two panels can never disagree.
    ============================================================ */
 import { DATA, readingAt, latestIdx, fmtMonth, waterSummary, sourceSummary,
          WATER_GROUPS } from './data.js';
@@ -21,8 +28,17 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
 const ALL = { ...IMAGERY, ...REFERENCE_MAPS };
 
 let map = null, base = null, current = 'esri';
-let stationLayer = null, waterLayer = null, stateLayer = null;
-let basinLayer = null, riverLayer = null, sourceLayer = null;
+let stationLayer = null, basinLayer = null, stateLayer = null;
+const waterLayers = {};       // water:<group>
+const sourceLayers = {};      // src:<category>
+const riverLayers = {};       // river:main | river:trib
+
+const visible = new Set();
+const MASTERS = {};           // layers-card switch -> the ids it commands
+/* "river:<osm id>" / "water:<osm id>" -> the drawn feature, so a source can
+   point at the water it actually reaches. */
+const receiving = new Map();
+
 let monthIdx = null, timer = null;
 
 const pad = (n) => String(n).padStart(2, '0');
@@ -38,61 +54,9 @@ export function initMap() {
   L.control.zoom({ position: 'topright' }).addTo(map);
   L.control.scale({ position: 'topleft', imperial: false }).addTo(map);
 
-  /* --- Selangor: the state LUAS is responsible for --- */
-  stateLayer = L.geoJSON(DATA.selangor, {
-    style: {
-      color: '#ffffff', weight: 2.2, dashArray: '10 7', opacity: 0.92,
-      fillColor: '#f5e01c', fillOpacity: 0.05,
-    },
-    interactive: false,
-  }).addTo(map);
-
-  /* --- The catchment: the focus, and what the water bodies were clipped to --- */
-  basinLayer = L.geoJSON(DATA.catchment, {
-    style: {
-      color: '#f5e01c', weight: 2.4, dashArray: '9 6', opacity: 0.95,
-      fillColor: '#f5e01c', fillOpacity: 0.07,
-    },
-    interactive: false,
-  }).addTo(map);
-
-  /* --- Sungai Langat and everything that drains into it --- */
-  riverLayer = L.geoJSON(DATA.rivers, {
-    style: (f) => (f.properties.main
-      ? { color: '#0aa3d9', weight: 3.2, opacity: 0.95 }
-      : { color: '#45bfe0', weight: 1.4, opacity: 0.8 }),
-    onEachFeature: (f, layer) => {
-      const r = f.properties;
-      layer.bindTooltip(
-        `<b>${r.name ? esc(r.name) : 'Unnamed river'}</b><br>`
-        + `${(r.m / 1000).toFixed(1)} km of mapped channel`
-        + (r.main ? '<br>Main channel' : ''),
-        { sticky: true });
-    },
-  }).addTo(map);
-
-  /* --- Water bodies: the Digital Earth outlines themselves --- */
-  waterLayer = L.geoJSON(DATA.water.geo, {
-    style: waterStyle,
-    onEachFeature: (f, layer) => {
-      const b = f.properties;
-      const g = WATER_GROUPS[b.group] ?? WATER_GROUPS.other;
-      layer.bindTooltip(
-        `<b>${b.name ? esc(b.name) : 'Unnamed water body'}</b><br>`
-        + `${esc(g.label)} · ${esc(b.kind)}<br>`
-        + `${(b.area_m2 / 1e4).toFixed(2)} ha · ${b.km.toFixed(1)} km from the nearest river`,
-        { sticky: true });
-      layer.on({
-        mouseover: (e) => e.target.setStyle({ weight: 1.8, fillOpacity: 0.8 }),
-        mouseout: (e) => waterLayer.resetStyle(e.target),
-      });
-    },
-  }).addTo(map);
-
-  /* A 1 ha pond is sub-pixel across the whole basin, so the outline has to
-     carry the colour itself until the zoom makes the shape readable. */
-  map.on('zoomend', () => waterLayer.setStyle(waterStyle));
-
+  buildCatchment();
+  buildRivers();
+  buildWaterBodies();
   buildSources();
   stationLayer = L.layerGroup().addTo(map);
 
@@ -101,11 +65,92 @@ export function initMap() {
   buildLegend();
   buildTimeline();
   setBase('esri');
-  repaint();
 
-  /* Open on the catchment — the area the whole system is about */
-  map.fitBounds(basinLayer.getBounds().pad(0.06));
+  /* A 1 ha pond is sub-pixel across the whole basin, so the outline has to
+     carry the colour itself until the zoom makes the shape readable. */
+  map.on('zoomend', restyleWater);
+
+  applyVisibility();
+  map.fitBounds(basinLayer.getBounds().pad(0.06));   // open on the catchment
   return map;
+}
+
+/* ---------------- Boundaries ---------------- */
+function buildCatchment() {
+  basinLayer = L.geoJSON(DATA.catchment, {
+    style: {
+      color: '#f5e01c', weight: 2.4, dashArray: '9 6', opacity: 0.95,
+      fillColor: '#f5e01c', fillOpacity: 0.07,
+    },
+    interactive: false,
+  });
+  stateLayer = L.geoJSON(DATA.selangor, {
+    style: {
+      color: '#ffffff', weight: 2.2, dashArray: '10 7', opacity: 0.92,
+      fillColor: '#f5e01c', fillOpacity: 0.05,
+    },
+    interactive: false,
+  });
+  visible.add('bound:catchment').add('bound:selangor');
+  MASTERS.basin = ['bound:catchment'];
+  MASTERS.selangor = ['bound:selangor'];
+}
+
+/* ---------------- Rivers ---------------- */
+function buildRivers() {
+  const feats = DATA.rivers.features;
+  const split = {
+    main: feats.filter((f) => f.properties.main),
+    trib: feats.filter((f) => !f.properties.main),
+  };
+  for (const [key, list] of Object.entries(split)) {
+    riverLayers[key] = L.geoJSON({ type: 'FeatureCollection', features: list }, {
+      style: key === 'main'
+        ? { color: '#0aa3d9', weight: 3.2, opacity: 0.95 }
+        : { color: '#45bfe0', weight: 1.4, opacity: 0.8 },
+      onEachFeature: (f, layer) => {
+        const r = f.properties;
+        layer.bindTooltip(
+          `<b>${r.name ? esc(r.name) : 'Unnamed river'}</b><br>`
+          + `${(r.m / 1000).toFixed(1)} km of mapped channel`
+          + (r.main ? '<br>Main channel' : ''),
+          { sticky: true });
+        if (r.id != null) receiving.set(`river:${r.id}`, { layer, vis: `river:${key}` });
+      },
+    });
+    visible.add(`river:${key}`);
+  }
+  MASTERS.rivers = ['river:main', 'river:trib'];
+}
+
+/* ---------------- Water bodies ---------------- */
+function buildWaterBodies() {
+  const ids = [];
+  for (const key of Object.keys(WATER_GROUPS)) {
+    const list = DATA.water.geo.features.filter((f) => f.properties.group === key);
+    if (!list.length) continue;
+    const layer = L.geoJSON({ type: 'FeatureCollection', features: list }, {
+      style: waterStyle,
+      onEachFeature: (f, l) => {
+        const b = f.properties;
+        const g = WATER_GROUPS[b.group] ?? WATER_GROUPS.other;
+        l.bindTooltip(
+          `<b>${b.name ? esc(b.name) : 'Unnamed water body'}</b><br>`
+          + `${esc(g.label)} · ${esc(b.kind)}<br>`
+          + `${(b.area_m2 / 1e4).toFixed(2)} ha · ${b.km.toFixed(1)} km from the nearest river`,
+          { sticky: true });
+        l.on({
+          mouseover: (e) => e.target.setStyle({ weight: 1.8, fillOpacity: 0.8 }),
+          mouseout: (e) => layer.resetStyle(e.target),
+        });
+        if (b.id != null) receiving.set(`water:${b.id}`, { layer: l, vis: `water:${key}` });
+      },
+    });
+    waterLayers[key] = layer;
+    visible.add(`water:${key}`);
+    ids.push(`water:${key}`);
+  }
+  MASTERS.water = ids;
 }
 
 function waterStyle(f) {
@@ -116,6 +161,135 @@ function waterStyle(f) {
     color: wide ? g.color : '#ffffff',
     weight: wide ? 1.9 : 0.8, opacity: wide ? 0.9 : 0.8,
   };
+}
+
+function restyleWater() {
+  for (const l of Object.values(waterLayers)) l.setStyle(waterStyle);
+}
+
+/* ---------------- What can put a load into the river ---------------- */
+function buildSources() {
+  const su = sourceSummary();
+  const ids = [];
+  for (const [key, c] of Object.entries(su.cats)) {
+    const list = su.features.filter((f) => f.properties.cat === key);
+    if (!list.length) continue;
+    sourceLayers[key] = L.layerGroup(list.map((f) => {
+      const p = f.properties;
+      /* Size carries the risk score, so the ones on the bank read heaviest */
+      const size = Math.round(12 + p.risk * 2.1);
+      const [lon, lat] = f.geometry.coordinates;
+      p.at = f.geometry.coordinates;      /* the popup needs it to frame the view */
+      return L.marker([lat, lon], {
+        icon: sourceIcon(c.shape, c.color, size),
+        zIndexOffset: Math.round(p.risk * 20),
+      })
+        .bindTooltip(
+          `<b>${p.name ? esc(p.name) : esc(c.label)}</b><br>`
+          + `${esc(c.label)}<br>${p.dist} m from ${p.to ? esc(p.to.name) : 'water'}`,
+          { direction: 'top', offset: [0, -size / 2 - 2] })
+        .bindPopup(sourcePopup(p, c), { maxWidth: 300 });
+    }));
+    visible.add(`src:${key}`);
+    ids.push(`src:${key}`);
+  }
+  MASTERS.sources = ids;
+}
+
+const PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"'
+  + ' stroke-linecap="round" stroke-linejoin="round">'
+  + '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/>'
+  + '<circle cx="12" cy="10" r="2.8"/></svg>';
+
+function sourcePopup(p, c) {
+  const to = p.to;
+  return `
+    <div class="map-pop">
+      <div class="pop-head" style="background:${c.color}">
+        <div class="pop-code">${esc(c.label)}</div>
+        <div class="pop-name">${p.name ? esc(p.name) : 'Unnamed site'}</div>
+      </div>
+      <div class="pop-body">
+        <table class="pop-tbl">
+          ${to ? `<tr>
+            <td>Nearest water<div class="pop-sub">${esc(to.name)}</div></td>
+            <td class="num">${p.dist} m
+              ${receiving.has(`${to.kind}:${to.id}`)
+                ? `<button class="pin-btn" data-flash="${to.kind}:${to.id}"
+                     data-at="${p.at[1]},${p.at[0]}"
+                     title="Show ${esc(to.name)} on the map">${PIN}</button>` : ''}
+            </td></tr>`
+          : `<tr><td>Distance to water</td><td class="num">${p.dist} m</td></tr>`}
+          ${p.dist_langat != null
+            ? `<tr><td>To Sungai Langat</td><td class="num">${p.dist_langat} m</td></tr>` : ''}
+          <tr><td>Screening risk</td><td class="num">${p.risk.toFixed(2)} / 5</td></tr>
+        </table>
+        <div class="pop-pol"><b>Typically carries</b><br>${esc(c.pol)}</div>
+        <div class="pop-note">Screening only — no discharge here is metered</div>
+      </div>
+    </div>`;
+}
+
+/* Fly to the water a source reaches and flash it. If its layer has been
+   switched off in the legend, switch it back on — the point of the button is
+   to be shown the thing. */
+function showReceiving(key, at) {
+  const t = receiving.get(key);
+  if (!t) return;
+
+  if (!visible.has(t.vis)) { visible.add(t.vis); applyVisibility(); }
+
+  /* Frame the SOURCE, not the target. A river reach can be kilometres long and
+     its centre may be nowhere near the site; the water it reaches is within
+     1.5 km by construction, so centring the site shows both. */
+  if (at) map.flyTo(at, Math.max(map.getZoom(), 15), { duration: 0.7 });
+
+  const el = t.layer.getElement?.();
+  if (!el) return;
+  el.classList.remove('flash-water');
+  void el.getBoundingClientRect();          /* restart the animation */
+  el.classList.add('flash-water');
+  setTimeout(() => el.classList.remove('flash-water'), 3200);
+}
+
+/* ---------------- Visibility ---------------- */
+function applyVisibility() {
+  const set = (layer, on) => {
+    if (!layer) return;
+    if (on) { if (!map.hasLayer(layer)) layer.addTo(map); }
+    else if (map.hasLayer(layer)) map.removeLayer(layer);
+  };
+
+  set(basinLayer, visible.has('bound:catchment'));
+  set(stateLayer, visible.has('bound:selangor'));
+  for (const [k, l] of Object.entries(riverLayers)) set(l, visible.has(`river:${k}`));
+  for (const [k, l] of Object.entries(waterLayers)) set(l, visible.has(`water:${k}`));
+  for (const [k, l] of Object.entries(sourceLayers)) set(l, visible.has(`src:${k}`));
+
+  repaint();
+  syncControls();
+}
+
+function toggle(id) {
+  if (visible.has(id)) visible.delete(id); else visible.add(id);
+  applyVisibility();
+}
+
+/* A master is on when every member is on, off when none is, and part-on in
+   between — which is what `indeterminate` is for. */
+function syncControls() {
+  document.querySelectorAll('[data-vis]').forEach((b) => {
+    const on = visible.has(b.dataset.vis);
+    b.classList.toggle('off', !on);
+    b.setAttribute('aria-pressed', String(on));
+  });
+  for (const [key, ids] of Object.entries(MASTERS)) {
+    const box = document.querySelector(`[data-mapov="${key}"]`);
+    if (!box) continue;
+    const on = ids.filter((i) => visible.has(i)).length;
+    box.checked = on > 0;
+    box.indeterminate = on > 0 && on < ids.length;
+  }
 }
 
 /* ---------------- Everything that depends on the month ---------------- */
@@ -132,6 +306,7 @@ function paintStations() {
   for (const st of DATA.stations) {
     const r = readingAt(st, monthIdx);
     const cls = wqiClass(r.wqi);
+    if (!visible.has(`wqi:${cls.id}`)) continue;      /* filtered out in the legend */
     const comp = classCompliance(r.raw, target);
     const focus = st.code === DATA.focus.code;
 
@@ -173,7 +348,7 @@ function paintKpis() {
     + chip(cls.color, cls.id, f.wqi.toFixed(1), `WQI · ${esc(DATA.focus.name)}`)
     + chip(meeting ? '#17a04a' : '#d92d20', '✓',
       `${meeting}/${DATA.stations.length}`, `Meet Class ${target}`)
-    + chip('#45bfe0', '○', w.count, 'Water bodies');
+    + chip('#45bfe0', '○', sourceSummary().count, 'Pollution sources');
 }
 
 function stationPopup(st, r, cls, comp, target) {
@@ -210,52 +385,6 @@ function stationPopup(st, r, cls, comp, target) {
         ${st.code === DATA.focus.code
           ? '<button class="pop-btn" data-goto="1">Open Phase 1 assessment →</button>'
           : '<div class="pop-note">Phase 1 assesses the Dengkil station</div>'}
-      </div>
-    </div>`;
-}
-
-/* ---------------- What can put a load into the river ---------------- */
-function buildSources() {
-  const su = sourceSummary();
-
-  sourceLayer = L.layerGroup(su.features.map((f) => {
-    const p = f.properties;
-    const c = su.cats[p.cat];
-    if (!c) return null;
-    /* Size carries the risk score, so the ones on the bank read heaviest */
-    const size = Math.round(12 + p.risk * 2.1);
-    const [lon, lat] = f.geometry.coordinates;
-
-    return L.marker([lat, lon], {
-      icon: sourceIcon(c.shape, c.color, size),
-      zIndexOffset: Math.round(p.risk * 20),
-    })
-      .bindTooltip(
-        `<b>${p.name ? esc(p.name) : esc(c.label)}</b><br>`
-        + `${esc(c.label)}<br>${p.dist} m from the nearest river`,
-        { direction: 'top', offset: [0, -size / 2 - 2] })
-      .bindPopup(sourcePopup(p, c), { maxWidth: 290 });
-  }).filter(Boolean));
-
-  sourceLayer.addTo(map);
-}
-
-function sourcePopup(p, c) {
-  return `
-    <div class="map-pop">
-      <div class="pop-head" style="background:${c.color}">
-        <div class="pop-code">${esc(c.label)}</div>
-        <div class="pop-name">${p.name ? esc(p.name) : 'Unnamed site'}</div>
-      </div>
-      <div class="pop-body">
-        <table class="pop-tbl">
-          <tr><td>Distance to a river</td><td class="num">${p.dist} m</td></tr>
-          ${p.dist_langat != null
-            ? `<tr><td>To Sungai Langat</td><td class="num">${p.dist_langat} m</td></tr>` : ''}
-          <tr><td>Screening risk</td><td class="num">${p.risk.toFixed(2)} / 5</td></tr>
-        </table>
-        <div class="pop-pol"><b>Typically carries</b><br>${esc(c.pol)}</div>
-        <div class="pop-note">Screening only \u2014 no discharge here is metered</div>
       </div>
     </div>`;
 }
@@ -313,14 +442,21 @@ function buildBasemaps() {
     L.DomEvent.disableScrollPropagation(el);
   }
 
-  /* Popup buttons are re-created on every open */
+  /* Popups are rebuilt on every open, so their buttons are wired here */
   map.on('popupopen', (e) => {
-    const b = e.popup.getElement()?.querySelector('[data-goto]');
-    if (b) {
-      b.onclick = () => {
+    const root = e.popup.getElement();
+    const goto = root?.querySelector('[data-goto]');
+    if (goto) {
+      goto.onclick = () => {
         map.closePopup();
         document.dispatchEvent(new CustomEvent('gotophase', { detail: { view: 'phase1' } }));
       };
+    }
+    const pin = root?.querySelector('[data-flash]');
+    if (pin) {
+      pin.onclick = () => showReceiving(
+        pin.dataset.flash,
+        pin.dataset.at ? pin.dataset.at.split(',').map(Number) : null);
     }
   });
 }
@@ -343,75 +479,79 @@ function setBase(key) {
     <div class="mbi-s">${esc(d.src)}</div>`;
 }
 
-/* ---------------- Bottom left: layers ---------------- */
+/* ---------------- Bottom left: the group masters ---------------- */
 function buildLayerToggles() {
   const w = waterSummary();
+  MASTERS.stations = WQI_CLASSES.map((c) => `wqi:${c.id}`);
+  for (const id of MASTERS.stations) visible.add(id);
+
   $('ovStations').textContent = DATA.stations.length;
-  $('ovWater').textContent = w.count;
+  $('ovWater').textContent = w.count.toLocaleString('en');
   $('ovSources').textContent = sourceSummary().count;
   $('ovRivers').textContent = `${Math.round(DATA.rivers.meta.total_km)} km`;
-  $('ovBasin').textContent = `${Math.round(w.basinKm2).toLocaleString('en')} km\u00b2`;
+  $('ovBasin').textContent = `${Math.round(w.basinKm2).toLocaleString('en')} km²`;
   $('ovState').textContent = 'state';
 
-  const layers = {
-    stations: () => stationLayer, water: () => waterLayer,
-    rivers: () => riverLayer, basin: () => basinLayer, selangor: () => stateLayer,
-    sources: () => sourceLayer,
-  };
-  document.querySelectorAll('[data-mapov]').forEach((i) => {
-    i.onchange = () => {
-      const l = layers[i.dataset.mapov]();
-      if (i.checked) l.addTo(map); else map.removeLayer(l);
+  document.querySelectorAll('[data-mapov]').forEach((box) => {
+    box.onchange = () => {
+      for (const id of MASTERS[box.dataset.mapov] ?? []) {
+        if (box.checked) visible.add(id); else visible.delete(id);
+      }
+      applyVisibility();
     };
   });
-  const card = document.querySelector('.map-bl');
-  L.DomEvent.disableClickPropagation(card);
+  L.DomEvent.disableClickPropagation(document.querySelector('.map-bl'));
 }
 
-/* ---------------- Bottom right: legend ---------------- */
+/* ---------------- Bottom right: the legend, which is also the filter ------- */
 function buildLegend() {
-  $('mapLegendWqi').innerHTML = WQI_CLASSES.map((c) => `
-    <div class="ml-row" title="${esc(c.use)}">
-      <span class="ml-chip" style="background:${c.color}">${c.id}</span>
-      <span><b>${c.status}</b><span class="ml-rng">${c.max > 100
-        ? '92.7 – 100' : `${c.min < 0 ? '0' : c.min} – ${c.max}`}</span></span>
-    </div>`).join('');
+  const row = (id, swatch, label, note, title = '') => `
+    <button class="ml-row" data-vis="${id}" aria-pressed="true"${title ? ` title="${esc(title)}"` : ''}>
+      ${swatch}
+      <span class="ml-t">${label}${note ? ` <span class="ml-rng">${note}</span>` : ''}</span>
+    </button>`;
+
+  $('mapLegendWqi').innerHTML = WQI_CLASSES.map((c) => row(
+    `wqi:${c.id}`,
+    `<span class="ml-chip" style="background:${c.color}">${c.id}</span>`,
+    `<b>${c.status}</b>`,
+    c.max > 100 ? '92.7 – 100' : `${c.min < 0 ? '0' : c.min} – ${c.max}`,
+    c.use)).join('');
 
   const su = sourceSummary();
   $('mapLegendSources').innerHTML = Object.entries(su.cats)
     .filter(([k]) => su.groups[k]?.n)
-    .map(([k, c]) => `
-      <div class="ml-row" title="${esc(c.pol)}">
-        ${sourceSwatch(c.shape, c.color, 16)}
-        <span>${esc(c.label)} <span class="ml-rng">${su.groups[k].n}</span></span>
-      </div>`).join('');
+    .map(([k, c]) => row(`src:${k}`, sourceSwatch(c.shape, c.color, 16),
+      esc(c.label), su.groups[k].n, c.pol)).join('');
 
   const w = waterSummary();
   $('mapLegendWater').innerHTML = Object.entries(WATER_GROUPS)
     .filter(([k]) => w.groups[k].n)
-    .map(([k, g]) => `
-      <div class="ml-row"><span class="ml-dot" style="background:${g.color}"></span>
-        <span>${g.label} <span class="ml-rng">${w.groups[k].n}</span></span></div>`).join('');
+    .map(([k, g]) => row(`water:${k}`,
+      `<span class="ml-dot" style="background:${g.color}"></span>`,
+      esc(g.label), w.groups[k].n, g.note)).join('');
 
-  const line = (color, dash, label, note) => `
-    <div class="ml-row"><span class="ml-line" style="--lc:${color};--ld:${dash}"></span>
-      <span>${label} <span class="ml-rng">${note}</span></span></div>`;
+  const line = (color, solid) =>
+    `<span class="ml-line${solid ? ' solid' : ''}" style="--lc:${color}"></span>`;
   $('mapLegendBounds').innerHTML =
-    line('#f5e01c', '5px', 'Langat catchment',
-      `${Math.round(w.basinKm2).toLocaleString('en')} km\u00b2`)
-    + line('#ffffff', '5px', 'Selangor', 'LUAS jurisdiction')
-    + `<div class="ml-row"><span class="ml-line solid" style="--lc:#0aa3d9"></span>
-        <span>Sungai Langat <span class="ml-rng">main channel</span></span></div>`
-    + `<div class="ml-row"><span class="ml-line solid thin" style="--lc:#45bfe0"></span>
-        <span>Tributaries <span class="ml-rng">${DATA.rivers.features.length - 1} reaches</span></span></div>`;
+    row('bound:catchment', line('#f5e01c'), 'Langat catchment',
+      `${Math.round(w.basinKm2).toLocaleString('en')} km²`)
+    + row('bound:selangor', line('#ffffff'), 'Selangor', 'LUAS jurisdiction')
+    + row('river:main', line('#0aa3d9', true), 'Sungai Langat', 'main channel')
+    + row('river:trib', line('#45bfe0', true), 'Tributaries',
+      `${riverLayers.trib?.getLayers().length ?? 0} reaches`);
+
+  document.querySelectorAll('[data-vis]').forEach((b) => {
+    b.onclick = () => toggle(b.dataset.vis);
+  });
 
   /* The legend is the tallest thing on the map; let it fold out of the way */
   const card = $('mapLegend');
   const btn = $('legendMin');
   btn.onclick = () => {
-    const open = card.classList.toggle('min');
-    btn.setAttribute('aria-expanded', String(!open));
-    btn.title = open ? 'Show the legend' : 'Minimise the legend';
+    const min = card.classList.toggle('min');
+    btn.setAttribute('aria-expanded', String(!min));
+    btn.title = min ? 'Show the legend' : 'Minimise the legend';
   };
   L.DomEvent.disableClickPropagation(card);
   L.DomEvent.disableScrollPropagation(card);
