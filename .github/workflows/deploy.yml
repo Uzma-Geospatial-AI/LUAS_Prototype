@@ -80,14 +80,13 @@ jobs:
       - name: Verify every local file referenced by the app exists
         run: |
           python3 - <<'PY'
-          import re, os, sys
-          html = open('index.html', encoding='utf-8').read()
-          refs = set(re.findall(r'(?:src|href)="(?!https?:|#)([^"]+)"', html))
-          js = open('js/data.js', encoding='utf-8').read()
-          refs |= set(re.findall(r"'(data/[^']+)'", js))
-          app = open('js/app.js', encoding='utf-8').read()
-          refs |= set(re.findall(r"from '\./([^']+)'", app))
-          refs = {r if not r.endswith('.js') or r.startswith('js/') else 'js/' + r for r in refs}
+          import re, os, sys, glob
+          refs = set(re.findall(r'(?:src|href)="(?!https?:|#)([^"]+)"',
+                                open('index.html', encoding='utf-8').read()))
+          for f in glob.glob('js/*.js'):
+              src = open(f, encoding='utf-8').read()
+              refs |= set(re.findall(r"'(data/[^']+)'", src))
+              refs |= {'js/' + m for m in re.findall(r"from '\./([^']+)'", src)}
           missing = [r for r in sorted(refs) if not os.path.exists(r)]
           for r in sorted(refs):
               print(('  ok  ' if r not in missing else '  MISSING  ') + r)
