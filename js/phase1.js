@@ -100,7 +100,7 @@ function renderVerdict(s, target) {
       <div class="k-val" style="color:${rec.rate >= 0.5 ? '#17a04a' : rec.rate > 0 ? '#ef7d1a' : '#d92d20'}">
         ${(rec.rate * 100).toFixed(0)}<span class="k-unit">%</span></div>
       <div class="k-sub">${rec.passing} of ${rec.total} records</div>
-      <div class="k-note">Across the full ${DATA.months[0]} – ${DATA.months[DATA.months.length - 1]} series.</div>
+      <div class="k-note">${DATA.months[0]} – ${DATA.months[DATA.months.length - 1]}</div>
     </div>
 
     <div class="card kpi">
@@ -118,8 +118,7 @@ function bindingCard(rec) {
   }
   const [p, v] = worst;
   return `<div class="k-val" style="color:#d92d20;font-size:26px">${PARAM_META[p].short}</div>
-    <div class="k-sub">Fails in ${v.fails} of ${rec.total} months (${(v.rate * 100).toFixed(0)}%)</div>
-    <div class="k-note">The parameter that most often keeps this reach out of class.</div>`;
+    <div class="k-sub">Fails in ${v.fails} of ${rec.total} months (${(v.rate * 100).toFixed(0)}%)</div>`;
 }
 
 /* ---------------- Six-parameter table ---------------- */

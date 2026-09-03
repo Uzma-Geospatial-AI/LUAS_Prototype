@@ -87,12 +87,11 @@ function renderWaterBodies() {
       <div class="wb-n">${meta.label}</div>
       <div class="wb-v">${g.n}</div>
       <div class="wb-a">${km2(g.area)} km² &middot; ${((g.area / w.total) * 100).toFixed(0)}% of surface</div>
-      <div class="wb-d">${meta.note}</div>
     </div>`;
   }).join('');
 
   $('p2WaterNote').textContent =
-    `${w.count} water bodies in the ${w.basinKm2} km² Sungai Langat catchment \u00b7 `
+    `${w.count.toLocaleString('en')} water bodies in the ${Math.round(w.basinKm2).toLocaleString('en')} km² catchment \u00b7 `
     + `${km2(w.total)} km\u00b2 total open water surface`;
 
 }
@@ -105,7 +104,7 @@ function renderParamCharts(s, target) {
       <div class="card pad0">
         <div class="card-head">
           <h3>${m.name}</h3>
-          <div class="card-sub">${m.unit ? `${m.unit} · ` : ''}Class ${target} standard shown as a dashed line</div>
+          <div class="card-sub">${m.unit || ''}</div>
         </div>
         <div class="chart-box sm"><canvas id="pc_${p}"></canvas></div>
       </div>`).join('');
