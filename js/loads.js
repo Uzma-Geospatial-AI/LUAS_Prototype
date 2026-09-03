@@ -21,6 +21,10 @@ export const licenceLoad = (concMgL, flowM3PerDay) => (concMgL * flowM3PerDay) /
 
 /* ---- Design conditions the whole calculation hangs on ---- */
 export const DEFAULT_CONDITIONS = {
+  /* Which station the assessment and the load budget are written for. Dengkil
+     is the default because it is the Langat station the brief names, not
+     because anything depends on it. */
+  focusStation: 'LGT06',
   targetClass: 'II',
   /* Sungai Langat at Dengkil. A TMDL is written for a low-flow design
      condition (MAM7 / 7Q10), not mean flow, because that is when the river

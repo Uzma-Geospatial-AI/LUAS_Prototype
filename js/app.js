@@ -1,7 +1,8 @@
 /* ============================================================
    app.js — Phase routing and bootstrap
    ============================================================ */
-import { DATA, loadAll, readingAt, latestIdx, complianceRecord, fmtMonth } from './data.js';
+import { DATA, loadAll, readingAt, latestIdx, complianceRecord, fmtMonth,
+         setFocus } from './data.js';
 import { wqiClass } from './wqi.js';
 import { store, registerAsJson, registerAsCsv, download } from './store.js';
 import { renderPhase1, resizePhase1 } from './phase1.js';
@@ -61,13 +62,28 @@ function updatePills() {
   const cls = wqiClass(r.wqi);
   const rec = complianceRecord(s, target);
 
-  $('pillStation').textContent = s.name.split(' (')[0];
+  $('stationPick').value = s.code;
   $('pillWqi').textContent = r.wqi.toFixed(1);
   $('pillWqi').style.color = cls.color;
   $('pillClass').textContent = cls.id;
   $('pillClass').style.background = cls.color;
   $('pillTarget').textContent = `Class ${target}`;
   $('pillCompliance').textContent = `${(rec.rate * 100).toFixed(0)}%`;
+}
+
+function buildStationPicker() {
+  const byRiver = {};
+  for (const st of DATA.stations) (byRiver[st.river] ??= []).push(st);
+
+  $('stationPick').innerHTML = Object.entries(byRiver).map(([river, list]) => `
+    <optgroup label="${esc(river)}">
+      ${list.map((st) => `<option value="${st.code}">${esc(st.name)} · ${st.code}</option>`).join('')}
+    </optgroup>`).join('');
+
+  $('stationPick').onchange = (e) => {
+    /* setFocus fires storechange, which re-renders whatever is built */
+    if (!setFocus(e.target.value)) return;
+  };
 }
 
 /* ---------------- Bootstrap ---------------- */
@@ -88,6 +104,7 @@ function updatePills() {
     return;
   }
 
+  buildStationPicker();
   updatePills();
   document.querySelectorAll('#nav button[data-view]').forEach((b) => {
     b.onclick = () => show(b.dataset.view);
@@ -112,8 +129,21 @@ function updatePills() {
     updatePills();
     if (ready.map) refreshMap();
     if (ready.phase2) renderPhase2();
-    if ($('v-phase1').classList.contains('active')) renderPhase1();
+    if (ready.phase3) renderPhase3();
+    renderPhase1();
   });
+
+  /* An info bubble is 236px wide; near the right edge it opens leftwards */
+  const placeTips = () => {
+    for (const el of document.querySelectorAll('.info')) {
+      const r = el.getBoundingClientRect();
+      el.classList.toggle('left', r.left + 248 > window.innerWidth);
+    }
+  };
+  placeTips();
+  document.addEventListener('storechange', placeTips);
+  window.addEventListener('resize', placeTips);
+  new MutationObserver(placeTips).observe($('v-phase3'), { childList: true, subtree: true });
 
   /* Back / forward and pasted links both land on the right view */
   window.addEventListener('hashchange', () => {
@@ -126,7 +156,10 @@ function updatePills() {
   });
 
   /* The Dengkil popup on the map jumps straight into the assessment */
-  document.addEventListener('gotophase', (e) => show(e.detail.view));
+  document.addEventListener('gotophase', (e) => {
+    if (e.detail.station) setFocus(e.detail.station);
+    show(e.detail.view);
+  });
 
   show(location.hash.slice(1) || 'map');
 

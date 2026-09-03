@@ -2,9 +2,20 @@
    data.js — Data loading and derivation
    ============================================================ */
 import { computeWQI, wqiClass, classCompliance } from './wqi.js';
+import { store } from './store.js';
 
-/* Phase 1 is written for one station: Sungai Langat at Dengkil. */
+/* The station the assessment is written for. It defaults to Sungai Langat at
+   Dengkil and can be changed from the app bar or from any marker on the map;
+   every phase reads DATA.focus, so they all follow. */
 export const FOCUS_STATION = 'LGT06';
+
+export function setFocus(code) {
+  const st = DATA.stations.find((s) => s.code === code);
+  if (!st || st.code === DATA.focus?.code) return false;
+  DATA.focus = st;
+  store.setConditions({ focusStation: code });   /* fires storechange */
+  return true;
+}
 
 export const DATA = {
   stations: [],
@@ -56,7 +67,10 @@ export async function loadAll(onStep) {
 
   onStep?.(0.85, 'Computing indices…');
   derive();
-  DATA.focus = DATA.stations.find((s) => s.code === FOCUS_STATION) ?? DATA.stations[0];
+  const chosen = store.conditions().focusStation ?? FOCUS_STATION;
+  DATA.focus = DATA.stations.find((s) => s.code === chosen)
+    ?? DATA.stations.find((s) => s.code === FOCUS_STATION)
+    ?? DATA.stations[0];
 
   onStep?.(1, 'Ready');
   return DATA;

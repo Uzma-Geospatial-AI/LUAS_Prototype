@@ -382,9 +382,10 @@ function stationPopup(st, r, cls, comp, target) {
             </tr>`;
           }).join('')}
         </table>
-        ${st.code === DATA.focus.code
-          ? '<button class="pop-btn" data-goto="1">Open Phase 1 assessment →</button>'
-          : '<div class="pop-note">Phase 1 assesses the Dengkil station</div>'}
+        <button class="pop-btn" data-goto="${esc(st.code)}">
+          ${st.code === DATA.focus.code
+            ? 'Open Phase 1 assessment →'
+            : `Assess ${esc(st.name)} instead →`}</button>
       </div>
     </div>`;
 }
@@ -449,7 +450,8 @@ function buildBasemaps() {
     if (goto) {
       goto.onclick = () => {
         map.closePopup();
-        document.dispatchEvent(new CustomEvent('gotophase', { detail: { view: 'phase1' } }));
+        document.dispatchEvent(new CustomEvent('gotophase',
+          { detail: { view: 'phase1', station: goto.dataset.goto } }));
       };
     }
     const pin = root?.querySelector('[data-flash]');

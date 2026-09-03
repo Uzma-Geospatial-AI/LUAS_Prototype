@@ -23,6 +23,13 @@ export function renderPhase1() {
   const s = DATA.focus;
   const target = store.conditions().targetClass;
 
+  /* The page names whichever station is selected, not a fixed one */
+  const head = document.getElementById('p1Head2');
+  if (head) {
+    head.textContent = `${s.river} at ${s.name} · six parameters → WQI `
+      + `→ does it hold Class ${target}?`;
+  }
+
   renderHeader(s, target);
   renderVerdict(s, target);
   renderParamTable(s, target);

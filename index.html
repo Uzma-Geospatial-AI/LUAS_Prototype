@@ -87,7 +87,12 @@
       <div class="ab-status"><span class="live-dot"></span> <span id="tbStatus">—</span></div>
     </div>
     <div class="ab-meta">
-      <div class="pill"><b id="pillStation">—</b></div>
+      <label class="pill pick" title="The station every phase is written for">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+          stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="2.8"/>
+          <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/></svg>
+        <select id="stationPick"></select>
+      </label>
       <div class="pill">WQI <b id="pillWqi">—</b>
         <span class="pill-cls" id="pillClass">—</span></div>
       <div class="pill">Target <b id="pillTarget">—</b> · met <b id="pillCompliance">—</b></div>
@@ -187,7 +192,7 @@
 
     <div class="page-head">
       <h2>Station assessment</h2>
-      <p>Sungai Langat at Dengkil · six parameters → WQI → does it hold Class II?</p>
+      <p id="p1Head2">Six parameters → WQI → does it hold Class II?</p>
     </div>
 
     <div id="p1Head"></div>
@@ -202,7 +207,10 @@
       <table class="data">
         <thead><tr>
           <th>Parameter</th><th>Reading</th><th>Standard</th><th>Verdict</th>
-          <th>% of limit</th><th>Sub-index</th><th>Weight</th><th>Months failed</th>
+          <th>% of limit <button type="button" class="info" tabindex="0" data-tip="The reading as a percentage of its Class limit. Over 100%% means the parameter breaches the standard." aria-label="The reading as a percentage of its Class limit. Over 100%% means the parameter breaches the standard.">i</button></th>
+          <th>Sub-index <button type="button" class="info" tabindex="0" data-tip="The DOE sub-index for this parameter, 0-100. The six sub-indices are combined by weight to give the WQI." aria-label="The DOE sub-index for this parameter, 0-100. The six sub-indices are combined by weight to give the WQI.">i</button></th>
+          <th>Weight <button type="button" class="info" tabindex="0" data-tip="How much this parameter counts towards the WQI. The six weights sum to 1." aria-label="How much this parameter counts towards the WQI. The six weights sum to 1.">i</button></th>
+          <th>Months failed <button type="button" class="info" tabindex="0" data-tip="How many months in the record this parameter has breached the target class at this station." aria-label="How many months in the record this parameter has breached the target class at this station.">i</button></th>
         </tr></thead>
         <tbody id="p1Params"></tbody>
       </table>
@@ -230,7 +238,7 @@
           <div class="field">
             <label for="cTemp">Water temperature <span class="unit">°C</span></label>
             <input id="cTemp" type="number" step="0.1" value="27">
-            <div class="hint">Converts DO to percent saturation before sub-indexing.</div>
+            <div class="hint">Converts DO to percent saturation.</div>
           </div>
         </div>
         <div class="form-grid" id="p1Calc"></div>
@@ -312,12 +320,11 @@
       </div>
       <div class="cond-grid">
         <div class="field">
-          <label for="p3Class">Target water class</label>
+          <label for="p3Class">Target water class <button type="button" class="info" tabindex="0" data-tip="The ambient class the loading capacity is computed against. Sungai Langat must hold Class II to serve as a raw water source with conventional treatment." aria-label="The ambient class the loading capacity is computed against. Sungai Langat must hold Class II to serve as a raw water source with conventional treatment.">i</button></label>
           <select id="p3Class"></select>
-          <div class="hint">The standard capacity is computed against.</div>
         </div>
         <div class="field">
-          <label for="p3Flow">Design river flow <span class="unit">m³/s</span></label>
+          <label for="p3Flow">Design river flow <span class="unit">m³/s</span> <button type="button" class="info" tabindex="0" data-tip="A TMDL is written for a low-flow condition (MAM7 or 7Q10), when the river has least capacity to assimilate a load. Every load figure scales directly with it." aria-label="A TMDL is written for a low-flow condition (MAM7 or 7Q10), when the river has least capacity to assimilate a load. Every load figure scales directly with it.">i</button></label>
           <input id="p3Flow" type="number" step="0.1" min="0.1">
           <label class="check-inline">
             <input type="checkbox" id="p3FlowVerified">
@@ -325,14 +332,12 @@
           </label>
         </div>
         <div class="field">
-          <label for="p3Mos">Margin of safety <span class="unit">%</span></label>
+          <label for="p3Mos">Margin of safety <span class="unit">%</span> <button type="button" class="info" tabindex="0" data-tip="Capacity held back for model and measurement uncertainty, as a TMDL requires. It is subtracted before anything is allocated." aria-label="Capacity held back for model and measurement uncertainty, as a TMDL requires. It is subtracted before anything is allocated.">i</button></label>
           <input id="p3Mos" type="number" step="1" min="0" max="50">
-          <div class="hint">Capacity held back for uncertainty.</div>
         </div>
         <div class="field">
-          <label for="p3Std">Effluent standard for new licences</label>
+          <label for="p3Std">Effluent standard for new licences <button type="button" class="info" tabindex="0" data-tip="EQ (Industrial Effluent) Regulations 2009. Standard A applies upstream of a water intake and is the tighter of the two." aria-label="EQ (Industrial Effluent) Regulations 2009. Standard A applies upstream of a water intake and is the tighter of the two.">i</button></label>
           <select id="p3Std"></select>
-          <div class="hint">EQ (Industrial Effluent) Regulations 2009.</div>
         </div>
       </div>
       <div class="notice warn" id="p3FlowWarn">
@@ -356,13 +361,13 @@
             <th colspan="2">Concentration (mg/L)</th>
             <th colspan="3">Loading capacity (kg/day)</th>
             <th colspan="3">Load now (kg/day)</th>
-            <th rowspan="2">Remaining<br>(kg/day)</th>
-            <th rowspan="2">Utilisation</th>
+            <th rowspan="2">Remaining<br>(kg/day) <button type="button" class="info" tabindex="0" data-tip="Allocable capacity minus the load the river already carries. Negative means the reach is over capacity and nothing further can be licensed." aria-label="Allocable capacity minus the load the river already carries. Negative means the reach is over capacity and nothing further can be licensed.">i</button></th>
+            <th rowspan="2">Utilisation <button type="button" class="info" tabindex="0" data-tip="Current load as a percentage of allocable capacity. Over 100%% is over capacity." aria-label="Current load as a percentage of allocable capacity. Over 100%% is over capacity.">i</button></th>
           </tr>
           <tr>
             <th>Standard</th><th>In river</th>
-            <th>TMDL</th><th>MOS</th><th>Allocable</th>
-            <th>Total</th><th>Licensed</th><th>Diffuse</th>
+            <th>TMDL <button type="button" class="info" tabindex="0" data-tip="Total Maximum Daily Load: the mass this reach can receive per day and still hold its class. Standard concentration x design flow x 86.4." aria-label="Total Maximum Daily Load: the mass this reach can receive per day and still hold its class. Standard concentration x design flow x 86.4.">i</button></th><th>MOS <button type="button" class="info" tabindex="0" data-tip="Margin of safety, held back from the capacity before anything is allocated." aria-label="Margin of safety, held back from the capacity before anything is allocated.">i</button></th><th>Allocable <button type="button" class="info" tabindex="0" data-tip="TMDL minus the margin of safety: what is actually available to allocate between licensed and diffuse sources." aria-label="TMDL minus the margin of safety: what is actually available to allocate between licensed and diffuse sources.">i</button></th>
+            <th>Total <button type="button" class="info" tabindex="0" data-tip="What the river actually carries: the 12-month median concentration at the selected station x design flow x 86.4." aria-label="What the river actually carries: the 12-month median concentration at the selected station x design flow x 86.4.">i</button></th><th>Licensed <button type="button" class="info" tabindex="0" data-tip="The sum of the wasteloads permitted by the licences in the SESAMS register." aria-label="The sum of the wasteloads permitted by the licences in the SESAMS register.">i</button></th><th>Diffuse <button type="button" class="info" tabindex="0" data-tip="Total load minus licensed load: background, run-off and unlicensed discharge that no permit accounts for." aria-label="Total load minus licensed load: background, run-off and unlicensed discharge that no permit accounts for.">i</button></th>
           </tr>
         </thead>
         <tbody id="p3Budget"></tbody>
@@ -378,53 +383,8 @@
       <div class="chart-box lg"><canvas id="p3Chart"></canvas></div>
     </div>
 
-    <!-- SESAMS register -->
     <div class="section-title">
-      <h2>SESAMS — Effluent Discharge Licence Register</h2>
-      <span class="st-sub">Licensed premises and their permitted wasteload</span>
-    </div>
-
-    <div class="notice warn" id="p3ExampleBar">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
-      <div style="flex:1"><b>Five worked examples, not real licences.</b> No LUAS register is
-        published as open data, so these make the budget computable.</div>
-      <button class="btn btn-ghost" id="p3ClearExamples">Clear examples</button>
-    </div>
-    <div class="notice info" id="p3RestoreBar" style="display:none">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-      <div style="flex:1">The register holds only your own entries.</div>
-      <button class="btn btn-ghost" id="p3RestoreExamples">Restore worked examples</button>
-    </div>
-
-    <div class="card pad0 tbl-scroll" style="margin-top:12px">
-      <table class="data register">
-        <thead>
-          <tr>
-            <th rowspan="2">Licence</th><th rowspan="2">Premises</th><th rowspan="2">Std</th>
-            <th rowspan="2">Flow<br>m³/day</th>
-            <th colspan="4">Permitted concentration (mg/L)</th>
-            <th colspan="4">Wasteload (kg/day)</th>
-            <th rowspan="2">Status</th><th rowspan="2"></th>
-          </tr>
-          <tr>
-            <th>BOD₅</th><th>COD</th><th>SS</th><th>NH₃-N</th>
-            <th>BOD₅</th><th>COD</th><th>SS</th><th>NH₃-N</th>
-          </tr>
-        </thead>
-        <tbody id="p3Register"></tbody>
-        <tfoot id="p3RegTotals"></tfoot>
-      </table>
-    </div>
-
-    <div class="btn-row" style="margin-top:12px">
-      <button class="btn btn-primary" id="p3ExportJson">Export register (JSON)</button>
-      <button class="btn btn-ghost" id="p3ExportCsv">Export register (CSV)</button>
-      <label class="btn btn-ghost" style="cursor:pointer">
-        Import JSON<input type="file" id="p3Import" accept=".json" hidden></label>
-    </div>
-
-    <div class="section-title">
-      <h2>Add or Edit a Licence</h2>
+      <h2>Add a Licence</h2>
       <span class="st-sub">Does it fit the remaining capacity?</span>
     </div>
     <div class="split-grid">
@@ -480,6 +440,52 @@
       mg/L × m³/day ÷ 1000. In-river concentration is the 12-month median at Dengkil.
       Diffuse is whatever the river carries that licences do not account for.</div>
     </div>
+
+    <!-- SESAMS register -->
+    <div class="section-title">
+      <h2>Licence Register</h2>
+      <span class="st-sub">Licensed premises and their permitted wasteload</span>
+    </div>
+
+    <div class="notice warn" id="p3ExampleBar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+      <div style="flex:1"><b>Five worked examples, not real licences.</b> No LUAS register is
+        published as open data, so these make the budget computable.</div>
+      <button class="btn btn-ghost" id="p3ClearExamples">Clear examples</button>
+    </div>
+    <div class="notice info" id="p3RestoreBar" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+      <div style="flex:1">The register holds only your own entries.</div>
+      <button class="btn btn-ghost" id="p3RestoreExamples">Restore worked examples</button>
+    </div>
+
+    <div class="card pad0 tbl-scroll" style="margin-top:12px">
+      <table class="data register">
+        <thead>
+          <tr>
+            <th rowspan="2">Licence</th><th rowspan="2">Premises</th><th rowspan="2">Std</th>
+            <th rowspan="2">Flow<br>m³/day</th>
+            <th colspan="4">Permitted concentration (mg/L)</th>
+            <th colspan="4">Wasteload (kg/day)</th>
+            <th rowspan="2">Status</th><th rowspan="2"></th>
+          </tr>
+          <tr>
+            <th>BOD₅</th><th>COD</th><th>SS</th><th>NH₃-N</th>
+            <th>BOD₅</th><th>COD</th><th>SS</th><th>NH₃-N</th>
+          </tr>
+        </thead>
+        <tbody id="p3Register"></tbody>
+        <tfoot id="p3RegTotals"></tfoot>
+      </table>
+    </div>
+
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn btn-primary" id="p3ExportJson">Export register (JSON)</button>
+      <button class="btn btn-ghost" id="p3ExportCsv">Export register (CSV)</button>
+      <label class="btn btn-ghost" style="cursor:pointer">
+        Import JSON<input type="file" id="p3Import" accept=".json" hidden></label>
+    </div>
+
   </div>
 </section>
 
