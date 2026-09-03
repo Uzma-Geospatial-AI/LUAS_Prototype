@@ -7,10 +7,12 @@
    the legend. Clicking a station gives its index, its class and its
    target-class verdict.
    ============================================================ */
-import { DATA, readingAt, latestIdx, fmtMonth, waterSummary, WATER_GROUPS } from './data.js';
+import { DATA, readingAt, latestIdx, fmtMonth, waterSummary, sourceSummary,
+         WATER_GROUPS } from './data.js';
 import { wqiClass, WQI_CLASSES, classCompliance, PARAM_META } from './wqi.js';
 import { store } from './store.js';
 import { IMAGERY, gibsLayer, REFERENCE_MAPS, WATER_INDICES } from './satellite.js';
+import { sourceIcon, sourceSwatch } from './symbols.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -20,7 +22,7 @@ const ALL = { ...IMAGERY, ...REFERENCE_MAPS };
 
 let map = null, base = null, current = 'esri';
 let stationLayer = null, waterLayer = null, stateLayer = null;
-let basinLayer = null, riverLayer = null;
+let basinLayer = null, riverLayer = null, sourceLayer = null;
 let monthIdx = null, timer = null;
 
 const pad = (n) => String(n).padStart(2, '0');
@@ -91,6 +93,7 @@ export function initMap() {
      carry the colour itself until the zoom makes the shape readable. */
   map.on('zoomend', () => waterLayer.setStyle(waterStyle));
 
+  buildSources();
   stationLayer = L.layerGroup().addTo(map);
 
   buildBasemaps();
@@ -211,6 +214,52 @@ function stationPopup(st, r, cls, comp, target) {
     </div>`;
 }
 
+/* ---------------- What can put a load into the river ---------------- */
+function buildSources() {
+  const su = sourceSummary();
+
+  sourceLayer = L.layerGroup(su.features.map((f) => {
+    const p = f.properties;
+    const c = su.cats[p.cat];
+    if (!c) return null;
+    /* Size carries the risk score, so the ones on the bank read heaviest */
+    const size = Math.round(12 + p.risk * 2.1);
+    const [lon, lat] = f.geometry.coordinates;
+
+    return L.marker([lat, lon], {
+      icon: sourceIcon(c.shape, c.color, size),
+      zIndexOffset: Math.round(p.risk * 20),
+    })
+      .bindTooltip(
+        `<b>${p.name ? esc(p.name) : esc(c.label)}</b><br>`
+        + `${esc(c.label)}<br>${p.dist} m from the nearest river`,
+        { direction: 'top', offset: [0, -size / 2 - 2] })
+      .bindPopup(sourcePopup(p, c), { maxWidth: 290 });
+  }).filter(Boolean));
+
+  sourceLayer.addTo(map);
+}
+
+function sourcePopup(p, c) {
+  return `
+    <div class="map-pop">
+      <div class="pop-head" style="background:${c.color}">
+        <div class="pop-code">${esc(c.label)}</div>
+        <div class="pop-name">${p.name ? esc(p.name) : 'Unnamed site'}</div>
+      </div>
+      <div class="pop-body">
+        <table class="pop-tbl">
+          <tr><td>Distance to a river</td><td class="num">${p.dist} m</td></tr>
+          ${p.dist_langat != null
+            ? `<tr><td>To Sungai Langat</td><td class="num">${p.dist_langat} m</td></tr>` : ''}
+          <tr><td>Screening risk</td><td class="num">${p.risk.toFixed(2)} / 5</td></tr>
+        </table>
+        <div class="pop-pol"><b>Typically carries</b><br>${esc(c.pol)}</div>
+        <div class="pop-note">Screening only \u2014 no discharge here is metered</div>
+      </div>
+    </div>`;
+}
+
 /* ---------------- Top right: basemap ---------------- */
 function buildBasemaps() {
   const group = (keys, title) => `
@@ -299,6 +348,7 @@ function buildLayerToggles() {
   const w = waterSummary();
   $('ovStations').textContent = DATA.stations.length;
   $('ovWater').textContent = w.count;
+  $('ovSources').textContent = sourceSummary().count;
   $('ovRivers').textContent = `${Math.round(DATA.rivers.meta.total_km)} km`;
   $('ovBasin').textContent = `${Math.round(w.basinKm2).toLocaleString('en')} km\u00b2`;
   $('ovState').textContent = 'state';
@@ -306,6 +356,7 @@ function buildLayerToggles() {
   const layers = {
     stations: () => stationLayer, water: () => waterLayer,
     rivers: () => riverLayer, basin: () => basinLayer, selangor: () => stateLayer,
+    sources: () => sourceLayer,
   };
   document.querySelectorAll('[data-mapov]').forEach((i) => {
     i.onchange = () => {
@@ -326,6 +377,15 @@ function buildLegend() {
         ? '92.7 – 100' : `${c.min < 0 ? '0' : c.min} – ${c.max}`}</span></span>
     </div>`).join('');
 
+  const su = sourceSummary();
+  $('mapLegendSources').innerHTML = Object.entries(su.cats)
+    .filter(([k]) => su.groups[k]?.n)
+    .map(([k, c]) => `
+      <div class="ml-row" title="${esc(c.pol)}">
+        ${sourceSwatch(c.shape, c.color, 16)}
+        <span>${esc(c.label)} <span class="ml-rng">${su.groups[k].n}</span></span>
+      </div>`).join('');
+
   const w = waterSummary();
   $('mapLegendWater').innerHTML = Object.entries(WATER_GROUPS)
     .filter(([k]) => w.groups[k].n)
@@ -345,7 +405,16 @@ function buildLegend() {
     + `<div class="ml-row"><span class="ml-line solid thin" style="--lc:#45bfe0"></span>
         <span>Tributaries <span class="ml-rng">${DATA.rivers.features.length - 1} reaches</span></span></div>`;
 
-  L.DomEvent.disableClickPropagation(document.querySelector('.map-br'));
+  /* The legend is the tallest thing on the map; let it fold out of the way */
+  const card = $('mapLegend');
+  const btn = $('legendMin');
+  btn.onclick = () => {
+    const open = card.classList.toggle('min');
+    btn.setAttribute('aria-expanded', String(!open));
+    btn.title = open ? 'Show the legend' : 'Minimise the legend';
+  };
+  L.DomEvent.disableClickPropagation(card);
+  L.DomEvent.disableScrollPropagation(card);
 }
 
 /* ---------------- Bottom centre: the month on show ---------------- */

@@ -14,6 +14,7 @@ export const DATA = {
   water: null,
   catchment: null,
   rivers: null,
+  sources: null,
   selangor: null,
   focus: null,
 };
@@ -47,7 +48,10 @@ export async function loadAll(onStep) {
     geo: wb,
   };
 
-  onStep?.(0.82, 'Loading the Selangor boundary…');
+  onStep?.(0.8, 'Loading pollution sources…');
+  DATA.sources = await J('data/pollution_sources.geojson');
+
+  onStep?.(0.85, 'Loading the Selangor boundary…');
   DATA.selangor = await J('data/selangor_boundary.geojson');
 
   onStep?.(0.85, 'Computing indices…');
@@ -157,6 +161,32 @@ export const WATER_GROUPS = {
   other:     { label: 'Other open water', color: '#8b93a8',
     note: 'Water bodies with no type recorded in the source data.' },
 };
+
+/* ============================================================
+   Pollution sources — what can put a load into the river
+   Source: OpenStreetMap, clipped to the catchment and the riparian zone
+   by scripts/08_build_pollution_sources.py.
+   ============================================================ */
+export function sourceSummary() {
+  const meta = DATA.sources?.meta ?? {};
+  const cats = meta.categories ?? {};
+  const feats = DATA.sources?.features ?? [];
+  const groups = {};
+  for (const key of Object.keys(cats)) groups[key] = { n: 0, near: 0, risk: 0 };
+  for (const f of feats) {
+    const g = groups[f.properties.cat];
+    if (!g) continue;
+    g.n++;
+    g.risk += f.properties.risk;
+    if (f.properties.dist <= 250) g.near++;
+  }
+  return {
+    cats, groups, features: feats,
+    count: feats.length,
+    bufferM: meta.buffer_m ?? 1500,
+    near: feats.filter((f) => f.properties.dist <= 250).length,
+  };
+}
 
 export function waterSummary() {
   const bodies = DATA.water?.bodies ?? [];

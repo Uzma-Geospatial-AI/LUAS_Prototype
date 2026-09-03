@@ -1,0 +1,255 @@
+"""Build the pollution source layer for the Sungai Langat catchment.
+
+Source: OpenStreetMap via Overpass API (ODbL 1.0 © OpenStreetMap contributors)
+
+What can put a load into the river: industrial land and factories, sewage and
+water treatment plants, landfill, quarry and waste handling, cleared and
+construction land, farms and aquaculture.
+
+Two filters, in this order:
+
+  1. inside the Sungai Langat catchment — anything outside it drains somewhere
+     else and is not LUAS's problem on this river;
+  2. within 1.5 km of a mapped river — the riparian zone. A factory 8 km from
+     the nearest channel still discharges somewhere, but it does so through a
+     drain this dataset does not have, and putting it on the map as though its
+     load arrives at the river would be a claim the data cannot support.
+
+Each source carries a risk score: the category's relative load weight scaled by
+how close it sits to a channel. It is a screening aid for prioritising
+inspection, NOT a measured discharge — nothing here is metered.
+
+Run 06 and 07 first: the catchment is the clip and the rivers give the distances.
+"""
+import json
+import math
+import os
+import urllib.parse
+import urllib.request
+from collections import Counter, defaultdict
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+OUT = os.path.join(ROOT, 'data')
+
+BASIN = os.path.join(OUT, 'langat_basin.geojson')
+RIVERS = os.path.join(OUT, 'langat_rivers.geojson')
+CACHE = os.path.join(ROOT, 'sources_raw.json')
+
+OVERPASS = 'https://overpass-api.de/api/interpreter'
+UA = 'LUAS-Prototype/1.0 (https://github.com/Uzma-Geospatial-AI/LUAS_Prototype)'
+
+BUFFER_M = 1500
+MPD = 111320.0
+
+# Relative load weight (1-5) and the pollutants each category is known for.
+# The weights are judgement, not measurement, and they only order the screening.
+CATS = {
+    'industri': dict(
+        label='Industry & factories', shape='square', color='#4a3aa7', load=5,
+        pol='COD, heavy metals, oil & grease, scheduled chemical waste'),
+    'kumbahan': dict(
+        label='Sewage & water treatment', shape='diamond', color='#2a78d6', load=4,
+        pol='NH₃-N, BOD, suspended solids in the effluent'),
+    'sisa': dict(
+        label='Landfill, quarry & waste', shape='triangle', color='#1baf7a', load=4,
+        pol='Leachate, suspended solids, turbidity'),
+    'tanah': dict(
+        label='Construction & cleared land', shape='pentagon', color='#eda100', load=3,
+        pol='Suspended solids, soil erosion, turbidity'),
+    'ternakan': dict(
+        label='Farms & aquaculture', shape='circle', color='#e34948', load=3,
+        pol='BOD, NH₃-N, nutrients, animal waste'),
+}
+
+TAGS = {
+    ('landuse', 'industrial'): 'industri',
+    ('man_made', 'works'): 'industri',
+    ('man_made', 'factory'): 'industri',
+    ('landuse', 'brownfield'): 'industri',
+    ('man_made', 'wastewater_plant'): 'kumbahan',
+    ('man_made', 'water_works'): 'kumbahan',
+    ('landuse', 'landfill'): 'sisa',
+    ('landuse', 'quarry'): 'sisa',
+    ('amenity', 'waste_transfer_station'): 'sisa',
+    ('landuse', 'construction'): 'tanah',
+    ('landuse', 'farmyard'): 'ternakan',
+    ('landuse', 'aquaculture'): 'ternakan',
+}
+
+
+def in_ring(pt, ring):
+    x, y = pt
+    inside, j = False, len(ring) - 1
+    for i in range(len(ring)):
+        xi, yi = ring[i]
+        xj, yj = ring[j]
+        if (yi > y) != (yj > y) and x < (xj - xi) * (y - yi) / (yj - yi) + xi:
+            inside = not inside
+        j = i
+    return inside
+
+
+def in_basin(pt, polys):
+    for rings in polys:
+        if in_ring(pt, rings[0]) and not any(in_ring(pt, h) for h in rings[1:]):
+            return True
+    return False
+
+
+# ---------------- Catchment and rivers ----------------
+basin = json.load(open(BASIN, encoding='utf-8'))
+bgeom = basin['features'][0]['geometry']
+BPOLYS = bgeom['coordinates'] if bgeom['type'] == 'MultiPolygon' else [bgeom['coordinates']]
+BBOX = basin['features'][0]['properties']['bbox']
+
+rivers = json.load(open(RIVERS, encoding='utf-8'))
+SEG = []
+for ft in rivers['features']:
+    main = bool(ft['properties'].get('main'))
+    c = ft['geometry']['coordinates']
+    for (x1, y1), (x2, y2) in zip(c, c[1:]):
+        SEG.append((x1, y1, x2, y2, main))
+
+# A grid so each source only tests the segments near it — 3,400 sources against
+# 4,100 segments is 14 million distance tests otherwise.
+CELL = 0.01                                   # about 1.1 km
+grid = defaultdict(list)
+for i, s in enumerate(SEG):
+    x0, x1 = sorted((s[0], s[2]))
+    y0, y1 = sorted((s[1], s[3]))
+    for gx in range(int(math.floor(x0 / CELL)), int(math.floor(x1 / CELL)) + 1):
+        for gy in range(int(math.floor(y0 / CELL)), int(math.floor(y1 / CELL)) + 1):
+            grid[(gx, gy)].append(i)
+print('river segments %d in %d grid cells' % (len(SEG), len(grid)))
+
+
+def pt_seg_m(px, py, s):
+    kx = math.cos(math.radians(py)) * MPD
+    ax, ay = (s[0] - px) * kx, (s[1] - py) * MPD
+    bx, by = (s[2] - px) * kx, (s[3] - py) * MPD
+    dx, dy = bx - ax, by - ay
+    L = dx * dx + dy * dy
+    t = 0.0 if L == 0 else max(0.0, min(1.0, -(ax * dx + ay * dy) / L))
+    return math.hypot(ax + t * dx, ay + t * dy)
+
+
+def nearest_river(lon, lat, rings=2):
+    gx0, gy0 = int(math.floor(lon / CELL)), int(math.floor(lat / CELL))
+    best, best_main = 1e12, 1e12
+    for r in range(rings + 1):
+        for gx in range(gx0 - r, gx0 + r + 1):
+            for gy in range(gy0 - r, gy0 + r + 1):
+                if r and abs(gx - gx0) != r and abs(gy - gy0) != r:
+                    continue
+                for i in grid.get((gx, gy), ()):
+                    s = SEG[i]
+                    d = pt_seg_m(lon, lat, s)
+                    if d < best:
+                        best = d
+                    if s[4] and d < best_main:
+                        best_main = d
+        if best < r * CELL * MPD:
+            break
+    return best, best_main
+
+
+# ---------------- Ask Overpass ----------------
+if os.path.exists(CACHE):
+    print('reading cached Overpass response', CACHE)
+    elements = json.load(open(CACHE, encoding='utf-8'))['elements']
+else:
+    bb = '%f,%f,%f,%f' % (BBOX[1], BBOX[0], BBOX[3], BBOX[2])
+    clauses = '\n  '.join('nwr["%s"="%s"](%s);' % (k, v, bb) for k, v in TAGS)
+    query = '[out:json][timeout:300];\n(\n  %s\n);\nout center tags;' % clauses
+    print('querying Overpass')
+    req = urllib.request.Request(
+        OVERPASS, data=urllib.parse.urlencode({'data': query}).encode(),
+        headers={'User-Agent': UA})
+    raw = json.load(urllib.request.urlopen(req, timeout=320))
+    json.dump(raw, open(CACHE, 'w'))
+    elements = raw['elements']
+print('elements returned:', len(elements))
+
+# ---------------- Categorise, clip, score ----------------
+feats = []
+n_uncategorised = n_outside_basin = n_far = 0
+
+for el in elements:
+    tags = el.get('tags') or {}
+    cat = next((c for k, c in TAGS.items() if tags.get(k[0]) == k[1]), None)
+    if cat is None:
+        n_uncategorised += 1
+        continue
+
+    if el['type'] == 'node':
+        lon, lat = el.get('lon'), el.get('lat')
+    else:
+        c = el.get('center') or {}
+        lon, lat = c.get('lon'), c.get('lat')
+    if lon is None:
+        n_uncategorised += 1
+        continue
+
+    if not in_basin((lon, lat), BPOLYS):
+        n_outside_basin += 1
+        continue
+
+    d_any, d_main = nearest_river(lon, lat)
+    if d_any > BUFFER_M:
+        n_far += 1
+        continue
+
+    # Closeness to a channel, 1 at the bank and 0 at the buffer edge.
+    prox = max(0.0, 1.0 - d_any / BUFFER_M)
+    risk = round(CATS[cat]['load'] * (0.35 + 0.65 * prox ** 1.6), 2)
+
+    props = {
+        'id': el['id'],
+        'cat': cat,
+        'dist': round(d_any),
+        'risk': risk,
+    }
+    name = tags.get('name') or tags.get('operator')
+    if name:
+        props['name'] = name
+    if d_main < 1e11:
+        props['dist_langat'] = round(d_main)
+    feats.append({
+        'type': 'Feature',
+        'properties': props,
+        'geometry': {'type': 'Point', 'coordinates': [round(lon, 5), round(lat, 5)]},
+    })
+
+feats.sort(key=lambda f: -f['properties']['risk'])
+
+counts = Counter(f['properties']['cat'] for f in feats)
+print('dropped: %d uncategorised, %d outside the catchment, %d beyond %d m of a river'
+      % (n_uncategorised, n_outside_basin, n_far, BUFFER_M))
+print('kept %d sources in the riparian zone' % len(feats))
+for c, n in counts.most_common():
+    print('  %-10s %4d  %s' % (c, n, CATS[c]['label']))
+for b in (100, 250, 500, 1000, 1500):
+    print('  within %5d m of a river: %d'
+          % (b, sum(1 for f in feats if f['properties']['dist'] <= b)))
+
+payload = {
+    'type': 'FeatureCollection',
+    'meta': {
+        'source': 'OpenStreetMap via Overpass API',
+        'url': 'https://www.openstreetmap.org',
+        'licence': 'ODbL 1.0 © OpenStreetMap contributors',
+        'buffer_m': BUFFER_M,
+        'clip': ('Sungai Langat catchment (HydroBASINS %s), then %d m of a mapped river'
+                 % (basin['features'][0]['properties']['hybas_id'], BUFFER_M)),
+        'categories': CATS,
+        'note': ('Risk is the category load weight scaled by closeness to a channel. '
+                 'It is a screening aid for prioritising inspection, not a measured '
+                 'discharge — none of these sources is metered.'),
+    },
+    'features': feats,
+}
+path = os.path.join(OUT, 'pollution_sources.geojson')
+with open(path, 'w', encoding='utf-8') as f:
+    json.dump(payload, f, ensure_ascii=False, separators=(',', ':'))
+print('wrote', path, '-', round(os.path.getsize(path) / 1024, 1), 'KB')

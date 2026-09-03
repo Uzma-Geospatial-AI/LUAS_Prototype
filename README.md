@@ -65,6 +65,7 @@ one, and the NDWI / NDTI / NDCI / LST reference folded away.
 |---|---|
 | Monitoring stations | 16 stations, drawn as their WQI and coloured by DOE class |
 | Water bodies | 1,101 Digital Earth outlines, coloured by type |
+| Pollution sources | 490 sites that can put a load into the river, one shape per category |
 | Sungai Langat & tributaries | 682 km of mapped channel; the main channel is drawn heavier |
 | Langat catchment | 2,140 km², the clip for everything else on the map |
 | Selangor boundary | the state LUAS is responsible for, Federal Territories excluded |
@@ -73,8 +74,9 @@ one, and the NDWI / NDTI / NDCI / LST reference folded away.
 through it: every station marker and every chip repaints. Play steps through the series so the
 reach can be watched deteriorating and recovering rather than read one month at a time.
 
-**Bottom right — legend.** The five WQI classes with their index bands, the water body types
-actually present, and what the boundary and river lines mean.
+**Bottom right — legend**, which folds to a single pill when it is in the way. The five WQI
+classes with their index bands, the pollution source symbols, the water body types actually
+present, and what the boundary and river lines mean.
 
 Clicking a station gives its six parameters against the target-class limits with a pass/fail
 verdict; the Dengkil marker opens the Phase 1 assessment.
@@ -84,6 +86,36 @@ pixel, so the outline carries the colour itself until the shape is large enough 
 
 Each view has its own URL fragment (`#map`, `#phase1`, `#phase2`, `#phase3`), so a view can be
 linked to directly and the back button works.
+
+### Pollution sources
+
+What can put a load into the river, from OpenStreetMap: industrial land and factories, sewage
+and water treatment plants, landfill, quarry and waste handling, cleared and construction land,
+farms and aquaculture.
+
+Each category has its own **shape** as well as its own colour, so the five stay tellable apart on
+a busy satellite basemap, in greyscale, and for viewers with colour-vision deficiency — colour is
+never the only carrier of meaning. Marker size carries the screening risk, so the sites on the
+bank read heaviest.
+
+| Symbol | Category | Typically carries |
+|---|---|---|
+| ■ square | Industry & factories | COD, heavy metals, oil & grease, scheduled chemical waste |
+| ◆ diamond | Sewage & water treatment | NH₃-N, BOD, suspended solids in the effluent |
+| ▲ triangle | Landfill, quarry & waste | Leachate, suspended solids, turbidity |
+| ⬟ pentagon | Construction & cleared land | Suspended solids, soil erosion, turbidity |
+| ● circle | Farms & aquaculture | BOD, NH₃-N, nutrients, animal waste |
+
+Two filters are applied, in this order: inside the catchment, then **within 1.5 km of a mapped
+river**. The second one matters. A factory 8 km from the nearest channel still discharges
+somewhere, but it does so through a drain this dataset does not have, and drawing it as though
+its load arrives at the river would be a claim the data cannot support. That cut takes 3,441
+candidate sites down to 490.
+
+> ⚠️ **The risk score is a screening aid, not a measurement.** It is the category's load weight
+> — judgement, not metering — scaled by how close the site sits to a channel. Use it to order
+> inspections, never to attribute a load. Nothing in this layer is metered; the only metered
+> discharges in the system are the SESAMS licences in Phase 3.
 
 ### Imagery layers
 
@@ -199,6 +231,7 @@ Add, edit, suspend, delete, export to JSON/CSV, import back.
 | Dataset | Source | Status |
 |---|---|---|
 | National river basin pollution, 198 records 2000–2021 | [`data.gov.my` · `water_pollution_basin`](https://api.data.gov.my/data-catalogue?id=water_pollution_basin) | **Real** |
+| Pollution sources, 490 sites in the riparian zone | [OpenStreetMap](https://www.openstreetmap.org) via Overpass | **Real** (risk score is ⚠️ **derived**) |
 | Sungai Langat catchment, 2,140 km² | [HydroSHEDS · HydroBASINS Asia level 8](https://www.hydrosheds.org/products/hydrobasins) | **Real** |
 | River network, 489 reaches, 682 km | [OpenStreetMap](https://www.openstreetmap.org) via Overpass | **Real** |
 | Selangor state boundary, land only, 13 parts | [DOSM · `administrative_1_state.geojson`](https://github.com/dosm-malaysia/data-open) | **Real** |
@@ -242,6 +275,7 @@ python scripts/02_build_waterbodies.py       # clip to the catchment, simplify o
 python scripts/03_fetch_basin_pollution.py   # data.gov.my water_pollution_basin
 python scripts/04_build_stations.py          # stations (REPLACE with real readings)
 python scripts/05_fetch_selangor_boundary.py # DOSM state boundary
+python scripts/08_build_pollution_sources.py # OSM sources in the riparian zone
 ```
 
 ---
@@ -257,6 +291,7 @@ js/data.js                loading, derivation, compliance record, water summary
 js/store.js               localStorage: readings, SESAMS register, design conditions
 js/phase1.js              station assessment + class calculator
 js/mapview.js             the main map: basemaps, stations, water bodies, legend
+js/symbols.js             one shape per pollution source category
 js/phase2.js              monitoring, water bodies, national context
 js/satellite.js           imagery layer catalogue + spectral index reference
 js/phase3.js              TMDL budget + licence register

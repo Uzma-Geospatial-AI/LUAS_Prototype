@@ -136,6 +136,9 @@
       <label class="tog"><input type="checkbox" data-mapov="water" checked>
         <span class="tog-sw"></span>
         <span class="tog-t">Water bodies <i id="ovWater"></i></span></label>
+      <label class="tog"><input type="checkbox" data-mapov="sources" checked>
+        <span class="tog-sw"></span>
+        <span class="tog-t">Pollution sources <i id="ovSources"></i></span></label>
       <label class="tog"><input type="checkbox" data-mapov="rivers" checked>
         <span class="tog-sw"></span>
         <span class="tog-t">Sungai Langat &amp; tributaries <i id="ovRivers"></i></span></label>
@@ -161,13 +164,19 @@
     </div>
 
     <!-- bottom right — legend -->
-    <div class="map-card map-br">
-      <h5>WQI class · station colour</h5>
-      <div id="mapLegendWqi"></div>
-      <h5 class="sep">Water body type</h5>
-      <div id="mapLegendWater"></div>
-      <h5 class="sep">Boundaries</h5>
-      <div id="mapLegendBounds"></div>
+    <div class="map-card map-br" id="mapLegend">
+      <button class="card-min" id="legendMin" aria-expanded="true"
+        title="Minimise the legend"><span>Legend</span></button>
+      <div class="card-body">
+        <h5>WQI class · station colour</h5>
+        <div id="mapLegendWqi"></div>
+        <h5 class="sep">Pollution source</h5>
+        <div id="mapLegendSources"></div>
+        <h5 class="sep">Water body type</h5>
+        <div id="mapLegendWater"></div>
+        <h5 class="sep">Boundaries</h5>
+        <div id="mapLegendBounds"></div>
+      </div>
     </div>
   </div>
 </section>
