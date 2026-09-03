@@ -10,6 +10,7 @@ let myReadingLayer, mySourceLayer, riverSegs = null;
 let monthIdx = 0, selected = null, sparkChart = null;
 
 const LANGAT_CENTER = [2.955, 101.63];
+const STATION_ZOOM = 14.5;   // zoom level a selected station opens at
 
 const BASE_ICON = {
   street: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/></svg>',
@@ -283,7 +284,7 @@ export function paintUserData() {
 }
 
 /* ---------------- Station detail panel ---------------- */
-export function selectStation(s) {
+export function selectStation(s, opts = {}) {
   selected = s;
   paintStations();
   const r = readingAt(s, monthIdx);
@@ -305,6 +306,7 @@ export function selectStation(s) {
   }).join('');
 
   document.getElementById('detail').classList.add('open');
+  document.getElementById('mapLegend')?.classList.add('collapsed');
   document.getElementById('detailHead').style.background =
     `linear-gradient(120deg,${cls.color},${shade(cls.color, -28)})`;
   document.getElementById('detailHead').innerHTML = `
@@ -312,8 +314,14 @@ export function selectStation(s) {
     <div class="code">${esc(s.code)} · ${esc(s.river)}</div>
     <h3>${esc(s.name)}</h3>
     <div class="loc">${esc(s.district)} district · ${s.lat.toFixed(4)}, ${s.lon.toFixed(4)}</div>`;
-  document.getElementById('detailClose').onclick =
-    () => document.getElementById('detail').classList.remove('open');
+  document.getElementById('detailClose').onclick = () => {
+    document.getElementById('detail').classList.remove('open');
+    document.getElementById('mapLegend')?.classList.remove('collapsed');
+    selected = null;
+    document.getElementById('stationCurrent').textContent = 'All stations';
+    paintStations();
+    renderStationList(document.getElementById('stationSearch').value);
+  };
 
   document.getElementById('detailBody').innerHTML = `
     <div class="wqi-hero">
@@ -352,7 +360,15 @@ export function selectStation(s) {
     </div>`;
 
   drawSpark(s);
-  map.panTo([s.lat, s.lon], { animate: true });
+  closeMenus();
+
+  /* Zoom to the station: explicitly when asked, and gently when the map is
+     still zoomed out far enough that the marker would be hard to find.
+     keepView leaves the viewport alone (used when only the month changed). */
+  if (opts.keepView) return;
+  const target = opts.zoom || (map.getZoom() < STATION_ZOOM ? STATION_ZOOM : null);
+  if (target) map.flyTo([s.lat, s.lon], target, { duration: 0.85 });
+  else map.panTo([s.lat, s.lon], { animate: true });
 }
 
 function shade(hex, p) {
@@ -406,7 +422,7 @@ export function initMap() {
   map = L.map('map', {
     center: LANGAT_CENTER, zoom: 11, zoomControl: false, preferCanvas: true,
   });
-  L.control.zoom({ position: 'topright' }).addTo(map);      // bottom-right holds the legend
+  L.control.zoom({ position: 'bottomleft' }).addTo(map);   // top-right = detail panel, bottom-right = legend
   L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
 
   layers.districts = L.geoJSON(DATA.districts, {
@@ -449,7 +465,7 @@ export function initMap() {
   paintStations();
   srcFilter = new Set(Object.keys(DATA.srcCats));
 
-  buildSidebar();
+  buildToolbar();
   buildLegend();
   paintSources();
 
@@ -469,11 +485,51 @@ export function initMap() {
   return map;
 }
 
-/* ---------------- Sidebar controls ---------------- */
-function buildSidebar() {
+/* ---------------- Toolbar: dropdown menus ---------------- */
+function closeMenus(except = null) {
+  document.querySelectorAll('.tb-menu.open').forEach((m) => {
+    if (m !== except) m.classList.remove('open');
+  });
+  document.querySelectorAll('.tb-btn.open').forEach((b) => {
+    if (b.dataset.menu !== except?.id.replace('menu-', '')) b.classList.remove('open');
+  });
+}
+
+function wireMenus() {
+  document.querySelectorAll('.tb-btn[data-menu]').forEach((btn) => {
+    const menu = document.getElementById(`menu-${btn.dataset.menu}`);
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const willOpen = !menu.classList.contains('open');
+      closeMenus();
+      menu.classList.toggle('open', willOpen);
+      btn.classList.toggle('open', willOpen);
+      if (willOpen && btn.dataset.menu === 'station') {
+        const q = document.getElementById('stationSearch');
+        q.value = ''; renderStationList('');
+        setTimeout(() => q.focus(), 40);
+      }
+    };
+  });
+
+  /* Keep clicks inside a menu from closing it or reaching the map */
+  document.querySelectorAll('.tb-menu').forEach((m) => {
+    m.addEventListener('click', (e) => e.stopPropagation());
+    L.DomEvent.disableClickPropagation(m);
+    L.DomEvent.disableScrollPropagation(m);
+  });
+  L.DomEvent.disableClickPropagation(document.getElementById('toolbar'));
+
+  document.addEventListener('click', () => closeMenus());
+  map.on('click', () => closeMenus());
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenus(); });
+}
+
+/* ---------------- Toolbar contents ---------------- */
+function buildToolbar() {
   const cats = DATA.srcCats;
 
-  /* Base maps + satellite imagery */
+  /* --- Base maps + satellite imagery --- */
   const btn = (k) => {
     const d = BASEMAPS[k];
     return `<button class="base-btn" data-base="${k}" title="${esc(d.note)}">
@@ -484,13 +540,14 @@ function buildSidebar() {
   document.getElementById('satGrid').innerHTML =
     Object.keys(BASEMAPS).filter((k) => BASEMAPS[k].group === 'sat').map(btn).join('');
 
-  const setBase = (k) => {
+  const setBase = (k, close = false) => {
     document.querySelectorAll('[data-base]').forEach((x) =>
       x.classList.toggle('active', x.dataset.base === k));
     Object.values(base).forEach((l) => map.removeLayer(l));
     base[k].addTo(map);
     base[k].bringToBack();
     const d = BASEMAPS[k];
+    document.getElementById('baseCurrent').textContent = d.label;
     document.getElementById('baseInfo').innerHTML =
       `<div class="bi-t">${d.label} <span class="badge soft">${d.res}</span></div>
        <div class="bi-s">${esc(d.src)}</div>
@@ -501,8 +558,11 @@ function buildSidebar() {
     labelOverlay ??= makeLabelOverlay();
     if (d.group === 'sat' && lblBox.checked) labelOverlay.addTo(map);
     else if (map.hasLayer(labelOverlay)) map.removeLayer(labelOverlay);
+    if (close) closeMenus();
   };
-  document.querySelectorAll('[data-base]').forEach((b) => { b.onclick = () => setBase(b.dataset.base); });
+  document.querySelectorAll('[data-base]').forEach((b) => {
+    b.onclick = () => setBase(b.dataset.base, true);
+  });
   setBase('osm');
 
   document.getElementById('labelToggle').onchange = (e) => {
@@ -511,7 +571,7 @@ function buildSidebar() {
     else map.removeLayer(labelOverlay);
   };
 
-  /* Data layers */
+  /* --- Data layers --- */
   const defs = [
     ['districts', 'Basin district boundaries', '#22235f', 'line', DATA.districts.features.length],
     ['river', 'Langat River (WQI)', 'linear-gradient(90deg,#0aa3d9,#17a04a,#f2c40c,#ef7d1a,#d92d20)', 'line', DATA.river.features.length],
@@ -528,16 +588,23 @@ function buildSidebar() {
       <input type="checkbox" data-layer="${k}" ${k === 'waterSelangor' ? '' : 'checked'}>
       <span class="layer-swatch ${sh === 'line' ? 'line' : ''}" style="background:${col}"></span>
       <span>${lab}</span>
-      <span class="cnt" ${k === 'sources' ? 'id="srcCount"' : ''}>${n.toLocaleString('en-MY')}</span>
+      <span class="cnt">${n.toLocaleString('en-MY')}</span>
     </label>`).join('');
+
+  const refreshLayerCount = () => {
+    document.getElementById('layerCount').textContent =
+      document.querySelectorAll('input[data-layer]:checked').length;
+  };
   document.querySelectorAll('input[data-layer]').forEach((i) => {
     i.onchange = () => {
       const l = layers[i.dataset.layer];
       if (i.checked) l.addTo(map); else map.removeLayer(l);
+      refreshLayerCount();
     };
   });
+  refreshLayerCount();
 
-  /* Source categories */
+  /* --- Source categories --- */
   document.getElementById('catList').innerHTML = Object.entries(cats).map(([k, c]) => `
     <label class="layer-item">
       <input type="checkbox" data-cat="${k}" checked>
@@ -551,7 +618,25 @@ function buildSidebar() {
     };
   });
 
-  /* Month slider */
+  /* --- Riparian distance filter --- */
+  const dist = document.getElementById('distSlider');
+  dist.oninput = () => {
+    maxDistFilter = +dist.value;
+    document.getElementById('distLabel').textContent =
+      maxDistFilter >= 1000 ? `${(maxDistFilter / 1000).toFixed(1)} km` : `${maxDistFilter} m`;
+    paintSources();
+  };
+
+  /* --- Station picker with search --- */
+  document.getElementById('stationSearch').oninput = (e) => renderStationList(e.target.value);
+  document.getElementById('stationSearch').onkeydown = (e) => {
+    if (e.key !== 'Enter') return;
+    const first = document.querySelector('#stationList .stn-opt');
+    if (first) first.click();
+  };
+  renderStationList('');
+
+  /* --- Month slider --- */
   const slider = document.getElementById('monthSlider');
   slider.max = DATA.months.length - 1;
   slider.value = monthIdx = DATA.months.length - 1;
@@ -562,27 +647,42 @@ function buildSidebar() {
     label.textContent = fmtMonth(DATA.months[monthIdx]);
     paintRiver();
     paintStations();
-    if (selected) selectStation(selected);
+    renderStationList(document.getElementById('stationSearch').value);
+    if (selected) selectStation(selected, { keepView: true });
     document.dispatchEvent(new CustomEvent('monthchange', { detail: monthIdx }));
   };
 
-  /* Riparian distance filter */
-  const dist = document.getElementById('distSlider');
-  dist.oninput = () => {
-    maxDistFilter = +dist.value;
-    document.getElementById('distLabel').textContent =
-      maxDistFilter >= 1000 ? (maxDistFilter / 1000).toFixed(1) + ' km' : maxDistFilter + ' m';
-    paintSources();
-  };
+  wireMenus();
+}
 
-  /* Station picker */
-  document.getElementById('stationSelect').innerHTML =
-    '<option value="">— Select a station —</option>' +
-    DATA.stations.map((s) => `<option value="${s.code}">${s.code} · ${esc(s.name)}</option>`).join('');
-  document.getElementById('stationSelect').onchange = (e) => {
-    const s = DATA.stations.find((x) => x.code === e.target.value);
-    if (s) { map.setView([s.lat, s.lon], 14); selectStation(s); }
-  };
+/* Station list, filtered by a free-text query */
+function renderStationList(q) {
+  const query = q.trim().toLowerCase();
+  const hits = DATA.stations.filter((s) =>
+    !query || `${s.code} ${s.name} ${s.river} ${s.district}`.toLowerCase().includes(query));
+
+  const box = document.getElementById('stationList');
+  if (!hits.length) {
+    box.innerHTML = '<div class="stn-empty">No station matches that search.</div>';
+    return;
+  }
+  box.innerHTML = hits.map((s) => {
+    const r = readingAt(s, monthIdx);
+    const c = wqiClass(r.wqi);
+    return `<button class="stn-opt${selected?.code === s.code ? ' sel' : ''}" data-stn="${s.code}">
+      <span class="sw" style="background:${c.color}">${Math.round(r.wqi)}</span>
+      <span class="sn"><b>${esc(s.name)}</b><span>${s.code} · ${esc(s.district)}</span></span>
+    </button>`;
+  }).join('');
+
+  box.querySelectorAll('.stn-opt').forEach((b) => {
+    b.onclick = () => {
+      const s = DATA.stations.find((x) => x.code === b.dataset.stn);
+      if (!s) return;
+      document.getElementById('stationCurrent').textContent = s.name;
+      selectStation(s, { zoom: STATION_ZOOM });
+    };
+  });
 }
 
 /* ---------------- Floating legend (bottom right) ---------------- */
@@ -611,6 +711,8 @@ export function getMonthIdx() { return monthIdx; }
 export function refreshMapSize() { map?.invalidateSize(); }
 export function focusStation(code) {
   const s = DATA.stations.find((x) => x.code === code);
-  if (s) { map.setView([s.lat, s.lon], 14); selectStation(s); }
+  if (!s) return;
+  document.getElementById('stationCurrent').textContent = s.name;
+  selectStation(s, { zoom: STATION_ZOOM });
 }
 export function flyTo(lat, lon, zoom = 15) { map?.setView([lat, lon], zoom); }

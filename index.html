@@ -96,53 +96,83 @@
 <!-- ================= MAP ================= -->
 <section class="view active" id="v-map">
   <div class="map-wrap">
-    <aside class="sidebar">
-      <div class="side-sec">
-        <h3>Base Map</h3>
-        <div class="base-grid" id="baseGrid"></div>
-      </div>
-
-      <div class="side-sec">
-        <h3>Satellite Imagery</h3>
-        <div class="base-grid" id="satGrid"></div>
-        <label class="layer-item" id="labelRow" style="margin-top:9px;display:none">
-          <input type="checkbox" id="labelToggle">
-          <span class="layer-swatch" style="background:#8b93a8"></span>
-          <span>Place &amp; boundary labels</span>
-        </label>
-        <div class="base-info" id="baseInfo"></div>
-      </div>
-
-      <div class="side-sec">
-        <h3>Data Layers</h3>
-        <div id="layerList"></div>
-      </div>
-
-      <div class="side-sec">
-        <h3>Pollution Source Categories</h3>
-        <div id="catList"></div>
-        <div style="margin-top:11px">
-          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:5px">
-            <span>Max distance to watercourse</span><b id="distLabel" style="font-family:var(--fm);color:var(--navy)">1.5 km</b>
-          </div>
-          <input type="range" id="distSlider" min="50" max="1500" step="50" value="1500"
-                 style="width:100%;accent-color:var(--navy-2)">
-        </div>
-      </div>
-
-      <div class="side-sec" style="border-bottom:0">
-        <h3>Jump to Station</h3>
-        <select id="stationSelect" style="width:100%;padding:7px 9px;border:1px solid var(--line);
-          border-radius:var(--r-sm);font-family:inherit;font-size:12px;background:var(--surface)"></select>
-      </div>
-    </aside>
-
     <div class="map-holder">
       <div id="map"></div>
 
-      <div class="map-ctrl">
-        <div class="mc">
-          <label>Period</label>
+      <!-- Floating toolbar -->
+      <div class="toolbar" id="toolbar">
+
+        <div class="tb">
+          <button class="tb-btn" data-menu="base">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/></svg>
+            Base map <span class="tb-val" id="baseCurrent">Street Map</span>
+            <svg class="caret" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="m2 4 4 4 4-4"/></svg>
+          </button>
+          <div class="tb-menu wide" id="menu-base">
+            <h4>Map</h4>
+            <div class="base-grid" id="baseGrid"></div>
+            <h4 class="gap">Satellite imagery</h4>
+            <div class="base-grid" id="satGrid"></div>
+            <label class="layer-item" id="labelRow" style="margin-top:9px;display:none">
+              <input type="checkbox" id="labelToggle">
+              <span class="layer-swatch" style="background:#8b93a8"></span>
+              <span>Place &amp; boundary labels</span>
+            </label>
+            <div class="base-info" id="baseInfo"></div>
+          </div>
+        </div>
+
+        <div class="tb">
+          <button class="tb-btn" data-menu="layers">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="m12 2 9 5-9 5-9-5 9-5z"/><path d="m3 12 9 5 9-5M3 17l9 5 9-5"/></svg>
+            Layers <span class="pipbadge" id="layerCount">7</span>
+            <svg class="caret" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="m2 4 4 4 4-4"/></svg>
+          </button>
+          <div class="tb-menu" id="menu-layers">
+            <h4>Data layers</h4>
+            <div id="layerList"></div>
+          </div>
+        </div>
+
+        <div class="tb">
+          <button class="tb-btn" data-menu="sources">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+            Sources <span class="pipbadge" id="srcCount">0</span>
+            <svg class="caret" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="m2 4 4 4 4-4"/></svg>
+          </button>
+          <div class="tb-menu" id="menu-sources">
+            <h4>Source categories</h4>
+            <div id="catList"></div>
+            <h4 class="gap">Distance to watercourse</h4>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:6px">
+              <span>Show sources within</span>
+              <b id="distLabel" style="font-family:var(--fm);color:var(--navy)">1.5 km</b>
+            </div>
+            <input type="range" id="distSlider" min="50" max="1500" step="50" value="1500"
+                   style="width:100%;accent-color:var(--navy-2)">
+            <div class="menu-note">The closer a source sits to a watercourse, the more likely its
+              pollutants reach the river directly.</div>
+          </div>
+        </div>
+
+        <div class="tb">
+          <button class="tb-btn" data-menu="station">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            Station <span class="tb-val" id="stationCurrent">All stations</span>
+            <svg class="caret" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="m2 4 4 4 4-4"/></svg>
+          </button>
+          <div class="tb-menu" id="menu-station">
+            <h4>Zoom to a station</h4>
+            <input class="tb-search" id="stationSearch" type="search"
+                   placeholder="Search station, river or district…" autocomplete="off">
+            <div class="stn-list" id="stationList"></div>
+            <div class="menu-note">Selecting a station zooms the map to it and opens its full
+              reading panel.</div>
+          </div>
+        </div>
+
+        <div class="tb-period">
+          <label for="monthSlider">Period</label>
           <input type="range" id="monthSlider" min="0" max="0" value="0">
           <span class="val" id="monthLabel">—</span>
         </div>

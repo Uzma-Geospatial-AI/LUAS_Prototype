@@ -31,7 +31,7 @@ php -S localhost:8000
 
 | View | Contents |
 |---|---|
-| **Interactive Map** | Langat River coloured by WQI, 16 monitoring stations, 3,605 clustered pollution sources, water bodies, tributaries, basin district boundaries. Nine base maps including five satellite sources. A 56-month time slider repaints the river and stations. Click a station for a full sub-index panel, trend line and 3 km land-use pressure. A collapsible legend sits at the bottom right. |
+| **Interactive Map** | A full-width map with one compact toolbar: **Base map** (nine layers, five of them satellite), **Layers**, **Sources** (category filter + riparian distance), **Station** (searchable — picking one flies the map to it and opens its panel), and a 56-month **Period** slider that repaints the river and stations. The station panel shows all six sub-indices, the WQI trend and 3 km land-use pressure. A collapsible legend sits at the bottom right. |
 | **Dashboard** | Basin KPIs, WQI trend across four river reaches, headwaters→estuary profile, five-class distribution, mean sub-indices, national basin trend (data.gov.my 2000–2021), and the full readings table. |
 | **Pollution Sources** | Five land-use categories, counts by distance band, distance-to-watercourse histogram, and the 120 highest-risk locations with their real OSM names. |
 | **Satellite Observation** | Eight satellite layers — Esri, Google, EOX Sentinel-2 cloudless and five daily NASA GIBS layers with a date picker — plus river/station/source overlays and a spectral index reference (NDWI, NDTI, NDCI, LST). |
