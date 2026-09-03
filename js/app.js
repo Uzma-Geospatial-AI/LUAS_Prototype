@@ -8,13 +8,14 @@ import { renderPhase1, resizePhase1 } from './phase1.js';
 import { renderPhase2, renderNational, resizePhase2 } from './phase2.js';
 import { renderPhase3, buildLicenceForm, resizePhase3 } from './phase3.js';
 import { initFeedback } from './feedback.js';
+import { initMap, resizeMap, refreshMap } from './mapview.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-const PHASES = ['phase1', 'phase2', 'phase3'];
-const ready = { phase2: false, phase3: false };
+const VIEWS = ['map', 'phase1', 'phase2', 'phase3'];
+const ready = { map: false, phase2: false, phase3: false };
 
 /* ---------------- Clock ---------------- */
 function tick() {
@@ -28,13 +29,17 @@ function tick() {
 
 /* ---------------- Navigation ---------------- */
 function show(view) {
-  if (!PHASES.includes(view)) view = 'phase1';
+  if (!VIEWS.includes(view)) view = 'map';
   document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
   document.querySelectorAll('#nav button').forEach((b) => b.classList.remove('active'));
   $(`v-${view}`).classList.add('active');
   document.querySelector(`#nav button[data-view="${view}"]`).classList.add('active');
+  if (location.hash.slice(1) !== view) location.hash = view;
   window.scrollTo({ top: 0, behavior: 'instant' });
 
+  if (view === 'map') {
+    if (!ready.map) { initMap(); ready.map = true; } else resizeMap();
+  }
   if (view === 'phase1') { renderPhase1(); resizePhase1(); }
   if (view === 'phase2') {
     if (!ready.phase2) { renderPhase2(); ready.phase2 = true; } else resizePhase2();
@@ -92,15 +97,25 @@ function updatePills() {
   /* Changing the target class ripples through every phase */
   document.addEventListener('storechange', () => {
     updatePills();
+    if (ready.map) refreshMap();
     if (ready.phase2) renderPhase2();
     if ($('v-phase1').classList.contains('active')) renderPhase1();
   });
 
-  window.addEventListener('resize', () => {
-    resizePhase1(); resizePhase2(); resizePhase3();
+  /* Back / forward and pasted links both land on the right view */
+  window.addEventListener('hashchange', () => {
+    const v = location.hash.slice(1);
+    if (!$(`v-${v}`)?.classList.contains('active')) show(v);
   });
 
-  show(location.hash.slice(1) || 'phase1');
+  window.addEventListener('resize', () => {
+    resizeMap(); resizePhase1(); resizePhase2(); resizePhase3();
+  });
+
+  /* The Dengkil popup on the map jumps straight into the assessment */
+  document.addEventListener('gotophase', (e) => show(e.detail.view));
+
+  show(location.hash.slice(1) || 'map');
 
   $('loader').classList.add('hide');
   setTimeout(() => $('loader').remove(), 500);

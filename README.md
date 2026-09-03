@@ -6,10 +6,14 @@ A three-phase water quality and discharge load management system for
 
 Fully static — no backend, no build step, no API keys.
 
-| Phase | What it answers |
+The landing view is a **map**: satellite imagery, the monitoring stations and the receiving
+water bodies. Everything else sits behind three phase tabs.
+
+| View | What it answers |
 |---|---|
+| **Map** | Where the stations are, what each one reads, and what receives the discharge. |
 | **1 · Station Assessment** | Six DOE parameters → WQI → does the reach hold **Class II**? |
-| **2 · Quality Monitoring** | How often does each parameter breach the standard, what does the receiving environment look like, and how does the reach appear from orbit? |
+| **2 · Quality Monitoring** | How often does each parameter breach the standard, how does each one trend against it, and where does the basin sit nationally? |
 | **3 · LEDS · TMDL · SESAMS** | What load may the reach carry, what is it carrying now, and **how much is left to licence**? |
 
 ---
@@ -23,6 +27,40 @@ will not work.
 python serve.py          # http://localhost:8000
 python serve.py 8080     # a different port
 ```
+
+---
+
+## The map — main display
+
+One full-height Leaflet map, and a panel that folds away.
+
+- **Basemap** — eight layers: four satellite mosaics, two daily NASA GIBS layers with a date
+  picker, and two reference maps for when place names matter more than the imagery.
+- **Stations** — every monitoring station as its WQI, coloured by DOE class. Click one for its
+  six parameters against the target-class limits and a pass/fail verdict; the Dengkil marker
+  opens the Phase 1 assessment.
+- **Water bodies** — the Digital Earth polygons, each sized by surface area.
+- **Legend** — the five WQI classes and the water body types actually present in the reach.
+
+Both overlays can be switched off. Each view has its own URL fragment
+(`#map`, `#phase1`, `#phase2`, `#phase3`), so a view can be linked to directly.
+
+### Imagery layers
+
+| Layer | Resolution | Source |
+|---|---|---|
+| Esri World Imagery | ≈ 0.3 – 1 m | Esri · Maxar |
+| Google Satellite / Hybrid | ≈ 0.15 – 1 m | Google |
+| Sentinel-2 Cloudless | 10 m | EOX · ESA Copernicus (CC BY-NC-SA 4.0) |
+| VIIRS true colour · MODIS false colour 7-2-1 | 250 m, daily | NASA EOSDIS GIBS |
+| OpenStreetMap · OpenTopoMap | vector | OSM contributors |
+
+> Google tiles are read from the public endpoint, which suits a prototype but is not a licensed
+> integration. For production, move to the Google Maps Platform with an API key, or rely on the
+> Esri and Sentinel-2 layers, which are openly licensed.
+
+The NDWI / NDTI / NDCI / LST reference — how imagery maps onto the parameters in the load
+budget — folds open at the foot of the panel.
 
 ---
 
@@ -59,23 +97,9 @@ sub-index, and a pass/fail against Class II — parameter by parameter.
 - **Exceedance frequency** per parameter across the record, worst first.
 - **Receiving water bodies** — 449 lakes, ponds, treatment basins and wetlands within 15 km of
   the station, clipped from the Digital Earth national file, grouped by type with surface areas.
-- **Satellite observation** — six imagery layers over the reach with those water bodies drawn on
-  top, sized by area, plus the NDWI / NDTI / NDCI / LST reference.
-- **Parameter trends** against the standard, the basin station table, the full monthly record,
-  and the national basin context from data.gov.my.
-
-### Imagery layers
-
-| Layer | Resolution | Source |
-|---|---|---|
-| Esri World Imagery | ≈ 0.3 – 1 m | Esri · Maxar |
-| Google Satellite / Hybrid | ≈ 0.15 – 1 m | Google |
-| Sentinel-2 Cloudless | 10 m | EOX · ESA Copernicus (CC BY-NC-SA 4.0) |
-| VIIRS true colour · MODIS false colour 7-2-1 | 250 m, daily | NASA EOSDIS GIBS |
-
-> Google tiles are read from the public endpoint, which suits a prototype but is not a licensed
-> integration. For production, move to the Google Maps Platform with an API key, or rely on the
-> Esri and Sentinel-2 layers, which are openly licensed.
+  They are drawn on the map.
+- **Parameter trends** against the standard, one chart per parameter.
+- **National context** — basin pollution status from data.gov.my, by parameter and year.
 
 ---
 
@@ -184,15 +208,16 @@ python scripts/04_build_stations.py         # stations (REPLACE with real readin
 ## Structure
 
 ```
-index.html                three phases, one page
+index.html                map + three phases, one page
 css/styles.css            design system (LUAS brand)
 js/wqi.js                 DOE WQI formula + INWQS class standards
 js/loads.js               load, TMDL, headroom and effluent-standard maths
 js/data.js                loading, derivation, compliance record, water summary
 js/store.js               localStorage: readings, SESAMS register, design conditions
 js/phase1.js              station assessment + class calculator
+js/mapview.js             the main map: basemaps, stations, water bodies, legend
 js/phase2.js              monitoring, water bodies, national context
-js/satellite.js           imagery layers + spectral index reference
+js/satellite.js           imagery layer catalogue + spectral index reference
 js/phase3.js              TMDL budget + licence register
 js/feedback.js            general feedback box
 js/app.js                 routing and bootstrap

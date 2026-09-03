@@ -68,7 +68,11 @@
   </div>
 
   <nav class="nav" id="nav">
-    <button data-view="phase1" class="active">
+    <button data-view="map" class="active">
+      <span class="ph-num map">◉</span>
+      <span class="ph-txt"><b>Map</b><span>Satellite imagery, stations &amp; water bodies</span></span>
+    </button>
+    <button data-view="phase1">
       <span class="ph-num">1</span>
       <span class="ph-txt"><b>Station Assessment</b><span>Dengkil · 6 parameters → WQI → Class II</span></span>
     </button>
@@ -83,8 +87,54 @@
   </nav>
 </header>
 
+<!-- ================= MAIN DISPLAY · MAP ================= -->
+<section class="view active" id="v-map">
+  <div class="map-wrap">
+    <div id="mainMap"></div>
+
+    <aside class="map-panel" id="mapPanel">
+      <button class="map-toggle" id="mapPanelToggle" title="Show or hide the panel"></button>
+
+      <div class="mp-scroll">
+      <div class="mp-card">
+        <h4>Basemap</h4>
+        <div id="mapBasemaps"></div>
+        <div class="mp-date" id="mapDateRow">
+          <label for="mapDate">Acquisition date</label>
+          <input type="date" id="mapDate">
+        </div>
+        <div id="mapBaseInfo"></div>
+      </div>
+
+      <div class="mp-card">
+        <h4>Layers</h4>
+        <label class="ov-item"><input type="checkbox" data-mapov="stations" checked>
+          <span class="ov-sw" style="background:#17a04a"></span>
+          <span>Monitoring stations</span></label>
+        <label class="ov-item"><input type="checkbox" data-mapov="water" checked>
+          <span class="ov-sw" style="background:#45bfe0"></span>
+          <span>Water bodies, sized by area</span></label>
+      </div>
+
+      <div class="mp-card">
+        <h4>WQI class</h4>
+        <div id="mapLegendWqi"></div>
+        <h4 class="sep">Water bodies</h4>
+        <div id="mapLegendWater"></div>
+      </div>
+
+      <details class="mp-card mp-fold">
+        <summary>Spectral indices</summary>
+        <div class="mp-sub">How imagery maps onto the parameters in the load budget</div>
+        <div id="mapIndices"></div>
+      </details>
+      </div>
+    </aside>
+  </div>
+</section>
+
 <!-- ================= PHASE 1 ================= -->
-<section class="view active" id="v-phase1">
+<section class="view" id="v-phase1">
   <div class="page">
 
     <div class="phase-intro">
@@ -182,103 +232,11 @@
       them. Together they are the environment the Phase&nbsp;3 load budget discharges into.</div>
     </div>
     <div class="wb-grid" id="p2Water"></div>
-    <div class="grid two" style="margin-top:14px">
-      <div class="card pad0">
-        <div class="card-head"><h3>Open water surface by type</h3>
-          <div class="card-sub">Total wetted area available to receive and retain load</div></div>
-        <div class="chart-box"><canvas id="p2WaterChart"></canvas></div>
-      </div>
-      <div class="card pad0">
-        <div class="card-head"><h3>Largest water bodies in the reach</h3>
-          <div class="card-sub">By surface area, with distance from the station</div></div>
-        <div class="tbl-scroll">
-          <table class="data">
-            <thead><tr><th>Name</th><th>Type</th><th>Group</th>
-              <th>Area (ha)</th><th>Distance (km)</th></tr></thead>
-            <tbody id="p2WaterTable"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <div class="section-title">
-      <h2>Satellite Observation of the Reach</h2>
-      <span class="st-sub">The same water bodies seen from above, on imagery from 0.15 m to 250 m</span>
-    </div>
-    <div class="sat-wrap">
-      <div class="card pad0">
-        <div class="sat-bar">
-          <div class="sat-layers" id="satLayers"></div>
-          <div class="sat-date" id="satDateRow">
-            <label for="satDate">Acquisition date</label>
-            <input type="date" id="satDate">
-          </div>
-        </div>
-        <div id="satMap"></div>
-      </div>
-
-      <div class="sat-side">
-        <div class="card" id="satInfo"></div>
-
-        <div class="card">
-          <h3>Overlays</h3>
-          <div class="card-sub">Ground reference drawn over the imagery</div>
-          <label class="ov-item"><input type="checkbox" data-satov="station" checked>
-            <span class="ov-sw" style="background:#f5e01c"></span>
-            <span>Station &amp; 15 km reach</span></label>
-          <label class="ov-item"><input type="checkbox" data-satov="water" checked>
-            <span class="ov-sw" style="background:#45bfe0"></span>
-            <span>Water bodies, sized by area</span></label>
-        </div>
-
-        <div class="card">
-          <h3>Spectral Indices</h3>
-          <div class="card-sub">How imagery maps onto the parameters in the load budget</div>
-          <div id="satIndices"></div>
-        </div>
-
-        <div class="notice warn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
-          <div>NASA GIBS daily layers are <b>250 m per pixel</b> — enough for estuary plumes and
-          flooding, too coarse for a single channel. The indices above need Sentinel-2 at 10–20 m;
-          see <code>README.md</code> § Sentinel-2 to connect a Copernicus instance.</div>
-        </div>
-      </div>
-    </div>
-
     <div class="section-title">
       <h2>Parameter Trends</h2>
       <span class="st-sub">Point colour is the DOE clean / slightly polluted / polluted band</span>
     </div>
     <div class="grid three" id="p2Charts"></div>
-
-    <div class="section-title">
-      <h2>Basin Stations</h2>
-      <span class="st-sub">All monitoring stations at the latest reading, most polluted first</span>
-    </div>
-    <div class="card pad0 tbl-scroll">
-      <table class="data">
-        <thead><tr>
-          <th>Code</th><th>Station</th><th>River</th><th>District</th>
-          <th>WQI</th><th>Class</th><th>Months in class</th><th>12-month change</th>
-        </tr></thead>
-        <tbody id="p2Stations"></tbody>
-      </table>
-    </div>
-
-    <div class="section-title">
-      <h2>Monthly Record — Dengkil</h2>
-      <span class="st-sub" id="p2MonthNote"></span>
-    </div>
-    <div class="card pad0 tbl-scroll" style="max-height:520px;overflow-y:auto">
-      <table class="data">
-        <thead><tr>
-          <th>Month</th><th>DO</th><th>BOD₅</th><th>COD</th><th>SS</th><th>NH₃-N</th><th>pH</th>
-          <th>WQI</th><th>Class</th><th>Standards breached</th>
-        </tr></thead>
-        <tbody id="p2Months"></tbody>
-      </table>
-    </div>
 
     <div class="section-title">
       <h2>National Context</h2>
@@ -535,7 +493,7 @@
   <div class="footer-col">
     <b>Lembaga Urus Air Selangor (LUAS)</b><br>
     Sungai Langat water quality and discharge load management system.
-    Phase 1 assessment · Phase 2 monitoring · Phase 3 LEDS / TMDL / SESAMS.
+    Map · Phase 1 assessment · Phase 2 monitoring · Phase 3 LEDS / TMDL / SESAMS.
   </div>
   <div class="footer-col" style="text-align:right">
     WQI formula and INWQS: Department of Environment Malaysia (DOE)<br>

@@ -9,7 +9,6 @@ import { DATA, readingAt, latestIdx, fmtMonth, complianceRecord, basinTrend,
          waterSummary, WATER_GROUPS } from './data.js';
 import { PARAM_META, INWQS, wqiClass, checkStandard, paramStatus } from './wqi.js';
 import { store } from './store.js';
-import { initSatellite, resizeSatellite } from './satellite.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -46,10 +45,7 @@ export function renderPhase2() {
 
   renderExceedance(s, target, rec);
   renderWaterBodies();
-  initSatellite();
   renderParamCharts(s, target);
-  renderMonthTable(s, target, rec);
-  renderStationTable(target);
   renderNational($('p2Measure')?.value ?? 'bod5');
 }
 
@@ -99,44 +95,6 @@ function renderWaterBodies() {
     `${w.count} water bodies within ${w.radiusKm} km of the station \u00b7 `
     + `${km2(w.total)} km\u00b2 total open water surface`;
 
-  $('p2WaterTable').innerHTML = w.largest.map((b) => `
-    <tr>
-      <td>${b.name ? esc(b.name) : '<span class="sub">unnamed</span>'}</td>
-      <td><span class="badge soft">${esc(b.kind)}</span></td>
-      <td>${esc(WATER_GROUPS[b.group]?.label ?? b.group)}</td>
-      <td class="num">${(b.area_m2 / 1e4).toFixed(1)}</td>
-      <td class="num">${b.km.toFixed(1)}</td>
-    </tr>`).join('');
-
-  kill('water');
-  charts.water = new Chart($('p2WaterChart'), {
-    type: 'bar',
-    data: {
-      labels: order.map((k) => WATER_GROUPS[k].label),
-      datasets: [{
-        label: 'Surface area',
-        data: order.map((k) => w.groups[k].area / 1e6),
-        backgroundColor: order.map((k) => WATER_GROUPS[k].color),
-        borderRadius: 4, borderSkipped: false, borderWidth: 2, borderColor: '#fff',
-        barThickness: 22,
-      }],
-    },
-    options: baseOpts({
-      indexAxis: 'y',
-      plugins: {
-        legend: { display: false },
-        tooltip: { ...baseOpts().plugins.tooltip,
-          callbacks: { label: (c) => ` ${c.parsed.x.toFixed(2)} km² of open water` } },
-      },
-      scales: {
-        x: { grid: { color: INK.grid }, border: { display: false },
-          ticks: { font: { size: 10 }, color: INK.muted },
-          title: { display: true, text: 'Surface area (km²)', font: { size: 10 }, color: INK.muted } },
-        y: { grid: { display: false }, border: { display: false },
-          ticks: { font: { size: 10.5 }, color: INK.secondary } },
-      },
-    }),
-  });
 }
 
 /* ---------------- One small chart per parameter ---------------- */
@@ -206,58 +164,6 @@ function renderParamCharts(s, target) {
   }
 }
 
-/* ---------------- Month-by-month record ---------------- */
-function renderMonthTable(s, target, rec) {
-  const rows = [...rec.months].reverse();
-  $('p2Months').innerHTML = rows.map((mo, i) => {
-    const r = s.wqiSeries[rec.months.length - 1 - i];
-    const c = wqiClass(mo.wqi);
-    const fails = Object.entries(mo.compliance.checks)
-      .filter(([, x]) => x.pass === false).map(([p]) => PARAM_META[p].short);
-    return `<tr>
-      <td><b>${fmtMonth(mo.t)}</b></td>
-      <td class="num">${r.raw.do.toFixed(2)}</td>
-      <td class="num">${r.raw.bod.toFixed(2)}</td>
-      <td class="num">${r.raw.cod.toFixed(1)}</td>
-      <td class="num">${r.raw.ss.toFixed(1)}</td>
-      <td class="num">${r.raw.an.toFixed(3)}</td>
-      <td class="num">${r.raw.ph.toFixed(2)}</td>
-      <td class="num" style="font-weight:700;color:${c.color}">${mo.wqi.toFixed(1)}</td>
-      <td><span class="badge" style="background:${c.color}">${c.id}</span></td>
-      <td>${fails.length
-        ? `<span class="pill-status st-fail">${fails.join(', ')}</span>`
-        : `<span class="pill-status st-pass">Meets Class ${target}</span>`}</td>
-    </tr>`;
-  }).join('');
-  $('p2MonthNote').textContent =
-    `${rec.total} monthly records · ${rec.passing} meet Class ${target}, ${rec.total - rec.passing} do not`;
-}
-
-/* ---------------- Basin stations ---------------- */
-function renderStationTable(target) {
-  const i = latestIdx();
-  const rows = DATA.stations.map((s) => {
-    const r = readingAt(s, i);
-    const c = wqiClass(r.wqi);
-    const rec = complianceRecord(s, target);
-    return { s, r, c, rec };
-  }).sort((a, b) => a.r.wqi - b.r.wqi);
-
-  $('p2Stations').innerHTML = rows.map(({ s, r, c, rec }) => `
-    <tr class="${s.code === DATA.focus.code ? 'row-focus' : ''}">
-      <td><b>${s.code}</b>${s.code === DATA.focus.code
-        ? '<span class="tag-focus">Phase 1 station</span>' : ''}</td>
-      <td>${esc(s.name)}</td>
-      <td>${esc(s.river)}</td>
-      <td>${esc(s.district)}</td>
-      <td class="num" style="font-weight:700;color:${c.color}">${r.wqi.toFixed(1)}</td>
-      <td><span class="badge" style="background:${c.color}">${c.id}</span>
-        <span class="sub-inline">${c.status}</span></td>
-      <td class="num">${(rec.rate * 100).toFixed(0)}%</td>
-      <td class="num ${s.delta >= 0 ? 'up' : 'down'}">${s.delta >= 0 ? '▲' : '▼'} ${Math.abs(s.delta).toFixed(1)}</td>
-    </tr>`).join('');
-}
-
 /* ---------------- National context ---------------- */
 export function renderNational(measure = 'bod5') {
   kill('nat');
@@ -297,7 +203,4 @@ export function renderNational(measure = 'bod5') {
     + `${byYear[last].monitored} basins monitored in ${last}.`;
 }
 
-export function resizePhase2() {
-  Object.values(charts).forEach((c) => c.resize());
-  resizeSatellite();
-}
+export function resizePhase2() { Object.values(charts).forEach((c) => c.resize()); }

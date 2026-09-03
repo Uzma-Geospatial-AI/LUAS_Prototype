@@ -1,18 +1,9 @@
 /* ============================================================
-   satellite.js — Satellite observation of the Dengkil reach (Phase 2)
+   satellite.js — Imagery catalogue
 
-   A compact viewer, not a general map. It shows the reach the Phase 1
-   station sits on, with the Digital Earth water bodies drawn over the
-   imagery so the ponds and treatment basins that receive discharge can be
-   seen from above. Daily NASA GIBS layers carry a date picker for watching
-   sediment plumes and flood events.
+   The basemap layers the main map offers, plus the spectral index
+   reference. The viewer itself lives in mapview.js.
    ============================================================ */
-import { DATA, waterSummary, WATER_GROUPS } from './data.js';
-import { wqiClass } from './wqi.js';
-
-const $ = (id) => document.getElementById(id);
-const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
-  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 const GIBS = 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best';
 
@@ -84,110 +75,27 @@ export const WATER_INDICES = [
         + 'which feeds straight back into the index.' },
 ];
 
-let map = null, active = null, current = 'esri', overlays = {};
 
-const pad = (n) => String(n).padStart(2, '0');
-const iso = (d) => `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+/* Plain cartography, for when place names matter more than the imagery */
+export const REFERENCE_MAPS = {
+  osm: {
+    label: 'Street map', res: 'Vector', src: 'OpenStreetMap',
+    use: 'Road and place names, for locating a station or a premises by address.',
+    make: () => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }),
+  },
+  topo: {
+    label: 'Topographic', res: 'Vector + contours', src: 'OpenTopoMap',
+    use: 'Contours and drainage lines, for reading flow direction and catchment.',
+    make: () => L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+      maxZoom: 17, attribution: '&copy; OpenTopoMap (CC-BY-SA)' }),
+  },
+};
 
-export function initSatellite() {
-  if (map) { map.invalidateSize(); return; }
-  const s = DATA.focus;
-
-  map = L.map('satMap', { center: [s.lat, s.lon], zoom: 13, zoomControl: false });
-  L.control.zoom({ position: 'bottomright' }).addTo(map);
-  L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
-
-  /* --- Station marker --- */
-  const cls = wqiClass(s.latest.wqi);
-  overlays.station = L.layerGroup([
-    L.circle([s.lat, s.lon], {
-      radius: (DATA.water?.meta?.radius_km ?? 15) * 1000,
-      color: '#f5e01c', weight: 1.6, dashArray: '7 6', fill: false, interactive: false,
-    }),
-    L.marker([s.lat, s.lon], {
-      icon: L.divIcon({
-        className: '',
-        html: `<div class="sat-stn" style="background:${cls.color}">${Math.round(s.latest.wqi)}</div>`,
-        iconSize: [30, 30], iconAnchor: [15, 15],
-      }),
-    }).bindTooltip(
-      `<b>${esc(s.code)} — ${esc(s.name)}</b><br>WQI ${s.latest.wqi.toFixed(1)} · ${cls.status}`,
-      { direction: 'top', offset: [0, -14] }),
-  ]).addTo(map);
-
-  /* --- Digital Earth water bodies, sized by surface area --- */
-  const w = waterSummary();
-  overlays.water = L.layerGroup(w.bodies.map((b) => {
-    const g = WATER_GROUPS[b.group] ?? WATER_GROUPS.other;
-    /* Radius from area, so a 10 ha pond reads bigger than a 1 ha one */
-    const r = Math.max(2.5, Math.min(18, Math.sqrt(b.area_m2 / Math.PI) / 7));
-    return L.circleMarker([b.lat, b.lon], {
-      radius: r, fillColor: g.color, color: '#fff', weight: 1.1, fillOpacity: 0.34,
-    }).bindTooltip(
-      `<b>${b.name ? esc(b.name) : 'Unnamed water body'}</b><br>`
-      + `${esc(g.label)} · ${esc(b.kind)}<br>`
-      + `${(b.area_m2 / 1e4).toFixed(2)} ha · ${b.km.toFixed(1)} km from the station`,
-      { sticky: true });
-  })).addTo(map);
-
-  /* --- Controls --- */
-  $('satLayers').innerHTML = Object.entries(IMAGERY)
-    .map(([k, d]) => `<button class="sat-btn" data-sat="${k}" title="${esc(d.use)}">${d.label}</button>`)
-    .join('');
-  document.querySelectorAll('[data-sat]').forEach((b) => {
-    b.onclick = () => setLayer(b.dataset.sat);
-  });
-
-  const date = $('satDate');
-  date.value = iso(new Date(Date.now() - 2 * 864e5));   // GIBS lags ~1–2 days
-  date.max = iso(new Date(Date.now() - 864e5));
-  date.min = '2012-01-01';
-  date.onchange = () => { if (IMAGERY[current].daily) setLayer(current); };
-
-  document.querySelectorAll('[data-satov]').forEach((i) => {
-    i.onchange = () => {
-      const l = overlays[i.dataset.satov];
-      if (i.checked) l.addTo(map); else map.removeLayer(l);
-    };
-  });
-
-  $('satIndices').innerHTML = WATER_INDICES.map((x) => `
-    <div class="idx-item">
-      <div class="idx-h">${x.name}</div>
-      <code>${x.formula}</code>
-      <div class="idx-ramp" style="background:${x.ramp}"></div>
-      <div class="idx-lab"><span>${x.lo}</span><span>${x.hi}</span></div>
-      <div class="idx-b">${x.body}</div>
-    </div>`).join('');
-
-  setLayer('esri');
+/* Build a Leaflet layer for a daily GIBS definition on a given date. */
+export function gibsLayer(def, date) {
+  return L.tileLayer(
+    `${GIBS}/${def.id}/default/${date}/GoogleMapsCompatible_Level${def.max}/{z}/{y}/{x}.${def.ext}`,
+    { maxNativeZoom: def.max, maxZoom: 16, tileSize: 256,
+      bounds: [[-85, -180], [85, 180]], attribution: 'NASA EOSDIS GIBS / Worldview' });
 }
-
-function setLayer(key) {
-  current = key;
-  const d = IMAGERY[key];
-  document.querySelectorAll('[data-sat]').forEach((b) =>
-    b.classList.toggle('active', b.dataset.sat === key));
-
-  if (active) map.removeLayer(active);
-  active = d.daily
-    ? L.tileLayer(
-      `${GIBS}/${d.id}/default/${$('satDate').value}/GoogleMapsCompatible_Level${d.max}/{z}/{y}/{x}.${d.ext}`,
-      { maxNativeZoom: d.max, maxZoom: 16, tileSize: 256,
-        bounds: [[-85, -180], [85, 180]], attribution: 'NASA EOSDIS GIBS / Worldview' })
-    : d.make();
-  active.addTo(map);
-  active.bringToBack();
-
-  $('satDateRow').style.display = d.daily ? 'flex' : 'none';
-  $('satInfo').innerHTML = `
-    <div class="sat-t">${d.label}</div>
-    <div class="sat-badges">
-      <span class="badge soft">Resolution ${d.res}</span>
-      <span class="badge soft">${d.daily ? 'Daily' : 'Mosaic'}</span>
-    </div>
-    <div class="sat-s">${esc(d.src)}</div>
-    <div class="sat-n">${esc(d.use)}</div>`;
-}
-
-export function resizeSatellite() { map?.invalidateSize(); }
