@@ -6,13 +6,14 @@ import { computeWQI, wqiClass, wqiColor, WQI_CLASSES, PARAM_META, paramStatus, s
 import { store } from './store.js';
 import { GIBS_LAYERS, gibsLayer } from './satellite.js';
 import { sourceIcon, sourceSwatch } from './symbols.js';
+import { refreshSearchIcons } from './search.js';
 
 let map, layers = {}, base = {}, stationLayer, riverLayer, srcCluster;
 let myReadingLayer, mySourceLayer, riverSegs = null;
 let monthIdx = 0, selected = null, sparkChart = null, currentBase = 'osm';
 
 const LANGAT_CENTER = [2.955, 101.63];
-const STATION_ZOOM = 14.5;   // zoom level a selected station opens at
+export const STATION_ZOOM = 14.5;   // zoom level a selected station opens at
 
 /* Drainage & sewerage styling. Man-made channels are drawn in violet so they
    never read as a natural watercourse (tributaries are blue); culverted reaches
@@ -342,9 +343,7 @@ export function selectStation(s, opts = {}) {
     document.getElementById('detail').classList.remove('open');
     document.getElementById('mapLegend')?.classList.remove('collapsed');
     selected = null;
-    document.getElementById('stationCurrent').textContent = 'All stations';
     paintStations();
-    renderStationList(document.getElementById('stationSearch').value);
   };
 
   document.getElementById('detailBody').innerHTML = `
@@ -559,11 +558,6 @@ function wireMenus() {
       closeMenus();
       menu.classList.toggle('open', willOpen);
       btn.classList.toggle('open', willOpen);
-      if (willOpen && btn.dataset.menu === 'station') {
-        const q = document.getElementById('stationSearch');
-        q.value = ''; renderStationList('');
-        setTimeout(() => q.focus(), 40);
-      }
     };
   });
 
@@ -696,15 +690,6 @@ function buildToolbar() {
     paintSources();
   };
 
-  /* --- Station picker with search --- */
-  document.getElementById('stationSearch').oninput = (e) => renderStationList(e.target.value);
-  document.getElementById('stationSearch').onkeydown = (e) => {
-    if (e.key !== 'Enter') return;
-    const first = document.querySelector('#stationList .stn-opt');
-    if (first) first.click();
-  };
-  renderStationList('');
-
   /* --- Month slider --- */
   const slider = document.getElementById('monthSlider');
   slider.max = DATA.months.length - 1;
@@ -716,42 +701,12 @@ function buildToolbar() {
     label.textContent = fmtMonth(DATA.months[monthIdx]);
     paintRiver();
     paintStations();
-    renderStationList(document.getElementById('stationSearch').value);
+    refreshSearchIcons();
     if (selected) selectStation(selected, { keepView: true });
     document.dispatchEvent(new CustomEvent('monthchange', { detail: monthIdx }));
   };
 
   wireMenus();
-}
-
-/* Station list, filtered by a free-text query */
-function renderStationList(q) {
-  const query = q.trim().toLowerCase();
-  const hits = DATA.stations.filter((s) =>
-    !query || `${s.code} ${s.name} ${s.river} ${s.district}`.toLowerCase().includes(query));
-
-  const box = document.getElementById('stationList');
-  if (!hits.length) {
-    box.innerHTML = '<div class="stn-empty">No station matches that search.</div>';
-    return;
-  }
-  box.innerHTML = hits.map((s) => {
-    const r = readingAt(s, monthIdx);
-    const c = wqiClass(r.wqi);
-    return `<button class="stn-opt${selected?.code === s.code ? ' sel' : ''}" data-stn="${s.code}">
-      <span class="sw" style="background:${c.color}">${Math.round(r.wqi)}</span>
-      <span class="sn"><b>${esc(s.name)}</b><span>${s.code} · ${esc(s.district)}</span></span>
-    </button>`;
-  }).join('');
-
-  box.querySelectorAll('.stn-opt').forEach((b) => {
-    b.onclick = () => {
-      const s = DATA.stations.find((x) => x.code === b.dataset.stn);
-      if (!s) return;
-      document.getElementById('stationCurrent').textContent = s.name;
-      selectStation(s, { zoom: STATION_ZOOM });
-    };
-  });
 }
 
 /* ---------------- Floating legend (bottom right) ---------------- */
@@ -787,12 +742,29 @@ function buildLegend() {
   L.DomEvent.disableScrollPropagation(box);
 }
 
+/* A short-lived marker that shows where a search result landed. */
+let highlight = null, highlightTimer = null;
+export function highlightAt(lat, lon, popupHtml) {
+  clearTimeout(highlightTimer);
+  if (highlight) map.removeLayer(highlight);
+  highlight = L.circleMarker([lat, lon], {
+    radius: 15, color: '#22235f', weight: 3, opacity: 0.9,
+    fillColor: '#f5e01c', fillOpacity: 0.3, className: 'search-pulse',
+    /* The map runs in canvas mode, where a per-layer className is ignored —
+       this one marker needs the SVG renderer for its CSS animation. */
+    renderer: L.svg(),
+  }).addTo(map);
+  if (popupHtml) highlight.bindPopup(popupHtml, { maxWidth: 260 }).openPopup();
+  highlightTimer = setTimeout(() => {
+    if (highlight) { map.removeLayer(highlight); highlight = null; }
+  }, 9000);
+}
+
+export function getMap() { return map; }
 export function getMonthIdx() { return monthIdx; }
 export function refreshMapSize() { map?.invalidateSize(); }
 export function focusStation(code) {
   const s = DATA.stations.find((x) => x.code === code);
-  if (!s) return;
-  document.getElementById('stationCurrent').textContent = s.name;
-  selectStation(s, { zoom: STATION_ZOOM });
+  if (s) selectStation(s, { zoom: STATION_ZOOM });
 }
 export function flyTo(lat, lon, zoom = 15) { map?.setView([lat, lon], zoom); }

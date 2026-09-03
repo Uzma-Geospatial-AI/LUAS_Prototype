@@ -154,20 +154,13 @@
           </div>
         </div>
 
-        <div class="tb">
-          <button class="tb-btn" data-menu="station">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-            Station <span class="tb-val" id="stationCurrent">All stations</span>
-            <svg class="caret" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="m2 4 4 4 4-4"/></svg>
-          </button>
-          <div class="tb-menu" id="menu-station">
-            <h4>Zoom to a station</h4>
-            <input class="tb-search" id="stationSearch" type="search"
-                   placeholder="Search station, river or district…" autocomplete="off">
-            <div class="stn-list" id="stationList"></div>
-            <div class="menu-note">Selecting a station zooms the map to it and opens its full
-              reading panel.</div>
-          </div>
+        <div class="tb-search-box" id="searchBox">
+          <svg class="sr-mag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="searchInput" type="search" autocomplete="off" spellcheck="false"
+                 placeholder="Search stations, premises, rivers, places…   /">
+          <button id="searchClear" class="sr-clear" aria-label="Clear search">×</button>
+          <div class="sr-panel" id="searchResults"></div>
         </div>
 
         <div class="tb-period">

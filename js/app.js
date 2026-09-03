@@ -7,6 +7,7 @@ import { initMap, getMonthIdx, refreshMapSize, focusStation, BASEMAPS } from './
 import { renderDashboard, renderNational, renderSources, resizeCharts } from './dashboard.js';
 import { WATER_INDICES } from './satellite.js';
 import { initEntry, resizePickMap } from './entry.js';
+import { initSearch } from './search.js';
 
 const nf = (n) => n.toLocaleString('en-MY');
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -153,6 +154,7 @@ function dim(hex) {
   }
 
   initMap();
+  initSearch();
   const st = basinStats(getMonthIdx());
   document.getElementById('pillStations').textContent = DATA.stations.length;
   document.getElementById('pillWqi').textContent = st.mean.toFixed(1);

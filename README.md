@@ -31,7 +31,7 @@ php -S localhost:8000
 
 | View | Contents |
 |---|---|
-| **Interactive Map** | A full-width map with one compact toolbar: **Base map** (13 layers — four cartographic, five high-resolution satellite mosaics, four daily NASA GIBS layers with a date picker), **Layers** (including the drainage & sewerage network), **Sources** (category filter + riparian distance), **Station** (searchable — picking one flies the map to it and opens its panel), and a 56-month **Period** slider. The station panel shows all six sub-indices, the WQI trend and 3 km land-use pressure. A collapsible legend sits at the bottom right. |
+| **Interactive Map** | A full-width map with a **search box** and a compact toolbar: **Base map** (13 layers — four cartographic, five high-resolution satellite mosaics, four daily NASA GIBS layers with a date picker), **Layers** (including the drainage & sewerage network), **Sources** (category filter + riparian distance), and a 56-month **Period** slider. The station panel shows all six sub-indices, the WQI trend and 3 km land-use pressure. A collapsible legend sits at the bottom right. |
 | **Dashboard** | Two tabs. *Water Quality*: basin KPIs, WQI trend across four river reaches, headwaters→estuary profile, five-class distribution, mean sub-indices, national basin trend (data.gov.my 2000–2021) and the full readings table. *Pollution Sources*: five land-use categories, counts by distance band, distance-to-watercourse histogram and the 120 highest-risk locations with their real OSM names. |
 | **Data Entry** | Key in water quality readings with a live WQI calculation, or report a pollution source by clicking the map. Export to files that merge straight into the shipped datasets. |
 | **WQI Guide** (📖 icon) | The five pollution index levels (INWQS), the full DOE formula, parameter weights, per-parameter thresholds, the satellite imagery and spectral index reference, and the provenance of every dataset. |
@@ -153,6 +153,34 @@ sources") and in the records table.
 
 Commit the merged file and the entry becomes part of the portal for everyone. Import accepts any
 of those files back, so a set of entries can be moved between machines.
+
+---
+
+## Search
+
+One box searches everything the portal has loaded, grouped by what it found:
+
+| Group | Indexed | Selecting it |
+|---|---|---|
+| Monitoring stations | 16 (code, name, river, district) | Flies in and opens the reading panel |
+| Premises & land use | 2,464 named OSM locations | Zooms to the premises and shows its category and distance to water |
+| Rivers & tributaries | 593 named watercourses | Fits the map to the reach |
+| Water bodies | 220 named lakes and ponds | Fits the map to the water body |
+| Drains & sewerage | 22 named reaches | Fits the map to the reach |
+| Districts | 3 | Fits the map to the boundary |
+| Places | OpenStreetMap Nominatim | Flies to the place |
+
+The local index is built once from the loaded GeoJSON, so typing is instant. Ranking prefers an
+exact name, then a prefix, then a word start, with stations and districts weighted up; each group
+is capped at six results so 2,464 premises cannot bury the stations.
+
+**Nominatim** is only consulted when the local index returns fewer than six hits, debounced 450 ms
+and bounded to the basin — so a town like "Bandar Baru Bangi" still resolves without sending every
+keystroke to an external service. A late response is discarded if the query has moved on. If
+Nominatim is unreachable, local results still stand.
+
+Keyboard: `/` focuses the box from anywhere on the map, arrow keys move through results, Enter
+opens the highlighted one (or the first), Escape closes.
 
 ---
 
@@ -279,6 +307,7 @@ js/mapview.js               Leaflet map, base maps, layers, detail panel
 js/dashboard.js             Chart.js charts and tables
 js/satellite.js             daily GIBS layers + spectral index reference
 js/symbols.js               per-category map shapes
+js/search.js                cross-dataset search + Nominatim fallback
 js/store.js                 localStorage store, export/import
 js/entry.js                 data entry forms with live computation
 js/app.js                   routing + bootstrap
@@ -303,6 +332,6 @@ Loaded from CDN at runtime — no `npm install`:
 
 WQI formula: Department of Environment Malaysia (DOE) ·
 Open data: [data.gov.my](https://data.gov.my) ·
-Maps: [© OpenStreetMap contributors](https://openstreetmap.org/copyright) ·
+Maps and place search: [© OpenStreetMap contributors](https://openstreetmap.org/copyright), geocoding by [Nominatim](https://nominatim.org/) ·
 Imagery: NASA EOSDIS GIBS / Worldview, Esri, Google, EOX Sentinel-2 cloudless ·
 Water bodies: Digital Earth
