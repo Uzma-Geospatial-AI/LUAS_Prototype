@@ -14,6 +14,15 @@ let monthIdx = 0, selected = null, sparkChart = null, currentBase = 'osm';
 const LANGAT_CENTER = [2.955, 101.63];
 const STATION_ZOOM = 14.5;   // zoom level a selected station opens at
 
+/* Drainage & sewerage styling. Man-made channels are drawn in violet so they
+   never read as a natural watercourse (tributaries are blue); culverted reaches
+   are dashed because they run underground. */
+const SEWER_STYLE = {
+  drain:    { color: '#8d6cd8', weight: 1.9, opacity: 0.95, label: 'Monsoon drain' },
+  ditch:    { color: '#a894e0', weight: 1.2, opacity: 0.8,  label: 'Ditch' },
+  pipeline: { color: '#c0399f', weight: 2.4, opacity: 0.95, label: 'Sewage / water pipeline' },
+};
+
 const BASE_ICON = {
   street: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/></svg>',
   topo:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m3 18 6-9 4 5 3-4 5 8z"/></svg>',
@@ -462,6 +471,36 @@ export function initMap() {
     onEachFeature: (f, l) => { if (f.properties.name) l.bindTooltip(esc(f.properties.name), { sticky: true }); },
   });
 
+  layers.sewerage = L.geoJSON(DATA.sewerage, {
+    style: (f) => {
+      const p = f.properties;
+      const st = SEWER_STYLE[p.kind] ?? SEWER_STYLE.ditch;
+      return {
+        color: st.color, weight: st.weight, opacity: st.opacity,
+        dashArray: p.covered ? '3 3' : null,
+      };
+    },
+    pointToLayer: (f, latlng) => L.circleMarker(latlng, {
+      radius: 3.6, fillColor: '#8d6cd8', color: '#fff', weight: 1.4, fillOpacity: 1,
+    }),
+    onEachFeature: (f, l) => {
+      const p = f.properties;
+      const st = SEWER_STYLE[p.kind];
+      const title = p.kind === 'manhole' ? 'Sewer manhole'
+        : p.kind === 'pumping_station' ? 'Pumping station'
+        : (st?.label ?? 'Drain');
+      l.bindTooltip(
+        `<b>${p.name ? esc(p.name) : title}</b>` +
+        (p.name ? `<br>${title}` : '') +
+        (p.covered ? '<br>Culverted — runs underground' : '') +
+        (p.substance ? `<br>Carries: ${esc(p.substance)}` : '') +
+        (p.outfall != null
+          ? `<br>Discharges ${p.outfall} m from a watercourse` : '') +
+        `<br>${esc(p.district)} district`,
+        { sticky: true });
+    },
+  });
+
   riverLayer = L.layerGroup();
   stationLayer = L.layerGroup();
   myReadingLayer = L.layerGroup();
@@ -486,6 +525,7 @@ export function initMap() {
 
   layers.districts.addTo(map);
   layers.waterLangat.addTo(map);
+  layers.sewerage.addTo(map);
   layers.tributaries.addTo(map);
   riverLayer.addTo(map);
   srcCluster.addTo(map);
@@ -606,6 +646,7 @@ function buildToolbar() {
     ['stations', 'Monitoring stations', '#22235f', 'box', DATA.stations.length],
     ['sources', 'Pollution sources', '#4a3aa7', 'box', DATA.sources.features.length],
     ['tributaries', 'Tributaries & canals', '#3c8fb5', 'line', DATA.tributaries.features.length],
+    ['sewerage', 'Drainage & sewerage', '#8d6cd8', 'line', DATA.sewerage.features.length],
     ['waterLangat', 'Water bodies — Langat', '#45bfe0', 'box', DATA.waterLangat.features.length],
     ['waterSelangor', 'Water bodies — rest of Selangor', '#9fc7dd', 'box', DATA.waterSelangor.features.length],
     ['myReadings', 'My readings (this browser)', '#22235f', 'box', 0],
@@ -728,6 +769,17 @@ function buildLegend() {
     <div class="ml-cat" title="${esc(c.pol)}">
       ${sourceSwatch(k, c.color, 16)}${esc(c.label)}
     </div>`).join('');
+
+  const lineSwatch = (color, w, dashed) =>
+    `<span class="ml-line"><svg viewBox="0 0 20 6" width="18" height="6"><line x1="0" y1="3" x2="20" y2="3"
+      stroke="${color}" stroke-width="${w}" ${dashed ? 'stroke-dasharray="3 3"' : ''}/></svg></span>`;
+  document.getElementById('legendDrain').innerHTML = `
+    <div class="ml-cat" title="Open monsoon drains and ditches that carry run-off and greywater">
+      ${lineSwatch('#8d6cd8', 2.6, false)}Open drain / ditch</div>
+    <div class="ml-cat" title="Culverted reaches running underground">
+      ${lineSwatch('#8d6cd8', 2.6, true)}Culverted (underground)</div>
+    <div class="ml-cat" title="Mapped sewage or water pipelines">
+      ${lineSwatch('#c0399f', 3, false)}Sewage / water pipeline</div>`;
 
   const box = document.getElementById('mapLegend');
   document.getElementById('legendHead').onclick = () => box.classList.toggle('collapsed');

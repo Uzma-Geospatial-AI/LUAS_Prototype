@@ -31,7 +31,7 @@ php -S localhost:8000
 
 | View | Contents |
 |---|---|
-| **Interactive Map** | A full-width map with one compact toolbar: **Base map** (13 layers — four cartographic, five high-resolution satellite mosaics, four daily NASA GIBS layers with a date picker), **Layers**, **Sources** (category filter + riparian distance), **Station** (searchable — picking one flies the map to it and opens its panel), and a 56-month **Period** slider. The station panel shows all six sub-indices, the WQI trend and 3 km land-use pressure. A collapsible legend sits at the bottom right. |
+| **Interactive Map** | A full-width map with one compact toolbar: **Base map** (13 layers — four cartographic, five high-resolution satellite mosaics, four daily NASA GIBS layers with a date picker), **Layers** (including the drainage & sewerage network), **Sources** (category filter + riparian distance), **Station** (searchable — picking one flies the map to it and opens its panel), and a 56-month **Period** slider. The station panel shows all six sub-indices, the WQI trend and 3 km land-use pressure. A collapsible legend sits at the bottom right. |
 | **Dashboard** | Two tabs. *Water Quality*: basin KPIs, WQI trend across four river reaches, headwaters→estuary profile, five-class distribution, mean sub-indices, national basin trend (data.gov.my 2000–2021) and the full readings table. *Pollution Sources*: five land-use categories, counts by distance band, distance-to-watercourse histogram and the 120 highest-risk locations with their real OSM names. |
 | **Data Entry** | Key in water quality readings with a live WQI calculation, or report a pollution source by clicking the map. Export to files that merge straight into the shipped datasets. |
 | **WQI Guide** (📖 icon) | The five pollution index levels (INWQS), the full DOE formula, parameter weights, per-parameter thresholds, the satellite imagery and spectral index reference, and the provenance of every dataset. |
@@ -83,6 +83,7 @@ implementation against one reference case per class on every push.
 | Malaysia water bodies (121 MB → clipped to Selangor) | [Digital Earth · `malaysia_water_bodies.geojson`](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/malaysia_water_bodies.geojson) | **Real** |
 | Langat River geometry (24 segments, 2,157 vertices) | OpenStreetMap · Overpass API | **Real** |
 | Tributaries & canals (960 watercourses) | OpenStreetMap · Overpass API | **Real** |
+| Drainage & sewerage network (1,687 reaches) | OpenStreetMap · Overpass API | **Real** |
 | Pollution sources (3,605 locations) | OpenStreetMap · Overpass API | **Real** |
 | Basin district boundaries | OpenStreetMap · `admin_level=6` | **Real** |
 | Satellite imagery | NASA EOSDIS GIBS · Esri · Google · EOX Sentinel-2 cloudless | **Real** |
@@ -152,6 +153,30 @@ sources") and in the records table.
 
 Commit the merged file and the entry becomes part of the portal for everyone. Import accepts any
 of those files back, so a set of entries can be moved between machines.
+
+---
+
+## Drainage & sewerage layer
+
+Malaysia's reticulated sewer network is operated by IWK and is not published as open data, so
+OpenStreetMap holds almost no `substance=sewage` pipelines for the basin — a probe of the whole
+corridor returned **two**. What OSM does hold, and what actually conveys domestic sewage,
+greywater and urban run-off into the Langat River, is the **surface drainage network**. That is
+what this layer maps:
+
+| Feature | Count | Drawn as |
+|---|---|---|
+| Monsoon drains (`waterway=drain`) | 645 | Solid violet, heavier |
+| Ditches (`waterway=ditch`) | 1,018 | Solid violet, lighter |
+| Culverted reaches (running underground) | 643 | Dashed |
+| Sewage / water pipelines | 5 | Solid magenta |
+| Sewer manholes | 19 | Small violet dot |
+
+Man-made channels are drawn in violet so they never read as a natural watercourse — tributaries
+stay blue. Each reach also carries an `outfall` property: the distance from its endpoint to the
+nearest river or canal, so the reaches that discharge straight into the Langat can be found
+(67 of them are within 100 m of a watercourse). Everything is clipped to the three basin
+districts, the same scope as the pollution sources.
 
 ---
 
@@ -234,6 +259,8 @@ python scripts/02_clip_waterbodies.py           # clip the 121 MB geojson to Sel
 python scripts/03_build_sources.py              # categorise + distance + risk score
 python scripts/04_build_stations.py             # stations (REPLACE with real data)
 python scripts/05_build_districts.py            # district polygons + scope filter
+python scripts/01e_fetch_sewerage.py            # drains, ditches, sewer assets (Overpass)
+python scripts/06_build_sewerage.py             # clip to districts + outfall distances
 ```
 
 The `01*` and `02` scripts need an internet connection and download into the current working

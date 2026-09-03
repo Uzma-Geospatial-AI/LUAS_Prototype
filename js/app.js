@@ -73,6 +73,10 @@ function renderGuide() {
   document.getElementById('srcMetaCount').textContent =
     `${nf(DATA.sources.features.length)} locations in the 1.5 km riparian zone`;
 
+  const covered = DATA.sewerage.features.filter((f) => f.properties.covered).length;
+  document.getElementById('sewerMetaCount').textContent =
+    `${nf(DATA.sewerage.features.length)} reaches · ${nf(covered)} culverted`;
+
   /* Satellite imagery layers available in the map's Base map menu */
   document.getElementById('satTable').innerHTML = Object.values(BASEMAPS)
     .filter((d) => d.group === 'sat')

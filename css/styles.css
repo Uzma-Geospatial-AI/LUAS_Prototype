@@ -616,3 +616,6 @@ table.data .num{font-family:var(--fm);text-align:right;font-weight:550}
 .leaflet-marker-icon.src-sym{background:none;border:0}
 .src-card .sc-ic{display:grid;place-items:center}
 .ml-cat{gap:8px}
+
+/* Line swatch in the map legend */
+.ml-line{display:inline-flex;align-items:center;width:18px;flex:none;line-height:0}

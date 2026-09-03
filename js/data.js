@@ -14,6 +14,7 @@ export const DATA = {
   sources: null,
   srcCats: null,
   districts: null,
+  sewerage: null,
   basin: null,
 };
 
@@ -30,6 +31,7 @@ export async function loadAll(onStep) {
     ['data/pollution_sources.geojson',      'sources',        'pollution sources'],
     ['data/waterbodies_langat.geojson',     'waterLangat',    'Langat water bodies'],
     ['data/tributaries.geojson',            'tributaries',    'tributaries and canals'],
+    ['data/sewerage.geojson',               'sewerage',       'drainage and sewerage network'],
     ['data/basin_pollution.json',           'basin',          'national basin trend'],
     ['data/waterbodies_selangor.geojson',   'waterSelangor',  'Selangor water bodies'],
   ];
