@@ -1,13 +1,13 @@
 /* ============================================================
    app.js — Phase routing and bootstrap
    ============================================================ */
-import { DATA, loadAll, readingAt, latestIdx, complianceRecord } from './data.js';
+import { DATA, loadAll, readingAt, latestIdx, complianceRecord, fmtMonth } from './data.js';
 import { wqiClass } from './wqi.js';
-import { store } from './store.js';
+import { store, registerAsJson, registerAsCsv, download } from './store.js';
 import { renderPhase1, resizePhase1 } from './phase1.js';
 import { renderPhase2, renderNational, resizePhase2 } from './phase2.js';
 import { renderPhase3, buildLicenceForm, resizePhase3 } from './phase3.js';
-import { initMap, resizeMap, refreshMap } from './mapview.js';
+import { initMap, resizeMap, refreshMap, pauseMap } from './mapview.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -34,10 +34,13 @@ function show(view) {
   $(`v-${view}`).classList.add('active');
   document.querySelector(`#nav button[data-view="${view}"]`).classList.add('active');
   if (location.hash.slice(1) !== view) location.hash = view;
-  window.scrollTo({ top: 0, behavior: 'instant' });
+  document.body.dataset.view = view;
+  document.querySelector('.content')?.scrollTo({ top: 0, behavior: 'instant' });
 
   if (view === 'map') {
     if (!ready.map) { initMap(); ready.map = true; } else resizeMap();
+  } else if (ready.map) {
+    pauseMap();          /* nothing to see while the map is hidden */
   }
   if (view === 'phase1') { renderPhase1(); resizePhase1(); }
   if (view === 'phase2') {
@@ -48,10 +51,9 @@ function show(view) {
     renderPhase3();
     resizePhase3();
   }
-  location.hash = view;
 }
 
-/* ---------------- Header status pills ---------------- */
+/* ---------------- App bar ---------------- */
 function updatePills() {
   const s = DATA.focus;
   const target = store.conditions().targetClass;
@@ -87,9 +89,21 @@ function updatePills() {
   }
 
   updatePills();
-  document.querySelectorAll('#nav button').forEach((b) => {
+  document.querySelectorAll('#nav button[data-view]').forEach((b) => {
     b.onclick = () => show(b.dataset.view);
   });
+
+  $('sbExportJson').onclick = () =>
+    download('luas-sesams-register.json', JSON.stringify(registerAsJson(), null, 2));
+  $('sbExportCsv').onclick = () =>
+    download('luas-sesams-register.csv', registerAsCsv(), 'text/csv');
+
+  /* What the app is actually running on, said once, at the top */
+  const w = DATA.water?.meta ?? {};
+  $('tbStatus').innerHTML =
+    `data.gov.my &amp; Digital Earth · ${DATA.stations.length} stations · `
+    + `record ${fmtMonth(DATA.months[0])} – ${fmtMonth(DATA.months[latestIdx()])} · `
+    + `${(DATA.water?.bodies?.length ?? 0)} water bodies within ${w.radius_km ?? 15} km of Dengkil`;
   $('p2Measure').onchange = (e) => renderNational(e.target.value);
 
   /* Changing the target class ripples through every phase */

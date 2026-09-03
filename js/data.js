@@ -12,6 +12,7 @@ export const DATA = {
   months: [],
   basin: null,
   water: null,
+  selangor: null,
   focus: null,
 };
 
@@ -39,6 +40,9 @@ export async function loadAll(onStep) {
     bodies: wb.features.map((f) => f.properties),
     geo: wb,
   };
+
+  onStep?.(0.8, 'Loading the Selangor boundary…');
+  DATA.selangor = await J('data/selangor_boundary.geojson');
 
   onStep?.(0.85, 'Computing indices…');
   derive();

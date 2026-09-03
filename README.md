@@ -6,8 +6,8 @@ A three-phase water quality and discharge load management system for
 
 Fully static — no backend, no build step, no API keys.
 
-The landing view is a **map**: satellite imagery, the monitoring stations and the receiving
-water bodies. Everything else sits behind three phase tabs.
+A sidebar on the left, a status bar across the top, and the map filling everything else.
+The three phases are reading pages behind the same sidebar.
 
 | View | What it answers |
 |---|---|
@@ -32,20 +32,42 @@ python serve.py 8080     # a different port
 
 ## The map — main display
 
-One full-height Leaflet map, and a panel that folds away.
+The map fills the window. Everything else sits in a corner over it, so that nothing on screen
+is unlabelled: each corner says what it is and what it is counting.
 
-- **Basemap** — eight layers: four satellite mosaics, two daily NASA GIBS layers with a date
-  picker, and two reference maps for when place names matter more than the imagery.
-- **Stations** — every monitoring station as its WQI, coloured by DOE class. Click one for its
-  six parameters against the target-class limits and a pass/fail verdict; the Dengkil marker
-  opens the Phase 1 assessment.
-- **Water bodies** — the Digital Earth polygons drawn as their actual outlines, coloured by
-  type. Below zoom 13 a 1 ha pond is smaller than a pixel, so the outline carries the colour
-  itself until the shape is large enough to read.
-- **Legend** — the five WQI classes and the water body types actually present in the reach.
+**Top left — what is on the map right now.** Four chips: stations, the WQI at Dengkil, how many
+stations meet the target class, and the water body count. They follow the month slider, not the
+latest reading, so they always describe what is actually drawn.
 
-Both overlays can be switched off. Each view has its own URL fragment
-(`#map`, `#phase1`, `#phase2`, `#phase3`), so a view can be linked to directly.
+**Top right — basemap.** The button carries the name of the layer in use; the popover holds all
+eight (four satellite mosaics, two daily NASA GIBS layers with a date picker, two reference maps
+for when place names matter more than the imagery), the source and resolution of the current
+one, and the NDWI / NDTI / NDCI / LST reference folded away.
+
+**Bottom left — layers**, each labelled with its own count:
+
+| Layer | What it is |
+|---|---|
+| Monitoring stations | 16 stations, drawn as their WQI and coloured by DOE class |
+| Water bodies | 505 Digital Earth outlines, coloured by type |
+| Dengkil reach | the 15 km radius the water bodies were clipped to |
+| Selangor boundary | the state LUAS is responsible for, Federal Territories excluded |
+
+**Bottom centre — the month.** The record runs 56 months, and the slider moves the whole map
+through it: every station marker and every chip repaints. Play steps through the series so the
+reach can be watched deteriorating and recovering rather than read one month at a time.
+
+**Bottom right — legend.** The five WQI classes with their index bands, the water body types
+actually present, and what the two dashed lines mean.
+
+Clicking a station gives its six parameters against the target-class limits with a pass/fail
+verdict; the Dengkil marker opens the Phase 1 assessment.
+
+Water bodies are drawn as their real outlines. Below zoom 13 a 1 ha pond is smaller than a
+pixel, so the outline carries the colour itself until the shape is large enough to read.
+
+Each view has its own URL fragment (`#map`, `#phase1`, `#phase2`, `#phase3`), so a view can be
+linked to directly and the back button works.
 
 ### Imagery layers
 
@@ -160,6 +182,7 @@ Add, edit, suspend, delete, export to JSON/CSV, import back.
 | Dataset | Source | Status |
 |---|---|---|
 | National river basin pollution, 198 records 2000–2021 | [`data.gov.my` · `water_pollution_basin`](https://api.data.gov.my/data-catalogue?id=water_pollution_basin) | **Real** |
+| Selangor state boundary, land only, 13 parts | [DOSM · `administrative_1_state.geojson`](https://github.com/dosm-malaysia/data-open) | **Real** |
 | Water bodies, 505 outlines within 15 km of Dengkil | [Digital Earth · `malaysia_water_bodies.geojson`](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/malaysia_water_bodies.geojson) | **Real** |
 | Satellite imagery | Esri · Google · EOX Sentinel-2 cloudless · NASA GIBS | **Real** |
 | Station parameter readings, 16 stations × 56 months | Generated for demonstration | ⚠️ **SAMPLE** |
@@ -197,6 +220,7 @@ python scripts/01_fetch_waterbodies.py      # 121 MB Digital Earth national file
 python scripts/02_build_waterbodies.py      # clip to the reach, keep and simplify outlines
 python scripts/03_fetch_basin_pollution.py  # data.gov.my water_pollution_basin
 python scripts/04_build_stations.py         # stations (REPLACE with real readings)
+python scripts/05_fetch_selangor_boundary.py  # DOSM state boundary
 ```
 
 ---
@@ -204,7 +228,7 @@ python scripts/04_build_stations.py         # stations (REPLACE with real readin
 ## Structure
 
 ```
-index.html                map + three phases, one page
+index.html                sidebar shell: map + three phases, one page
 css/styles.css            design system (LUAS brand)
 js/wqi.js                 DOE WQI formula + INWQS class standards
 js/loads.js               load, TMDL, headroom and effluent-standard maths
@@ -217,7 +241,7 @@ js/satellite.js           imagery layer catalogue + spectral index reference
 js/phase3.js              TMDL budget + licence register
 js/app.js                 routing and bootstrap
 data/*.json               processed data
-data/*.geojson            water body outlines
+data/*.geojson            water body outlines, Selangor boundary
 scripts/*.py              ETL pipeline
 serve.py                  local development server
 ```
@@ -232,5 +256,6 @@ Dependencies load from CDN at runtime — no `npm install`:
 WQI formula and INWQS: Department of Environment Malaysia ·
 Effluent standards: EQ (Industrial Effluent) Regulations 2009 ·
 Open data: [data.gov.my](https://data.gov.my) ·
+State boundary: Department of Statistics Malaysia ·
 Water bodies: Digital Earth ·
 Imagery: Esri, Google, EOX Sentinel-2 cloudless, NASA EOSDIS GIBS

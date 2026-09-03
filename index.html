@@ -41,95 +41,131 @@
   </symbol>
 </svg>
 
-<!-- ========== Topbar ========== -->
-<div class="topbar">
-  <div class="gov"><span class="dot"></span> Official Portal · Selangor State Government Agency</div>
-  <div class="topbar-right">
-    <span>Open data: <a href="https://data.gov.my" target="_blank" rel="noopener">data.gov.my</a></span>
-    <span id="clock"></span>
-  </div>
-</div>
+<div class="app">
 
-<!-- ========== Header ========== -->
-<header class="header">
-  <div class="header-in">
-    <svg class="logo" viewBox="0 0 100 140"><use href="#luasmark"></use></svg>
-    <div class="brand">
-      <div class="org">Lembaga Urus Air Selangor</div>
-      <h1>LUAS System — Sungai Langat</h1>
-      <div class="sub">Water quality assessment, monitoring and discharge load management</div>
+<!-- ========== Sidebar ========== -->
+<aside class="sidebar">
+  <div class="sb-brand">
+    <svg class="sb-logo" viewBox="0 0 100 140" aria-hidden="true"><use href="#luasmark"></use></svg>
+    <div class="sb-name">
+      <b>LUAS</b>
+      <span>Sungai Langat</span>
     </div>
-    <div class="header-meta">
-      <div class="pill"><span class="live-dot"></span> <b id="pillStation">—</b></div>
+  </div>
+  <div class="sb-gov"><span class="dot"></span> Official Portal · Selangor State Government Agency</div>
+
+  <nav class="sb-nav" id="nav">
+    <div class="sb-sec">Monitoring</div>
+    <button data-view="map" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3z"/><path d="M9 3v15M15 6v15"/></svg>
+      <span><b>Map</b><i>Imagery · stations · water bodies</i></span></button>
+    <button data-view="phase1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      <span><b>Station Assessment</b><i>Phase 1 · Dengkil → Class II</i></span></button>
+    <button data-view="phase2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 3-4 3 3 4-6"/></svg>
+      <span><b>Quality Monitoring</b><i>Phase 2 · trends &amp; exceedance</i></span></button>
+    <button data-view="phase3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 7h14"/><path d="m5 7-2 6a3 3 0 0 0 6 0z"/><path d="m19 7 2 6a3 3 0 0 1-6 0z"/></svg>
+      <span><b>LEDS · TMDL · SESAMS</b><i>Phase 3 · load &amp; capacity</i></span></button>
+
+    <div class="sb-sec">Tools</div>
+    <button class="sb-tool" id="sbExportJson"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 11l4 4 4-4"/><path d="M4 19h16"/></svg>
+      <span><b>Export register</b><i>SESAMS licences · JSON</i></span></button>
+    <button class="sb-tool" id="sbExportCsv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 11l4 4 4-4"/><path d="M4 19h16"/></svg>
+      <span><b>Export register</b><i>SESAMS licences · CSV</i></span></button>
+  </nav>
+
+  <div class="sb-foot">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+    <div><b>Sample readings</b>
+      <span>Station positions are real; the six parameter values are demonstration data.</span></div>
+  </div>
+</aside>
+
+<!-- ========== Main column ========== -->
+<div class="main">
+  <header class="appbar">
+    <div class="ab-title">
+      <h1>LUAS System</h1>
+      <div class="ab-status"><span class="live-dot"></span> <span id="tbStatus">—</span></div>
+    </div>
+    <div class="ab-meta">
+      <div class="pill"><b id="pillStation">—</b></div>
       <div class="pill">WQI <b id="pillWqi">—</b>
         <span class="pill-cls" id="pillClass">—</span></div>
       <div class="pill">Target <b id="pillTarget">—</b> · met <b id="pillCompliance">—</b></div>
+      <span class="ab-clock" id="clock"></span>
     </div>
-  </div>
+  </header>
 
-  <nav class="nav" id="nav">
-    <button data-view="map" class="active">
-      <span class="ph-num map">◉</span>
-      <span class="ph-txt"><b>Map</b><span>Satellite imagery, stations &amp; water bodies</span></span>
-    </button>
-    <button data-view="phase1">
-      <span class="ph-num">1</span>
-      <span class="ph-txt"><b>Station Assessment</b><span>Dengkil · 6 parameters → WQI → Class II</span></span>
-    </button>
-    <button data-view="phase2">
-      <span class="ph-num">2</span>
-      <span class="ph-txt"><b>Quality Monitoring</b><span>Trends, exceedance &amp; pollution status</span></span>
-    </button>
-    <button data-view="phase3">
-      <span class="ph-num">3</span>
-      <span class="ph-txt"><b>LEDS · TMDL · SESAMS</b><span>Load, capacity &amp; what is left</span></span>
-    </button>
-  </nav>
-</header>
+  <div class="content">
 
 <!-- ================= MAIN DISPLAY · MAP ================= -->
 <section class="view active" id="v-map">
   <div class="map-wrap">
     <div id="mainMap"></div>
 
-    <aside class="map-panel" id="mapPanel">
-      <button class="map-toggle" id="mapPanelToggle" title="Show or hide the panel"></button>
+    <!-- top left — what is on the map right now -->
+    <div class="map-kpis" id="mapKpis"></div>
 
-      <div class="mp-scroll">
-      <div class="mp-card">
-        <h4>Basemap</h4>
+    <!-- top right — basemap -->
+    <div class="map-tr">
+      <button class="map-pill" id="baseToggle" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z"/><circle cx="12" cy="12" r="10"/></svg>
+        <span id="baseLabel">Basemap</span>
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="base-pop" id="basePop" hidden>
         <div id="mapBasemaps"></div>
         <div class="mp-date" id="mapDateRow">
           <label for="mapDate">Acquisition date</label>
           <input type="date" id="mapDate">
         </div>
         <div id="mapBaseInfo"></div>
+        <details class="mp-fold">
+          <summary>Spectral indices</summary>
+          <div class="mp-sub">How imagery maps onto the parameters in the load budget</div>
+          <div id="mapIndices"></div>
+        </details>
       </div>
+    </div>
 
-      <div class="mp-card">
-        <h4>Layers</h4>
-        <label class="ov-item"><input type="checkbox" data-mapov="stations" checked>
-          <span class="ov-sw" style="background:#17a04a"></span>
-          <span>Monitoring stations</span></label>
-        <label class="ov-item"><input type="checkbox" data-mapov="water" checked>
-          <span class="ov-sw" style="background:#45bfe0"></span>
-          <span>Water bodies</span></label>
-      </div>
+    <!-- bottom left — layers -->
+    <div class="map-card map-bl">
+      <h5>Map layers</h5>
+      <label class="tog"><input type="checkbox" data-mapov="stations" checked>
+        <span class="tog-sw"></span>
+        <span class="tog-t">Monitoring stations <i id="ovStations"></i></span></label>
+      <label class="tog"><input type="checkbox" data-mapov="water" checked>
+        <span class="tog-sw"></span>
+        <span class="tog-t">Water bodies <i id="ovWater"></i></span></label>
+      <label class="tog"><input type="checkbox" data-mapov="reach" checked>
+        <span class="tog-sw"></span>
+        <span class="tog-t">Dengkil reach <i id="ovReach"></i></span></label>
+      <label class="tog"><input type="checkbox" data-mapov="selangor" checked>
+        <span class="tog-sw"></span>
+        <span class="tog-t">Selangor boundary <i id="ovState"></i></span></label>
+    </div>
 
-      <div class="mp-card">
-        <h4>WQI class</h4>
-        <div id="mapLegendWqi"></div>
-        <h4 class="sep">Water bodies</h4>
-        <div id="mapLegendWater"></div>
+    <!-- bottom centre — the month being shown -->
+    <div class="map-time" id="mapTime">
+      <button class="time-play" id="timePlay" title="Play through the record" aria-label="Play"></button>
+      <div class="time-body">
+        <div class="time-head">
+          <span>Reading month</span>
+          <b id="timeLabel">—</b>
+        </div>
+        <input type="range" id="timeRange" min="0" max="0" value="0" step="1" aria-label="Reading month">
+        <div class="time-ticks" id="timeTicks"></div>
       </div>
+    </div>
 
-      <details class="mp-card mp-fold">
-        <summary>Spectral indices</summary>
-        <div class="mp-sub">How imagery maps onto the parameters in the load budget</div>
-        <div id="mapIndices"></div>
-      </details>
-      </div>
-    </aside>
+    <!-- bottom right — legend -->
+    <div class="map-card map-br">
+      <h5>WQI class · station colour</h5>
+      <div id="mapLegendWqi"></div>
+      <h5 class="sep">Water body type</h5>
+      <div id="mapLegendWater"></div>
+      <h5 class="sep">Boundaries</h5>
+      <div id="mapLegendBounds"></div>
+    </div>
   </div>
 </section>
 
@@ -472,6 +508,10 @@
     Water bodies: Digital Earth &middot; Imagery: Esri, Google, EOX Sentinel-2 cloudless, NASA GIBS
   </div>
 </footer>
+
+  </div><!-- /.content -->
+</div><!-- /.main -->
+</div><!-- /.app -->
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>

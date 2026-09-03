@@ -2,11 +2,12 @@
    mapview.js — Main display: the map
 
    The landing view. Satellite imagery underneath, the monitoring stations
-   and the Digital Earth water bodies on top. Clicking a station gives its
-   index, its class and its Class II verdict, with one click through to the
-   Phase 1 assessment.
+   and the Digital Earth water bodies on top, and four corners that say what
+   is being looked at: the counts, the basemap, the layers, the month, and
+   the legend. Clicking a station gives its index, its class and its
+   target-class verdict.
    ============================================================ */
-import { DATA, readingAt, latestIdx, waterSummary, WATER_GROUPS } from './data.js';
+import { DATA, readingAt, latestIdx, fmtMonth, waterSummary, WATER_GROUPS } from './data.js';
 import { wqiClass, WQI_CLASSES, classCompliance, PARAM_META } from './wqi.js';
 import { store } from './store.js';
 import { IMAGERY, gibsLayer, REFERENCE_MAPS, WATER_INDICES } from './satellite.js';
@@ -18,18 +19,37 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
 const ALL = { ...IMAGERY, ...REFERENCE_MAPS };
 
 let map = null, base = null, current = 'esri';
-let stationLayer = null, waterLayer = null;
+let stationLayer = null, waterLayer = null, reachLayer = null, stateLayer = null;
+let monthIdx = null, timer = null;
 
 const pad = (n) => String(n).padStart(2, '0');
 const iso = (d) => `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
 
 export function initMap() {
-  if (map) { map.invalidateSize(); paintStations(); return; }
+  if (map) { map.invalidateSize(); repaint(); return; }
 
   const s = DATA.focus;
+  monthIdx = latestIdx();
+
   map = L.map('mainMap', { center: [s.lat, s.lon], zoom: 11, zoomControl: false });
-  L.control.zoom({ position: 'bottomright' }).addTo(map);
-  L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
+  L.control.zoom({ position: 'topright' }).addTo(map);
+  L.control.scale({ position: 'topleft', imperial: false }).addTo(map);
+
+  /* --- Selangor: the state LUAS is responsible for --- */
+  stateLayer = L.geoJSON(DATA.selangor, {
+    style: {
+      color: '#ffffff', weight: 2.2, dashArray: '10 7', opacity: 0.92,
+      fillColor: '#f5e01c', fillOpacity: 0.05,
+    },
+    interactive: false,
+  }).addTo(map);
+
+  /* --- The reach the water bodies were clipped to --- */
+  const radiusKm = DATA.water?.meta?.radius_km ?? 15;
+  reachLayer = L.circle([s.lat, s.lon], {
+    radius: radiusKm * 1000,
+    color: '#f5e01c', weight: 1.6, dashArray: '7 6', fill: false, interactive: false,
+  }).addTo(map);
 
   /* --- Water bodies: the Digital Earth outlines themselves --- */
   waterLayer = L.geoJSON(DATA.water.geo, {
@@ -54,13 +74,16 @@ export function initMap() {
   map.on('zoomend', () => waterLayer.setStyle(waterStyle));
 
   stationLayer = L.layerGroup().addTo(map);
-  paintStations();
 
-  buildControls();
+  buildBasemaps();
+  buildLayerToggles();
   buildLegend();
+  buildTimeline();
   setBase('esri');
+  repaint();
 
-  map.fitBounds(L.latLngBounds(DATA.stations.map((x) => [x.lat, x.lon])).pad(0.16));
+  /* Open on the whole state, which is the jurisdiction, not just the reach */
+  map.fitBounds(stateLayer.getBounds().pad(0.03));
   return map;
 }
 
@@ -74,15 +97,19 @@ function waterStyle(f) {
   };
 }
 
-/* ---------------- Stations ---------------- */
+/* ---------------- Everything that depends on the month ---------------- */
+function repaint() {
+  paintStations();
+  paintKpis();
+}
+
 function paintStations() {
   if (!stationLayer) return;
   stationLayer.clearLayers();
-  const i = latestIdx();
   const target = store.conditions().targetClass;
 
   for (const st of DATA.stations) {
-    const r = readingAt(st, i);
+    const r = readingAt(st, monthIdx);
     const cls = wqiClass(r.wqi);
     const comp = classCompliance(r.raw, target);
     const focus = st.code === DATA.focus.code;
@@ -104,6 +131,30 @@ function paintStations() {
   }
 }
 
+/* The four chips describe the map as it stands, not the latest reading, so
+   they move with the slider. */
+function paintKpis() {
+  const target = store.conditions().targetClass;
+  const w = waterSummary();
+  const f = readingAt(DATA.focus, monthIdx);
+  const cls = wqiClass(f.wqi);
+  const meeting = DATA.stations
+    .filter((st) => classCompliance(readingAt(st, monthIdx).raw, target).pass).length;
+
+  const chip = (color, mark, value, label) => `
+    <div class="mkpi">
+      <span class="mk-ic" style="background:${color}">${mark}</span>
+      <span><span class="mk-v">${value}</span><span class="mk-l">${label}</span></span>
+    </div>`;
+
+  $('mapKpis').innerHTML =
+    chip('#22235f', '◉', DATA.stations.length, 'Stations')
+    + chip(cls.color, cls.id, f.wqi.toFixed(1), `WQI · ${esc(DATA.focus.name)}`)
+    + chip(meeting ? '#17a04a' : '#d92d20', '✓',
+      `${meeting}/${DATA.stations.length}`, `Meet Class ${target}`)
+    + chip('#45bfe0', '○', w.count, 'Water bodies');
+}
+
 function stationPopup(st, r, cls, comp, target) {
   const failing = Object.entries(comp.checks)
     .filter(([, c]) => c.pass === false).map(([p]) => PARAM_META[p].short);
@@ -111,7 +162,7 @@ function stationPopup(st, r, cls, comp, target) {
   return `
     <div class="map-pop">
       <div class="pop-head" style="background:${cls.color}">
-        <div class="pop-code">${esc(st.code)} · ${esc(st.river)}</div>
+        <div class="pop-code">${esc(st.code)} · ${esc(st.river)} · ${fmtMonth(DATA.months[monthIdx])}</div>
         <div class="pop-name">${esc(st.name)}</div>
       </div>
       <div class="pop-body">
@@ -142,8 +193,8 @@ function stationPopup(st, r, cls, comp, target) {
     </div>`;
 }
 
-/* ---------------- Controls ---------------- */
-function buildControls() {
+/* ---------------- Top right: basemap ---------------- */
+function buildBasemaps() {
   const group = (keys, title) => `
     <div class="mc-group">
       <h5>${title}</h5>
@@ -166,24 +217,6 @@ function buildControls() {
   date.min = '2012-01-01';
   date.onchange = () => { if (ALL[current].daily) setBase(current); };
 
-  document.querySelectorAll('[data-mapov]').forEach((i) => {
-    i.onchange = () => {
-      const l = i.dataset.mapov === 'stations' ? stationLayer : waterLayer;
-      if (i.checked) l.addTo(map); else map.removeLayer(l);
-    };
-  });
-
-  /* Popup buttons are re-created on every open */
-  map.on('popupopen', (e) => {
-    const btn = e.popup.getElement()?.querySelector('[data-goto]');
-    if (btn) {
-      btn.onclick = () => {
-        map.closePopup();
-        document.dispatchEvent(new CustomEvent('gotophase', { detail: { view: 'phase1' } }));
-      };
-    }
-  });
-
   $('mapIndices').innerHTML = WATER_INDICES.map((x) => `
     <div class="idx-item">
       <div class="idx-h">${x.name}</div>
@@ -193,10 +226,36 @@ function buildControls() {
       <div class="idx-b">${x.body}</div>
     </div>`).join('');
 
-  const panel = $('mapPanel');
-  $('mapPanelToggle').onclick = () => panel.classList.toggle('closed');
-  L.DomEvent.disableClickPropagation(panel);
-  L.DomEvent.disableScrollPropagation(panel);
+  const btn = $('baseToggle');
+  const pop = $('basePop');
+  btn.onclick = (e) => {
+    e.stopPropagation();
+    const open = pop.hidden;
+    pop.hidden = !open;
+    btn.setAttribute('aria-expanded', String(open));
+  };
+  document.addEventListener('click', (e) => {
+    if (!pop.hidden && !pop.contains(e.target) && e.target !== btn) {
+      pop.hidden = true;
+      btn.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  for (const el of [pop, btn]) {
+    L.DomEvent.disableClickPropagation(el);
+    L.DomEvent.disableScrollPropagation(el);
+  }
+
+  /* Popup buttons are re-created on every open */
+  map.on('popupopen', (e) => {
+    const b = e.popup.getElement()?.querySelector('[data-goto]');
+    if (b) {
+      b.onclick = () => {
+        map.closePopup();
+        document.dispatchEvent(new CustomEvent('gotophase', { detail: { view: 'phase1' } }));
+      };
+    }
+  });
 }
 
 function setBase(key) {
@@ -210,13 +269,36 @@ function setBase(key) {
   base.addTo(map);
   base.bringToBack();
 
+  $('baseLabel').textContent = d.label;
   $('mapDateRow').style.display = d.daily ? 'flex' : 'none';
   $('mapBaseInfo').innerHTML = `
     <div class="mbi-t">${d.label} <span class="badge soft">${d.res}</span></div>
     <div class="mbi-s">${esc(d.src)}</div>`;
 }
 
-/* ---------------- Legend ---------------- */
+/* ---------------- Bottom left: layers ---------------- */
+function buildLayerToggles() {
+  const w = waterSummary();
+  $('ovStations').textContent = DATA.stations.length;
+  $('ovWater').textContent = w.count;
+  $('ovReach').textContent = `${w.radiusKm} km`;
+  $('ovState').textContent = 'state';
+
+  const layers = {
+    stations: () => stationLayer, water: () => waterLayer,
+    reach: () => reachLayer, selangor: () => stateLayer,
+  };
+  document.querySelectorAll('[data-mapov]').forEach((i) => {
+    i.onchange = () => {
+      const l = layers[i.dataset.mapov]();
+      if (i.checked) l.addTo(map); else map.removeLayer(l);
+    };
+  });
+  const card = document.querySelector('.map-bl');
+  L.DomEvent.disableClickPropagation(card);
+}
+
+/* ---------------- Bottom right: legend ---------------- */
 function buildLegend() {
   $('mapLegendWqi').innerHTML = WQI_CLASSES.map((c) => `
     <div class="ml-row" title="${esc(c.use)}">
@@ -231,8 +313,62 @@ function buildLegend() {
     .map(([k, g]) => `
       <div class="ml-row"><span class="ml-dot" style="background:${g.color}"></span>
         <span>${g.label} <span class="ml-rng">${w.groups[k].n}</span></span></div>`).join('');
+
+  const line = (color, dash, label, note) => `
+    <div class="ml-row"><span class="ml-line" style="--lc:${color};--ld:${dash}"></span>
+      <span>${label} <span class="ml-rng">${note}</span></span></div>`;
+  $('mapLegendBounds').innerHTML =
+    line('#ffffff', '5px', 'Selangor', 'LUAS jurisdiction')
+    + line('#f5e01c', '4px', 'Dengkil reach', `${w.radiusKm} km`);
+
+  L.DomEvent.disableClickPropagation(document.querySelector('.map-br'));
+}
+
+/* ---------------- Bottom centre: the month on show ---------------- */
+function buildTimeline() {
+  const n = DATA.months.length;
+  const range = $('timeRange');
+  range.max = String(n - 1);
+  range.value = String(monthIdx);
+
+  /* One tick per year, so the track reads as a calendar rather than 56 steps */
+  const years = [...new Set(DATA.months.map((m) => m.slice(0, 4)))];
+  $('timeTicks').innerHTML = years.map((y) => `<span>${y}</span>`).join('');
+
+  range.oninput = () => { pause(); setMonth(+range.value); };
+  $('timePlay').onclick = () => (timer ? pause() : play());
+
+  const bar = $('mapTime');
+  L.DomEvent.disableClickPropagation(bar);
+  L.DomEvent.disableScrollPropagation(bar);
+  setMonth(monthIdx);
+}
+
+function setMonth(i) {
+  monthIdx = Math.max(0, Math.min(DATA.months.length - 1, i));
+  $('timeRange').value = String(monthIdx);
+  $('timeLabel').textContent = fmtMonth(DATA.months[monthIdx]);
+  repaint();
+}
+
+function play() {
+  if (monthIdx >= DATA.months.length - 1) setMonth(0);
+  $('timePlay').classList.add('playing');
+  $('timePlay').setAttribute('aria-label', 'Pause');
+  timer = setInterval(() => {
+    if (monthIdx >= DATA.months.length - 1) { pause(); return; }
+    setMonth(monthIdx + 1);
+  }, 420);
+}
+
+function pause() {
+  if (timer) clearInterval(timer);
+  timer = null;
+  $('timePlay')?.classList.remove('playing');
+  $('timePlay')?.setAttribute('aria-label', 'Play');
 }
 
 /* ---------------- API ---------------- */
 export function resizeMap() { map?.invalidateSize(); }
-export function refreshMap() { paintStations(); }
+export function refreshMap() { repaint(); }
+export function pauseMap() { pause(); }
