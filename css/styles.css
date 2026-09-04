@@ -357,6 +357,39 @@ td.act{white-space:nowrap;text-align:right}
 .written-for select:focus{outline:none;border-color:var(--cyan-2)}
 .wf-note{font-size:11px;color:var(--muted)}
 
+/* Two ways to name a premises: one already on the map, or a new coordinate */
+.segmented{display:inline-flex;align-self:flex-start;gap:0;overflow:hidden;
+  border:1.5px solid var(--line);border-radius:var(--r-sm);margin-bottom:8px}
+.seg{
+  padding:5px 13px;border:0;background:var(--surface);font-family:inherit;
+  font-size:11.5px;font-weight:600;color:var(--muted);cursor:pointer;transition:.14s;
+}
+.seg + .seg{border-left:1.5px solid var(--line)}
+.seg:hover{color:var(--text)}
+.seg.active{background:var(--navy);color:#fff}
+.prem-mode{display:none}
+.prem-mode.active{display:block}
+.latlon{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.latlon input{flex:1;min-width:130px}
+.latlon .btn{flex:none;padding:6px 12px;font-size:11.5px}
+
+/* Whether a licence has a position, so 6 rows and 2 pins is not a puzzle */
+.loc-pin{margin-left:6px;color:var(--navy-2);font-size:9px;vertical-align:1px}
+.loc-none{margin-left:6px;color:var(--line-2);font-size:11px;vertical-align:1px}
+
+/* A licensed premises on the map */
+.lic-pin{
+  width:22px;height:22px;border-radius:6px;border:2px solid #f5e01c;
+  background:var(--navy);color:#fff;display:grid;place-items:center;
+  font:700 10px var(--fm);box-shadow:0 2px 6px rgba(0,0,0,.45);
+}
+.lic-pin.off{background:var(--muted-2);border-color:#fff;opacity:.75}
+.lic-pin.eg{border-style:dashed}
+.lic-key{
+  width:16px;height:16px;flex:none;border-radius:5px;border:1.5px solid #f5e01c;
+  background:var(--navy);color:#fff;display:grid;place-items:center;font:700 8px var(--fm);
+}
+
 /* ---------------- Forms ---------------- */
 .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:13px}
 .field{display:flex;flex-direction:column;gap:5px}

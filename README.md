@@ -253,6 +253,18 @@ The capacity tab opens by naming the water it is **written for**, and lets it be
 rather than only from the app bar. A loading capacity with no stated subject invites being read
 as the whole river's.
 
+A licence is granted to a place, so the form asks which one, two ways:
+
+| Mode | What it does |
+|---|---|
+| **On the map** | Pick one of the 238 named point sources already mapped. The licence keeps its OSM id and position. |
+| **New location** | Name it and give a latitude and longitude, or take the map centre. |
+
+Either way the licence carries a position, and anything with a position is drawn on the map as a
+**Licensed premises** — its own layer, legend key and popup showing the permitted flow and the
+wasteload each pollutant contributes. The register marks which rows are located, so a register of
+six and a map of two is not a puzzle.
+
 > ⚠️ The register is not partitioned by receiving water — every licence in it counts against
 > whichever water is selected. Tying a licence to the reach it discharges into is a change to the
 > record, not the interface.

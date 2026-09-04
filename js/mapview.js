@@ -40,6 +40,7 @@ let map = null, base = null, current = 'esri';
 let stationLayer = null, basinLayer = null, stateLayer = null;
 const waterLayers = {};       // water:<group>
 let flowLayer = null;         // the animated direction overlay
+let licenceLayer = null;      // premises with a discharge licence
 const sourceLayers = {};      // src:<category>
 const riverLayers = {};       // river:main | river:trib
 
@@ -74,6 +75,9 @@ export function initMap() {
   buildRivers();
   buildWaterBodies();
   buildSources();
+  licenceLayer = L.layerGroup();
+  visible.add('licence:all');
+  MASTERS.licences = ['licence:all'];
   stationLayer = L.layerGroup().addTo(map);
 
   /* Delegated: paintKpis replaces the chips on every month step, so a
@@ -399,6 +403,7 @@ function applyVisibility() {
   set(stateLayer, visible.has('bound:selangor'));
   for (const [k, l] of Object.entries(riverLayers)) set(l, visible.has(`river:${k}`));
   set(flowLayer, visible.has('flow:anim'));
+  set(licenceLayer, visible.has('licence:all'));
   riverLayers.main?.bringToFront();
   flowLayer?.bringToFront();
   for (const [k, l] of Object.entries(waterLayers)) set(l, visible.has(`water:${k}`));
@@ -441,7 +446,72 @@ function syncControls() {
 /* ---------------- Everything that depends on the month ---------------- */
 function repaint() {
   paintStations();
+  paintLicences();
   paintKpis();
+}
+
+/* Every licence that carries a position. A licence is granted to a place, and
+   a place can be shown; one entered without coordinates simply is not drawn,
+   and the register says so. */
+function paintLicences() {
+  if (!licenceLayer) return;
+  licenceLayer.clearLayers();
+
+  for (const l of store.licences()) {
+    if (typeof l.lat !== 'number' || typeof l.lon !== 'number') continue;
+    const off = l.active === false;
+    L.marker([l.lat, l.lon], {
+      zIndexOffset: 500,
+      icon: L.divIcon({
+        className: '',
+        html: `<div class="lic-pin${off ? ' off' : ''}${l.example ? ' eg' : ''}">L</div>`,
+        iconSize: [22, 22], iconAnchor: [11, 11],
+      }),
+    })
+      .bindTooltip(`<b>${esc(l.premises)}</b><br>${esc(l.ref)}`,
+        { direction: 'top', offset: [0, -12] })
+      .bindPopup(() => licencePopup(l), POPUP)
+      .addTo(licenceLayer);
+  }
+  countLicences();
+}
+
+/* Both readouts come off the same layer, so they cannot drift */
+function countLicences() {
+  const n = licenceLayer?.getLayers().length ?? 0;
+  const a = $('ovLicences');
+  const b = $('legLicN');
+  if (a) a.textContent = n;
+  if (b) b.textContent = n;
+}
+
+function licencePopup(l) {
+  const load = (c) => ((c ?? 0) * (l.flow ?? 0) / 1000);
+  const rows = [['BOD₅', 'bod'], ['COD', 'cod'], ['SS', 'ss'], ['NH₃-N', 'an']];
+  return `
+    <div class="map-pop">
+      <div class="pop-head" style="background:#22235f">
+        <div class="pop-code">Licence ${esc(l.ref)}${l.example ? ' · example' : ''}</div>
+        <div class="pop-name">${esc(l.premises)}</div>
+      </div>
+      <div class="pop-body">
+        <table class="pop-tbl">
+          <tr><td>Category</td><td class="num">${esc(l.category ?? '—')}</td></tr>
+          <tr><td>Permitted flow</td><td class="num">${(l.flow ?? 0).toLocaleString('en')} m³/day</td></tr>
+          ${rows.map(([lab, k]) => `<tr><td>${lab} wasteload</td>
+            <td class="num">${load(l.conc?.[k]).toFixed(1)} kg/day</td></tr>`).join('')}
+        </table>
+        <div class="pop-verdict ${l.active === false ? 'bad' : 'ok'}">
+          ${l.active === false ? 'Inactive' : 'Active licence'}</div>
+      </div>
+    </div>`;
+}
+
+/* The form offers the map centre as a starting coordinate */
+export function mapCentre() {
+  if (!map) return null;
+  const c = map.getCenter();
+  return [c.lat, c.lng];
 }
 
 function paintStations() {
@@ -704,6 +774,11 @@ function buildLegend() {
       `${riverLayers.trib?.getLayers().length ?? 0} reaches`)
     + row('flow:anim', '<span class="ml-line flowkey"></span>', 'Flow direction',
       'downstream');
+
+  $('mapLegendLic').innerHTML = row('licence:all',
+    '<span class="lic-key">L</span>', 'Licensed premises',
+    '<span id="legLicN">0</span> located');
+  countLicences();
 
   document.querySelectorAll('[data-vis]').forEach((b) => {
     b.onclick = () => toggle(b.dataset.vis);

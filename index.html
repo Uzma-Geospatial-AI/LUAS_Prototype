@@ -156,6 +156,9 @@
       <label class="tog"><input type="checkbox" data-mapov="sources" checked>
         <span class="tog-sw"></span>
         <span class="tog-t">Point sources <i id="ovSources"></i></span></label>
+      <label class="tog"><input type="checkbox" data-mapov="licences" checked>
+        <span class="tog-sw"></span>
+        <span class="tog-t">Licensed premises <i id="ovLicences"></i></span></label>
       <label class="tog"><input type="checkbox" data-mapov="rivers" checked>
         <span class="tog-sw"></span>
         <span class="tog-t">Sungai Langat &amp; tributaries <i id="ovRivers"></i></span></label>
@@ -192,6 +195,8 @@
         <div id="mapLegendWqi"></div>
         <h5 class="sep">Point source</h5>
         <div id="mapLegendSources"></div>
+        <h5 class="sep">Licences</h5>
+        <div id="mapLegendLic"></div>
         <h5 class="sep">Water body type</h5>
         <div id="mapLegendWater"></div>
         <h5 class="sep">Boundaries</h5>
@@ -430,8 +435,29 @@
             </select>
           </div>
           <div class="field" style="grid-column:1/-1">
-            <label for="lPremises">Premises</label>
-            <input id="lPremises" placeholder="e.g. Loji rawatan kumbahan Taman Dengkil Jaya">
+            <label>Premises</label>
+            <div class="segmented" role="tablist">
+              <button type="button" class="seg active" data-prem="pick" role="tab"
+                aria-selected="true">On the map</button>
+              <button type="button" class="seg" data-prem="new" role="tab"
+                aria-selected="false">New location</button>
+            </div>
+
+            <div class="prem-mode active" id="premPick">
+              <select id="lSource"></select>
+              <div class="hint" id="lSourceNote">Choose one of the point sources already mapped.</div>
+            </div>
+
+            <div class="prem-mode" id="premNew">
+              <input id="lPremises" placeholder="Name of the premises">
+              <div class="latlon">
+                <input id="lLat" type="number" step="0.00001" placeholder="Latitude · 2.85971">
+                <input id="lLon" type="number" step="0.00001" placeholder="Longitude · 101.68380">
+                <button type="button" class="btn btn-ghost" id="lPickOnMap"
+                  title="Take the coordinates from the middle of the map">Use map centre</button>
+              </div>
+              <div class="hint" id="lLatLonNote">It will be drawn on the map once the licence is added.</div>
+            </div>
           </div>
           <div class="field">
             <label for="lFlow">Permitted discharge flow <span class="unit">m³/day</span></label>

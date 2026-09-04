@@ -6,13 +6,15 @@
 
      TMDL = ΣWLA + ΣLA + MOS
    ============================================================ */
-import { DATA, designReading, latestIdx, readingAt, waterSummary, setFocus } from './data.js';
+import { DATA, designReading, latestIdx, readingAt, waterSummary, setFocus,
+         sourceSummary } from './data.js';
 import { LOAD_PARAMS, PARAM_META, INWQS, TARGET_CLASSES } from './wqi.js';
 import {
   budgetAll, headroom, headroomInPE, licenceLoads, licenceCompliance,
   EFFLUENT_STANDARDS, RIVER_FACTOR, fmtLoad, fmtVol, riverLoad,
 } from './loads.js';
 import { store, registerAsJson, registerAsCsv, download } from './store.js';
+import { mapCentre } from './mapview.js';
 
 /* The explanation lives behind the marker, so the card shows the number */
 const tipmark = (text) => {
@@ -39,6 +41,62 @@ function currentReading() {
 /* Two tabs: what the water can carry, and what has been licensed against it.
    They were one long page, and the register at the bottom read as an appendix
    to the budget rather than the other half of the job. */
+/* Which way the premises is being given: an existing point source, or a new
+   location by coordinate. */
+let premMode = 'pick';
+
+function setPremMode(mode) {
+  premMode = mode;
+  for (const b of document.querySelectorAll('[data-prem]')) {
+    const on = b.dataset.prem === mode;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', String(on));
+  }
+  $('premPick').classList.toggle('active', mode === 'pick');
+  $('premNew').classList.toggle('active', mode === 'new');
+  previewLicence();
+}
+
+/* The 238 named point sources, grouped the way the map groups them. The
+   unnamed ones are left out: nothing in a list reading "Unnamed site" 400
+   times can be picked deliberately. */
+function buildSourcePicker() {
+  const su = sourceSummary();
+  const byCat = {};
+  for (const f of su.features) {
+    if (!f.properties.name) continue;
+    (byCat[f.properties.cat] ??= []).push(f.properties);
+  }
+  const opts = Object.entries(byCat).map(([cat, list]) => `
+    <optgroup label="${esc(su.cats[cat]?.label ?? cat)}">
+      ${list.sort((a, b) => a.name.localeCompare(b.name))
+        .map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}
+    </optgroup>`).join('');
+  $('lSource').innerHTML = `<option value="">Select a premises…</option>${opts}`;
+
+  $('lSource').onchange = () => {
+    const f = su.features.find((x) => String(x.properties.id) === $('lSource').value);
+    $('lSourceNote').textContent = f
+      ? `${su.cats[f.properties.cat]?.label ?? ''} · `
+        + `${f.properties.dist} m from ${f.properties.near
+          ? Object.values(f.properties.near)[0].n : 'the nearest water'}`
+      : 'Choose one of the point sources already mapped.';
+    previewLicence();
+  };
+
+  for (const b of document.querySelectorAll('[data-prem]')) {
+    b.onclick = () => setPremMode(b.dataset.prem);
+  }
+  $('lPickOnMap').onclick = () => {
+    const c = mapCentre();
+    if (!c) return;
+    $('lLat').value = c[0].toFixed(5);
+    $('lLon').value = c[1].toFixed(5);
+    previewLicence();
+  };
+  for (const id of ['lLat', 'lLon']) $(id).addEventListener('input', previewLicence);
+}
+
 function buildTabs() {
   const panes = [...document.querySelectorAll('#v-tmdl .tabpane')];
   for (const b of document.querySelectorAll('#v-tmdl .tab')) {
@@ -306,7 +364,9 @@ function renderRegister(licences, stdKey, budgets) {
         ${l.example ? '<span class="tag-example">EXAMPLE</span>' : ''}
         <span class="sub">${esc(l.category ?? '—')}</span>
       </td>
-      <td>${esc(l.premises)}</td>
+      <td>${esc(l.premises)}${typeof l.lat === 'number'
+        ? '<span class="loc-pin" title="Located — drawn on the map">◉</span>'
+        : '<span class="loc-none" title="No coordinates, so it is not on the map">–</span>'}</td>
       <td><span class="badge soft">Std ${esc(l.standard ?? '—')}</span></td>
       <td class="num">${nf(l.flow)}</td>
       ${LOAD_PARAMS.map((p) => `<td class="num${comp.breaches.includes(p) ? ' over' : ''}">
@@ -365,6 +425,7 @@ function renderRegister(licences, stdKey, budgets) {
 export function buildLicenceForm() {
   buildTabs();
   buildForPicker();
+  buildSourcePicker();
   $('p3ConcFields').innerHTML = LOAD_PARAMS.map((p) => `
     <div class="field">
       <label for="l_${p}">${PARAM_META[p].short} <span class="unit">mg/L</span></label>
@@ -413,20 +474,44 @@ export function buildLicenceForm() {
 
 function readForm() {
   const ref = $('lRef').value.trim();
-  const premises = $('lPremises').value.trim();
   const flow = num($('lFlow').value);
-  if (!ref || !premises || Number.isNaN(flow) || flow <= 0) return null;
+  const place = readPremises();
+  if (!ref || !place || Number.isNaN(flow) || flow <= 0) return null;
   const conc = {};
   for (const p of LOAD_PARAMS) {
     const v = num($(`l_${p}`).value);
     conc[p] = Number.isNaN(v) ? 0 : v;
   }
-  return { ref, premises, category: $('lCategory').value, standard: $('lStd').value, flow, conc };
+  return {
+    ref, ...place,
+    category: $('lCategory').value, standard: $('lStd').value, flow, conc,
+  };
+}
+
+/* Whichever mode is open, a licence comes out with a name and, where it is
+   known, a position. Without one it simply cannot be drawn. */
+function readPremises() {
+  if (premMode === 'pick') {
+    const id = $('lSource').value;
+    if (!id) return null;
+    const f = sourceSummary().features.find((x) => String(x.properties.id) === id);
+    if (!f) return null;
+    const [lon, lat] = f.geometry.coordinates;
+    return { premises: f.properties.name, srcId: f.properties.id, lat, lon };
+  }
+  const premises = $('lPremises').value.trim();
+  if (!premises) return null;
+  const lat = num($('lLat').value);
+  const lon = num($('lLon').value);
+  const out = { premises };
+  if (!Number.isNaN(lat) && !Number.isNaN(lon)) { out.lat = lat; out.lon = lon; }
+  return out;
 }
 
 function clearForm() {
-  ['lRef', 'lPremises', 'lFlow', ...LOAD_PARAMS.map((p) => `l_${p}`)]
+  ['lRef', 'lPremises', 'lFlow', 'lLat', 'lLon', ...LOAD_PARAMS.map((p) => `l_${p}`)]
     .forEach((id) => { $(id).value = ''; });
+  $('lSource').value = '';
   previewLicence();
 }
 
@@ -434,7 +519,17 @@ function loadIntoForm(l) {
   if (!l) return;
   editing = l.id;
   $('lRef').value = l.ref ?? '';
-  $('lPremises').value = l.premises ?? '';
+  /* A licence taken from the map reopens on the map; one entered by hand
+     reopens with its coordinates. */
+  if (l.srcId != null) {
+    setPremMode('pick');
+    $('lSource').value = String(l.srcId);
+  } else {
+    setPremMode('new');
+    $('lPremises').value = l.premises ?? '';
+    $('lLat').value = l.lat ?? '';
+    $('lLon').value = l.lon ?? '';
+  }
   $('lCategory').value = l.category ?? 'Industrial';
   $('lStd').value = l.standard ?? 'A';
   $('lFlow').value = l.flow ?? '';
