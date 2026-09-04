@@ -419,23 +419,8 @@
     <div class="split-grid">
       <div class="card">
         <div class="form-grid">
-          <div class="field">
-            <label for="lRef">Licence reference</label>
-            <input id="lRef" placeholder="LUAS/EL/2026/0001">
-          </div>
-          <div class="field">
-            <label for="lCategory">Category</label>
-            <select id="lCategory">
-              <option>Sewage treatment</option>
-              <option>Industrial</option>
-              <option>Agro-industry</option>
-              <option>Water treatment</option>
-              <option>Livestock</option>
-              <option>Other</option>
-            </select>
-          </div>
           <div class="field" style="grid-column:1/-1">
-            <label>Premises</label>
+            <label>Premises <span class="step">1</span></label>
             <div class="segmented" role="tablist">
               <button type="button" class="seg active" data-prem="pick" role="tab"
                 aria-selected="true">On the map</button>
@@ -458,6 +443,25 @@
               </div>
               <div class="hint" id="lLatLonNote">It will be drawn on the map once the licence is added.</div>
             </div>
+          </div>
+          <div class="field">
+            <label for="lRef">Licence reference <span class="step">2</span></label>
+            <input id="lRef" placeholder="LUAS/EL/2026/0001">
+          </div>
+          <div class="field">
+            <label for="lCategory">Category</label>
+            <select id="lCategory">
+              <option>Sewage treatment</option>
+              <option>Industrial</option>
+              <option>Agro-industry</option>
+              <option>Water treatment</option>
+              <option>Livestock</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="prefill-note" id="lPrefill" hidden style="grid-column:1/-1">
+            <b>Prefilled from the category.</b> These are placeholders shaped by the discharge
+            standard, not permit values — replace them with the figures on the licence.
           </div>
           <div class="field">
             <label for="lFlow">Permitted discharge flow <span class="unit">m³/day</span></label>

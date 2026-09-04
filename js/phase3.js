@@ -16,6 +16,57 @@ import {
 import { store, registerAsJson, registerAsCsv, download } from './store.js';
 import { mapCentre } from './mapview.js';
 
+/* ---------------- Prefilling from a mapped premises ----------------
+   Deterministic, not random: the same site gives the same figures every time,
+   so a number cannot change under someone between looking and saving. These
+   are placeholders shaped by the category and the discharge standard — they
+   are NOT permit values, and they are badged as invented wherever they go. */
+const FLOW_BASE = {          // m3/day, a plausible middle for the category
+  kumbahan: 12000,           // sewage and water treatment works
+  industri: 1200,            // an industrial premises
+  ternakan: 600,             // farms and aquaculture
+  sisa: 400,                 // landfill, quarry, waste handling
+  tanah: 250,                // construction and cleared land
+};
+
+function hash(seed, salt) {
+  let h = (Number(seed) % 2147483647) ^ (salt * 2654435761);
+  h = Math.imul(h ^ (h >>> 15), 2246822507);
+  h = Math.imul(h ^ (h >>> 13), 3266489909);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;      /* 0..1 */
+}
+
+/* A permitted concentration sits under its limit, so the placeholder does too
+   — 55% to 95% of it. One that breached its own standard on arrival would be
+   a strange thing to hand someone. */
+function prefillFor(props, stdKey) {
+  const std = EFFLUENT_STANDARDS[stdKey] ?? EFFLUENT_STANDARDS.A;
+  const base = FLOW_BASE[props.cat] ?? 1000;
+  const flow = Math.round(base * (0.5 + 1.5 * hash(props.id, 1)) / 50) * 50;
+  const conc = {};
+  LOAD_PARAMS.forEach((param, i) => {
+    conc[param] = Math.round(std[param] * (0.55 + 0.4 * hash(props.id, i + 2)) * 10) / 10;
+  });
+  return { flow, conc };
+}
+
+/* What the last prefill produced, so a licence saved untouched can be told
+   apart from one someone actually typed. */
+let prefilled = null;
+
+/* Just the numbers the prefill sets, with no validation attached */
+function currentFigures() {
+  const conc = {};
+  for (const param of LOAD_PARAMS) conc[param] = num($(`l_${param}`).value);
+  return { flow: num($('lFlow').value), conc };
+}
+
+function isUntouched(l) {
+  if (!prefilled || !l) return false;
+  if (Number(l.flow) !== prefilled.flow) return false;
+  return LOAD_PARAMS.every((param) => Number(l.conc?.[param]) === prefilled.conc[param]);
+}
+
 /* The explanation lives behind the marker, so the card shows the number */
 const tipmark = (text) => {
   const t = String(text).replace(/[&<>"]/g, (c) =>
@@ -76,13 +127,48 @@ function buildSourcePicker() {
 
   $('lSource').onchange = () => {
     const f = su.features.find((x) => String(x.properties.id) === $('lSource').value);
-    $('lSourceNote').textContent = f
-      ? `${su.cats[f.properties.cat]?.label ?? ''} · `
-        + `${f.properties.dist} m from ${f.properties.near
-          ? Object.values(f.properties.near)[0].n : 'the nearest water'}`
-      : 'Choose one of the point sources already mapped.';
+    if (!f) {
+      prefilled = null;
+      $('lSourceNote').textContent = 'Choose one of the point sources already mapped.';
+      $('lPrefill').hidden = true;
+      previewLicence();
+      return;
+    }
+
+    const q = f.properties;
+    const [lon, lat] = f.geometry.coordinates;
+    const near = q.near ? Object.values(q.near)[0] : null;
+    $('lSourceNote').innerHTML =
+      `${esc(su.cats[q.cat]?.label ?? '')} · ${q.dist} m from `
+      + `${near ? esc(near.n) : 'the nearest water'} · `
+      + `<span class="mono">${lat.toFixed(5)}, ${lon.toFixed(5)}</span>`;
+
+    /* The category follows the source, so the register groups sensibly */
+    const CAT = { kumbahan: 'Sewage treatment', industri: 'Industrial',
+      ternakan: 'Agro-industry', sisa: 'Waste', tanah: 'Construction' };
+    if (CAT[q.cat]) $('lCategory').value = CAT[q.cat];
+
+    prefilled = prefillFor(q, $('lStd').value);
+    $('lFlow').value = prefilled.flow;
+    for (const param of LOAD_PARAMS) $(`l_${param}`).value = prefilled.conc[param];
+    $('lPrefill').hidden = false;
     previewLicence();
   };
+
+  /* Changing the standard rescales an untouched prefill, because the figures
+     are a fraction of that standard's own limits. */
+  $('lStd').addEventListener('change', () => {
+    if (premMode !== 'pick' || !prefilled) return;
+    /* Read the fields directly: readForm() returns null until a licence
+       reference is typed, and the rescale must work before that. */
+    if (!isUntouched(currentFigures())) return;
+    const f = su.features.find((x) => String(x.properties.id) === $('lSource').value);
+    if (!f) return;
+    prefilled = prefillFor(f.properties, $('lStd').value);
+    $('lFlow').value = prefilled.flow;
+    for (const param of LOAD_PARAMS) $(`l_${param}`).value = prefilled.conc[param];
+    previewLicence();
+  });
 
   for (const b of document.querySelectorAll('[data-prem]')) {
     b.onclick = () => setPremMode(b.dataset.prem);
@@ -363,6 +449,7 @@ function renderRegister(licences, stdKey, budgets) {
         <b>${esc(l.ref)}</b>
         ${l.example ? '<span class="tag-example">EXAMPLE</span>' : ''}
         <span class="sub">${esc(l.category ?? '—')}</span>
+        ${l.estimated ? '<span class="badge soft est" title="Figures were prefilled from the category and never edited">EST</span>' : ''}
       </td>
       <td>${esc(l.premises)}${typeof l.lat === 'number'
         ? '<span class="loc-pin" title="Located — drawn on the map">◉</span>'
@@ -482,10 +569,12 @@ function readForm() {
     const v = num($(`l_${p}`).value);
     conc[p] = Number.isNaN(v) ? 0 : v;
   }
-  return {
+  const out = {
     ref, ...place,
     category: $('lCategory').value, standard: $('lStd').value, flow, conc,
   };
+  if (premMode === 'pick' && isUntouched(out)) out.estimated = true;
+  return out;
 }
 
 /* Whichever mode is open, a licence comes out with a name and, where it is
@@ -509,6 +598,8 @@ function readPremises() {
 }
 
 function clearForm() {
+  prefilled = null;
+  if ($('lPrefill')) $('lPrefill').hidden = true;
   ['lRef', 'lPremises', 'lFlow', 'lLat', 'lLon', ...LOAD_PARAMS.map((p) => `l_${p}`)]
     .forEach((id) => { $(id).value = ''; });
   $('lSource').value = '';

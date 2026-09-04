@@ -253,12 +253,22 @@ The capacity tab opens by naming the water it is **written for**, and lets it be
 rather than only from the app bar. A loading capacity with no stated subject invites being read
 as the whole river's.
 
-A licence is granted to a place, so the form asks which one, two ways:
+A licence is granted to a place, so the form asks **which place first**, then the reference and
+everything else. Two ways in:
 
 | Mode | What it does |
 |---|---|
-| **On the map** | Pick one of the 238 named point sources already mapped. The licence keeps its OSM id and position. |
+| **On the map** | Pick one of the 238 named point sources already mapped. The licence keeps its OSM id and position, the category follows the source, and the flow and concentrations are prefilled. |
 | **New location** | Name it and give a latitude and longitude, or take the map centre. |
+
+> ⚠️ **The prefilled figures are placeholders, not permit values.** They are derived from the
+> category and the discharge standard — 55–95% of the standard's own limits, and a flow typical
+> of the category — so the form has something to compute with before the real permit is to hand.
+> They are deterministic, so the same premises always gives the same numbers rather than new noise
+> on every click, and they rescale if the discharge standard is changed. A licence saved with them
+> untouched is stored as `estimated` and carries an **EST** badge in the register; editing any
+> figure clears it. The whole wasteload allocation is computed from these numbers, so a register
+> that invented them silently would be dangerous.
 
 Either way the licence carries a position, and anything with a position is drawn on the map as a
 **Licensed premises** — its own layer, legend key and popup showing the permitted flow and the

@@ -357,6 +357,19 @@ td.act{white-space:nowrap;text-align:right}
 .written-for select:focus{outline:none;border-color:var(--cyan-2)}
 .wf-note{font-size:11px;color:var(--muted)}
 
+/* The prefilled figures are placeholders, and have to say so where they are */
+.prefill-note{
+  padding:9px 12px;border-radius:var(--r-sm);background:#fdf1d6;
+  border:1px solid #f0dca8;color:#6b4c0a;font-size:11.5px;line-height:1.5;
+}
+.prefill-note b{color:#5a3f05}
+.step{
+  display:inline-grid;place-items:center;width:15px;height:15px;vertical-align:1px;
+  margin-left:5px;border-radius:50%;background:var(--navy);color:#fff;
+  font:700 9px var(--fm);letter-spacing:0;
+}
+.mono{font-family:var(--fm)}
+
 /* Two ways to name a premises: one already on the map, or a new coordinate */
 .segmented{display:inline-flex;align-self:flex-start;gap:0;overflow:hidden;
   border:1.5px solid var(--line);border-radius:var(--r-sm);margin-bottom:8px}
@@ -374,6 +387,8 @@ td.act{white-space:nowrap;text-align:right}
 .latlon .btn{flex:none;padding:6px 12px;font-size:11.5px}
 
 /* Whether a licence has a position, so 6 rows and 2 pins is not a puzzle */
+.badge.soft.est{background:#fdf1d6;border-color:#f0dca8;color:#8a5a06;
+  font-weight:700;letter-spacing:.06em}
 .loc-pin{margin-left:6px;color:var(--navy-2);font-size:9px;vertical-align:1px}
 .loc-none{margin-left:6px;color:var(--line-2);font-size:11px;vertical-align:1px}
 
