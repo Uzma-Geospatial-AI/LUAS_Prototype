@@ -258,8 +258,12 @@ everything else. Two ways in:
 
 | Mode | What it does |
 |---|---|
-| **On the map** | Pick one of the 238 named point sources already mapped. The licence keeps its OSM id and position, the category follows the source, and the flow and concentrations are prefilled. |
+| **On the map** | Pick one of the 238 named point sources already mapped. The record arrives complete — reference, category, flow and all four concentrations — and the button reads **Update licence**, because a mapped premises holds one licence and saving replaces it. |
 | **New location** | Name it and give a latitude and longitude, or take the map centre. |
+
+One premises holds one licence. Picking a premises that already has one loads that record
+rather than offering a second, because two licences on the same site would count its wasteload
+twice in the budget.
 
 > ⚠️ **The prefilled figures are placeholders, not permit values.** They are derived from the
 > category and the discharge standard — 55–95% of the standard's own limits, and a flow typical

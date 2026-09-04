@@ -47,7 +47,24 @@ function prefillFor(props, stdKey) {
   LOAD_PARAMS.forEach((param, i) => {
     conc[param] = Math.round(std[param] * (0.55 + 0.4 * hash(props.id, i + 2)) * 10) / 10;
   });
-  return { flow, conc };
+  /* A reference too, so the record is complete on arrival. The year is the
+     record's, not today's, so a reference does not change with the calendar. */
+  const year = 2020 + Math.floor(hash(props.id, 9) * 6);
+  const serial = String(1 + Math.floor(hash(props.id, 10) * 9998)).padStart(4, '0');
+  return { flow, conc, ref: `LUAS/EL/${year}/${serial}` };
+}
+
+/* One premises, one licence. Picking a premises that already has one must load
+   it, not offer a second — two licences on the same site would count its
+   wasteload twice in the budget. */
+function licenceForSource(srcId) {
+  return store.licences().find((l) => l.srcId === srcId && !l.example);
+}
+
+/* A mapped premises is a record being updated; a new location is one being
+   added. The button says which. */
+function setAddLabel() {
+  $('p3Add').textContent = (editing || premMode === 'pick') ? 'Update licence' : 'Add licence';
 }
 
 /* What the last prefill produced, so a licence saved untouched can be told
@@ -105,6 +122,7 @@ function setPremMode(mode) {
   }
   $('premPick').classList.toggle('active', mode === 'pick');
   $('premNew').classList.toggle('active', mode === 'new');
+  setAddLabel();
   previewLicence();
 }
 
@@ -148,10 +166,22 @@ function buildSourcePicker() {
       ternakan: 'Agro-industry', sisa: 'Waste', tanah: 'Construction' };
     if (CAT[q.cat]) $('lCategory').value = CAT[q.cat];
 
+    const existing = licenceForSource(q.id);
+    if (existing) {
+      /* Its real figures, not invented ones */
+      prefilled = null;
+      $('lPrefill').hidden = true;
+      loadIntoForm(existing);
+      return;
+    }
+
     prefilled = prefillFor(q, $('lStd').value);
+    $('lRef').value = prefilled.ref;
     $('lFlow').value = prefilled.flow;
     for (const param of LOAD_PARAMS) $(`l_${param}`).value = prefilled.conc[param];
     $('lPrefill').hidden = false;
+    editing = null;
+    setAddLabel();
     previewLicence();
   };
 
@@ -165,6 +195,7 @@ function buildSourcePicker() {
     const f = su.features.find((x) => String(x.properties.id) === $('lSource').value);
     if (!f) return;
     prefilled = prefillFor(f.properties, $('lStd').value);
+    $('lRef').value = prefilled.ref;
     $('lFlow').value = prefilled.flow;
     for (const param of LOAD_PARAMS) $(`l_${param}`).value = prefilled.conc[param];
     previewLicence();
@@ -527,12 +558,15 @@ export function buildLicenceForm() {
   $('p3Add').onclick = () => {
     const l = readForm();
     if (!l) return;
-    if (editing) { store.updateLicence(editing, l); editing = null; $('p3Add').textContent = 'Add licence'; }
+    /* Create or replace, so a premises never ends up with two */
+    const dup = !editing && l.srcId != null ? licenceForSource(l.srcId) : null;
+    if (editing) { store.updateLicence(editing, l); editing = null; }
+    else if (dup) store.updateLicence(dup.id, l);
     else store.addLicence(l);
     clearForm();
     renderPhase3();
   };
-  $('p3Cancel').onclick = () => { editing = null; $('p3Add').textContent = 'Add licence'; clearForm(); renderPhase3(); };
+  $('p3Cancel').onclick = () => { editing = null; clearForm(); renderPhase3(); };
 
   $('p3ClearExamples').onclick = () => {
     if (confirm('Remove the worked example licences from the register?')) {
@@ -573,7 +607,9 @@ function readForm() {
     ref, ...place,
     category: $('lCategory').value, standard: $('lStd').value, flow, conc,
   };
-  if (premMode === 'pick' && isUntouched(out)) out.estimated = true;
+  /* Always written, never omitted: updateLicence merges, so leaving the key
+     out would let a stale `estimated: true` survive an edit. */
+  out.estimated = premMode === 'pick' && isUntouched(out);
   return out;
 }
 
@@ -600,6 +636,7 @@ function readPremises() {
 function clearForm() {
   prefilled = null;
   if ($('lPrefill')) $('lPrefill').hidden = true;
+  setAddLabel();
   ['lRef', 'lPremises', 'lFlow', 'lLat', 'lLon', ...LOAD_PARAMS.map((p) => `l_${p}`)]
     .forEach((id) => { $(id).value = ''; });
   $('lSource').value = '';
@@ -625,7 +662,7 @@ function loadIntoForm(l) {
   $('lStd').value = l.standard ?? 'A';
   $('lFlow').value = l.flow ?? '';
   for (const p of LOAD_PARAMS) $(`l_${p}`).value = l.conc?.[p] ?? '';
-  $('p3Add').textContent = 'Save changes';
+  setAddLabel();
   previewLicence();
   $('lRef').scrollIntoView({ block: 'center', behavior: 'smooth' });
 }
