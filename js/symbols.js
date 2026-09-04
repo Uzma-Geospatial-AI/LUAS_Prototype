@@ -1,5 +1,5 @@
 /* ============================================================
-   symbols.js — Symbology for the pollution source categories
+   symbols.js — Symbology for the point source categories
 
    Each category gets its own SHAPE as well as its own colour, so the five
    stay tellable apart on a busy satellite basemap, in greyscale, and for

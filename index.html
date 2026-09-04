@@ -110,6 +110,17 @@
     <!-- top left — what is on the map right now -->
     <div class="map-kpis" id="mapKpis"></div>
 
+    <!-- under it — find anything the map draws -->
+    <div class="map-search" id="mapSearchBox">
+      <label class="ms-field">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>
+        <input id="mapSearch" type="search" autocomplete="off" spellcheck="false"
+          placeholder="Search stations, rivers, water, sources…">
+      </label>
+      <div class="ms-list" id="mapSearchList" hidden></div>
+    </div>
+
     <!-- top right — basemap -->
     <div class="map-tr">
       <button class="map-pill" id="baseToggle" aria-expanded="false">
@@ -143,7 +154,7 @@
         <span class="tog-t">Water bodies <i id="ovWater"></i></span></label>
       <label class="tog"><input type="checkbox" data-mapov="sources" checked>
         <span class="tog-sw"></span>
-        <span class="tog-t">Pollution sources <i id="ovSources"></i></span></label>
+        <span class="tog-t">Point sources <i id="ovSources"></i></span></label>
       <label class="tog"><input type="checkbox" data-mapov="rivers" checked>
         <span class="tog-sw"></span>
         <span class="tog-t">Sungai Langat &amp; tributaries <i id="ovRivers"></i></span></label>
@@ -175,7 +186,7 @@
       <div class="card-body">
         <h5>WQI class · station colour</h5>
         <div id="mapLegendWqi"></div>
-        <h5 class="sep">Pollution source</h5>
+        <h5 class="sep">Point source</h5>
         <div id="mapLegendSources"></div>
         <h5 class="sep">Water body type</h5>
         <div id="mapLegendWater"></div>

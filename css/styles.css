@@ -430,7 +430,7 @@ select{cursor:pointer}
 #mainMap{position:absolute;inset:0;background:#0e1220}
 .leaflet-container{font-family:var(--ff)}
 .leaflet-top.leaflet-right{margin-top:52px}
-.leaflet-top.leaflet-left{margin-top:80px}
+.leaflet-top.leaflet-left{margin-top:132px}   /* clear of the level card and the search */
 
 /* One surface for everything floating over the imagery */
 .map-card,.map-pill,.base-pop,.map-time,.mkpi{
@@ -450,16 +450,69 @@ select{cursor:pointer}
 .mkpi{display:flex;align-items:center;gap:9px;padding:8px 13px 8px 10px;
   border:1px solid rgba(255,255,255,.7);font-family:inherit;text-align:left;
   color:inherit}
-/* The class chips filter the stations, like the legend rows they mirror */
-.mkpi.kcls{cursor:pointer;transition:opacity .14s,background .14s}
-.mkpi.kcls:hover{background:#fff}
-.mkpi.kcls.off{opacity:.45}
-.mkpi.kcls.off .mk-ic{filter:grayscale(1)}
+/* The level indicator: one stacked bar reading Class I to Class V. Segment
+   width is the station count; the ticks below share the same flex ratios so
+   they stay aligned with the segment they name. */
+.levelcard{padding:7px 15px 7px 10px;gap:13px}
+.lv-total{flex:none}
+.lv-wrap{display:flex;flex-direction:column;gap:3px;min-width:min(300px,42vw)}
+.lv-bar{display:flex;gap:2px;height:19px}
+.lv-seg{
+  flex-basis:0;min-width:27px;border:0;border-radius:4px;background:var(--c);
+  color:#fff;font:700 11px var(--fm);display:grid;place-items:center;
+  cursor:pointer;transition:opacity .14s,filter .14s;padding:0;
+}
+.lv-seg.zero{opacity:.3}                 /* an empty class still holds its place */
+.lv-seg.off{opacity:.28;filter:grayscale(1)}
+.lv-seg:hover{opacity:1;filter:none;outline:1.5px solid rgba(255,255,255,.9);outline-offset:-1.5px}
+.lv-ticks{display:flex;gap:2px}
+.lv-ticks span{flex-basis:0;min-width:27px;text-align:center;
+  font:700 8.5px var(--fm);letter-spacing:.08em;color:var(--muted)}
 .mk-ic{width:26px;height:26px;border-radius:7px;flex:none;display:grid;place-items:center;
   font:700 11px var(--fm);color:#fff}
 .mk-v{display:block;font:700 16px var(--fm);line-height:1.05;color:var(--text)}
 .mk-l{display:block;font-size:9.5px;text-transform:uppercase;letter-spacing:.07em;
   color:var(--muted);margin-top:2px;white-space:nowrap}
+
+/* --- Under the level card: search --- */
+/* Above Leaflet's own controls: the results list would otherwise open
+   behind the scale bar sitting in the same corner. */
+.map-search{position:absolute;top:68px;left:14px;z-index:1100;width:min(330px,46vw)}
+.ms-field{
+  display:flex;align-items:center;gap:8px;padding:0 11px;
+  background:rgba(255,255,255,.94);backdrop-filter:blur(9px);
+  border:1px solid rgba(255,255,255,.7);border-radius:10px;
+  box-shadow:0 6px 22px rgba(12,18,40,.26);
+}
+.ms-field svg{width:14px;height:14px;flex:none;color:var(--muted)}
+.ms-field input{
+  flex:1;min-width:0;border:0;background:none;padding:9px 0;
+  font-family:inherit;font-size:12px;color:var(--text);
+}
+.ms-field input::placeholder{color:var(--muted-2)}
+.ms-field input:focus{outline:none}
+.ms-field input::-webkit-search-cancel-button{cursor:pointer}
+.ms-list{
+  margin-top:6px;max-height:min(46vh,340px);overflow-y:auto;
+  background:rgba(255,255,255,.97);backdrop-filter:blur(9px);
+  border:1px solid rgba(255,255,255,.7);border-radius:10px;
+  box-shadow:0 6px 22px rgba(12,18,40,.26);padding:5px;
+}
+.ms-item{
+  display:flex;align-items:center;gap:9px;width:100%;padding:6px 8px;
+  border:0;background:none;border-radius:6px;text-align:left;
+  font-family:inherit;cursor:pointer;color:inherit;
+}
+.ms-item:hover,.ms-item.on{background:var(--surface-2)}
+.ms-ic{width:20px;height:20px;flex:none;display:grid;place-items:center;
+  border-radius:5px;color:#fff;font:700 9px var(--fm)}
+.ms-t{min-width:0;flex:1}
+.ms-t b{display:block;font-size:12px;font-weight:600;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.ms-t span{display:block;font-size:10px;color:var(--muted);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.ms-none{padding:9px 10px;font-size:11.5px;color:var(--muted)}
+.ms-more{padding:6px 10px 4px;font-size:10px;color:var(--muted-2)}
 
 /* --- Top right: basemap --- */
 /* Above Leaflet's own controls, so the open popover is not punched through

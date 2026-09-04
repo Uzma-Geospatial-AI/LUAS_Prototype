@@ -33,6 +33,10 @@ const waterLayers = {};       // water:<group>
 const sourceLayers = {};      // src:<category>
 const riverLayers = {};       // river:main | river:trib
 
+const stationMarkers = new Map();   // station code -> marker
+const sourceMarkers = new Map();    // osm id -> marker
+let searchIndex = null;
+
 const visible = new Set();
 const MASTERS = {};           // layers-card switch -> the ids it commands
 /* "river:<osm id>" / "water:<osm id>" -> the drawn feature, so a source can
@@ -73,6 +77,7 @@ export function initMap() {
   buildBasemaps();
   buildLayerToggles();
   buildLegend();
+  buildSearch();
   buildTimeline();
   setBase('esri');
 
@@ -190,10 +195,12 @@ function buildSources() {
       const size = Math.round(12 + p.risk * 2.1);
       const [lon, lat] = f.geometry.coordinates;
       p.at = f.geometry.coordinates;      /* the popup needs it to frame the view */
-      return L.marker([lat, lon], {
+      const marker = L.marker([lat, lon], {
         icon: sourceIcon(c.shape, c.color, size),
         zIndexOffset: Math.round(p.risk * 20),
-      })
+      });
+      sourceMarkers.set(p.id, marker);
+      return marker
         .bindTooltip(
           `<b>${p.name ? esc(p.name) : esc(c.label)}</b><br>`
           + `${esc(c.label)}<br>${metres(p.dist)} from ${esc(overallNearest(p)?.n ?? 'water')}`,
@@ -365,6 +372,7 @@ function repaint() {
 function paintStations() {
   if (!stationLayer) return;
   stationLayer.clearLayers();
+  stationMarkers.clear();
   const target = store.conditions().targetClass;
 
   for (const st of DATA.stations) {
@@ -374,7 +382,7 @@ function paintStations() {
     const comp = classCompliance(r.raw, target);
     const focus = st.code === DATA.focus.code;
 
-    L.marker([st.lat, st.lon], {
+    const marker = L.marker([st.lat, st.lon], {
       zIndexOffset: focus ? 600 : 300,
       icon: L.divIcon({
         className: '',
@@ -388,37 +396,47 @@ function paintStations() {
         { direction: 'top', offset: [0, -14] })
       .bindPopup(stationPopup(st, r, cls, comp, target), { maxWidth: 300 })
       .addTo(stationLayer);
+    stationMarkers.set(st.code, marker);
   }
 }
 
 /* The four chips describe the map as it stands, not the latest reading, so
    they move with the slider. */
-/* How many stations sit in each WQI class this month. The chips carry the
-   same colour and roman numeral as the legend and the markers, and they are
-   switches for the same reason the legend rows are — a box that looks like a
-   class key and does nothing when clicked is a box that lies about itself. */
+/* One level indicator rather than five boxes: the WQI classes are an ordered
+   scale, so a stacked bar running I to V shows where the stations sit AND how
+   they are spread in a single read. Segment width is the count; every class
+   keeps a minimum width so the whole scale is always present, including the
+   empty ones. The ticks beneath share the same flex ratios, so they line up.
+
+   Segments filter, like the legend rows they mirror — a segment carrying a
+   class key that does nothing when clicked would be lying about itself. */
 function paintKpis() {
   const counts = Object.fromEntries(WQI_CLASSES.map((c) => [c.id, 0]));
   for (const st of DATA.stations) {
     counts[wqiClass(readingAt(st, monthIdx).wqi).id]++;
   }
+  const n = DATA.stations.length;
 
-  const total = `
-    <div class="mkpi">
+  const seg = (c) => {
+    const v = counts[c.id];
+    const off = !visible.has(`wqi:${c.id}`);
+    return `<button class="lv-seg${v ? '' : ' zero'}${off ? ' off' : ''}"
+      style="--c:${c.color};flex-grow:${v}" data-vis="wqi:${c.id}"
+      title="Class ${c.id} — ${esc(c.status)}: ${v} of ${n} stations · ${esc(c.use)}"
+      >${v}</button>`;
+  };
+  const tick = (c) => `<span style="flex-grow:${counts[c.id]}">${c.id}</span>`;
+
+  $('mapKpis').innerHTML = `
+    <div class="mkpi levelcard">
       <span class="mk-ic" style="background:#22235f">◉</span>
-      <span><span class="mk-v">${DATA.stations.length}</span>
+      <span class="lv-total"><span class="mk-v">${n}</span>
         <span class="mk-l">Stations</span></span>
+      <span class="lv-wrap">
+        <span class="lv-bar">${WQI_CLASSES.map(seg).join('')}</span>
+        <span class="lv-ticks">${WQI_CLASSES.map(tick).join('')}</span>
+      </span>
     </div>`;
-
-  const cls = (c) => `
-    <button class="mkpi kcls${visible.has(`wqi:${c.id}`) ? '' : ' off'}"
-      data-vis="wqi:${c.id}" title="${esc(c.status)} · ${esc(c.use)}">
-      <span class="mk-ic" style="background:${c.color}">${c.id}</span>
-      <span><span class="mk-v">${counts[c.id]}</span>
-        <span class="mk-l">${esc(c.status)}</span></span>
-    </button>`;
-
-  $('mapKpis').innerHTML = total + WQI_CLASSES.map(cls).join('');
 }
 
 function stationPopup(st, r, cls, comp, target) {
@@ -631,6 +649,161 @@ function buildLegend() {
   };
   L.DomEvent.disableClickPropagation(card);
   L.DomEvent.disableScrollPropagation(card);
+}
+
+/* ---------------- Search ----------------
+   One index over everything drawn, built once. Names are what people have to
+   go on: a station code, a river, a factory. Anything unnamed is left out —
+   an entry reading "Pond" 600 times is a worse list than a shorter one. */
+function buildSearch() {
+  const idx = [];
+
+  for (const st of DATA.stations) {
+    idx.push({
+      kind: 'station', id: st.code, at: [st.lat, st.lon],
+      label: `${st.name} · ${st.code}`,
+      sub: `${st.river} · ${st.district}`,
+      hay: `${st.name} ${st.code} ${st.river} ${st.district}`.toLowerCase(),
+      ic: '◉', color: '#22235f',
+    });
+  }
+
+  for (const f of DATA.rivers.features) {
+    const r = f.properties;
+    if (!r.name || r.id == null) continue;
+    const c = f.geometry.coordinates;
+    const mid = c[c.length >> 1];
+    idx.push({
+      kind: 'river', id: r.id, at: [mid[1], mid[0]],
+      label: r.name,
+      sub: `${(r.m / 1000).toFixed(1)} km${r.main ? ' · main channel' : ''}`,
+      hay: r.name.toLowerCase(),
+      ic: '~', color: r.main ? '#0aa3d9' : '#45bfe0',
+    });
+  }
+
+  for (const b of DATA.water.bodies) {
+    if (!b.name || b.id == null) continue;
+    const g = WATER_GROUPS[b.group] ?? WATER_GROUPS.other;
+    idx.push({
+      kind: 'water', id: b.id, at: [b.lat, b.lon],
+      label: b.name,
+      sub: `${g.label} · ${(b.area_m2 / 1e4).toFixed(1)} ha`,
+      hay: `${b.name} ${g.label}`.toLowerCase(),
+      ic: '○', color: g.color,
+    });
+  }
+
+  const su = sourceSummary();
+  for (const f of su.features) {
+    const q = f.properties;
+    if (!q.name) continue;
+    const c = su.cats[q.cat];
+    idx.push({
+      kind: 'source', id: q.id, at: [f.geometry.coordinates[1], f.geometry.coordinates[0]],
+      label: q.name,
+      sub: c ? c.label : 'Point source',
+      hay: `${q.name} ${c ? c.label : ''}`.toLowerCase(),
+      ic: '■', color: c ? c.color : '#4a3aa7',
+    });
+  }
+
+  searchIndex = idx;
+
+  const box = $('mapSearch');
+  const list = $('mapSearchList');
+  let hits = [];
+  let cursor = -1;
+
+  const close = () => { list.hidden = true; cursor = -1; };
+
+  const render = () => {
+    if (!hits.length) {
+      list.innerHTML = '<div class="ms-none">Nothing on the map matches that.</div>';
+      list.hidden = false;
+      return;
+    }
+    const shown = hits.slice(0, 12);
+    list.innerHTML = shown.map((h, i) => `
+      <button class="ms-item${i === cursor ? ' on' : ''}" data-i="${i}">
+        <span class="ms-ic" style="background:${h.color}">${h.ic}</span>
+        <span class="ms-t"><b>${esc(h.label)}</b><span>${esc(h.sub)}</span></span>
+      </button>`).join('')
+      + (hits.length > shown.length
+        ? `<div class="ms-more">${hits.length - shown.length} more — keep typing</div>` : '');
+    list.hidden = false;
+  };
+
+  const search = (q) => {
+    const t = q.trim().toLowerCase();
+    if (t.length < 2) { hits = []; close(); return; }
+    /* Stations first, then rivers, then the rest: a code or a river name is
+       almost always what someone is after. */
+    const rank = { station: 0, river: 1, water: 2, source: 3 };
+    hits = searchIndex
+      .filter((h) => h.hay.includes(t))
+      .sort((a, b) => (rank[a.kind] - rank[b.kind])
+        || (a.hay.indexOf(t) - b.hay.indexOf(t))
+        || a.label.localeCompare(b.label));
+    cursor = -1;
+    render();
+  };
+
+  const pick = (h) => {
+    if (!h) return;
+    box.value = h.label;
+    close();
+    locate(h);
+  };
+
+  box.oninput = () => search(box.value);
+  box.onfocus = () => { if (box.value.trim().length >= 2) search(box.value); };
+  box.onkeydown = (e) => {
+    if (e.key === 'Escape') { close(); box.blur(); return; }
+    if (!hits.length) return;
+    const last = Math.min(hits.length, 12) - 1;
+    if (e.key === 'ArrowDown') { cursor = cursor >= last ? 0 : cursor + 1; render(); e.preventDefault(); }
+    else if (e.key === 'ArrowUp') { cursor = cursor <= 0 ? last : cursor - 1; render(); e.preventDefault(); }
+    else if (e.key === 'Enter') { pick(hits[cursor < 0 ? 0 : cursor]); e.preventDefault(); }
+  };
+  list.onclick = (e) => {
+    const b = e.target.closest('[data-i]');
+    if (b) pick(hits[+b.dataset.i]);
+  };
+  document.addEventListener('click', (e) => {
+    if (!$('mapSearchBox').contains(e.target)) close();
+  });
+
+  const wrap = $('mapSearchBox');
+  L.DomEvent.disableClickPropagation(wrap);
+  L.DomEvent.disableScrollPropagation(wrap);
+}
+
+/* Take the map to a search hit and make it obvious which one it is. If its
+   layer has been filtered out, switch it back on — being shown the thing is
+   the whole point of asking for it. */
+function locate(h) {
+  if (!map) return;
+
+  if (h.kind === 'station') {
+    const st = DATA.stations.find((x) => x.code === h.id);
+    const cls = wqiClass(readingAt(st, monthIdx).wqi);
+    if (!visible.has(`wqi:${cls.id}`)) { visible.add(`wqi:${cls.id}`); applyVisibility(); }
+    map.flyTo(h.at, Math.max(map.getZoom(), 13), { duration: 0.7 });
+    map.once('moveend', () => stationMarkers.get(h.id)?.openPopup());
+    return;
+  }
+
+  if (h.kind === 'source') {
+    const f = sourceSummary().features.find((x) => x.properties.id === h.id);
+    const key = `src:${f?.properties.cat}`;
+    if (f && !visible.has(key)) { visible.add(key); applyVisibility(); }
+    map.flyTo(h.at, Math.max(map.getZoom(), 15), { duration: 0.7 });
+    map.once('moveend', () => sourceMarkers.get(h.id)?.openPopup());
+    return;
+  }
+
+  showReceiving(`${h.kind}:${h.id}`, h.at);
 }
 
 /* ---------------- Bottom centre: the month on show ---------------- */

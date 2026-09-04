@@ -59,7 +59,7 @@ export async function loadAll(onStep) {
     geo: wb,
   };
 
-  onStep?.(0.8, 'Loading pollution sources…');
+  onStep?.(0.8, 'Loading point sources…');
   DATA.sources = await J('data/pollution_sources.geojson');
 
   onStep?.(0.85, 'Loading the Selangor boundary…');
@@ -177,7 +177,7 @@ export const WATER_GROUPS = {
 };
 
 /* ============================================================
-   Pollution sources — what can put a load into the river
+   Point sources — what can put a load into the river
    Source: OpenStreetMap, clipped to the catchment and the riparian zone
    by scripts/08_build_pollution_sources.py.
    ============================================================ */

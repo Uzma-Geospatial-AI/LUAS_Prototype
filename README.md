@@ -7,7 +7,7 @@ reaches the river. Built by Geospatial AI Sdn Bhd, an Uzma Group company.
 Live: https://uzma-geospatial-ai.github.io/LUAS_Prototype/
 
 1. **Map** — satellite imagery, the catchment and its rivers, 16 stations, 1,101 water bodies
-   and 651 pollution sources, all filterable and steppable through 56 months.
+   and 651 point sources, all filterable and steppable through 56 months.
 2. **Phase 1 · Station Assessment** — six DOE parameters → WQI → does the reach hold Class II?
 3. **Phase 2 · Quality Monitoring** — how often each parameter breaches, and how it trends.
 4. **Phase 3 · LEDS · TMDL · SESAMS** — what the reach can carry, what it carries now, and
@@ -43,7 +43,7 @@ LUAS_Prototype/
 │   ├── loads.js               load, TMDL, headroom and effluent-standard maths
 │   ├── store.js               localStorage: readings, SESAMS register, conditions
 │   ├── mapview.js             the map, its four corners and the legend filter
-│   ├── symbols.js             one shape per pollution source category
+│   ├── symbols.js             one shape per point source category
 │   ├── satellite.js           imagery catalogue + spectral index reference
 │   ├── phase1.js              station assessment + class calculator
 │   ├── phase2.js              monitoring, water bodies, national context
@@ -100,7 +100,7 @@ The map fills the window and every corner says what it is counting.
 
 | Corner | What it holds |
 |---|---|
-| Top left | Station count, then one box per WQI class with how many stations are in it this month |
+| Top left | The level indicator, and a search box under it |
 | Top right | The basemap in use, with all eight behind it |
 | Bottom left | Layer masters, each with its own count |
 | Bottom centre | The month on show — a slider across all 56, with play |
@@ -112,11 +112,17 @@ layer masters command a group of rows — switching one off clears the group, an
 on, off or part-on from its members, so the two panels cannot disagree. The legend folds to a
 single pill when it is in the way.
 
-**The class breakdown** across the top: 16 stations, then a box per WQI class — I, II, III, IV,
-V — carrying the count for the month on show. The boxes use the same colour and roman numeral as
-the markers and the legend, and they filter the same way: click *Slightly Polluted* and those
-stations leave the map. A box that looks like a class key and does nothing when clicked would be
-lying about itself.
+**The level indicator** across the top. The WQI classes are an ordered scale, so one stacked bar
+running I to V shows where the stations sit *and* how they are spread in a single read — segment
+width is the count, and every class keeps a minimum width so the empty ones still hold their place
+on the scale. Segments carry the same colour and roman numeral as the markers and the legend, and
+they filter the same way: click *Slightly Polluted* and those stations leave the map.
+
+**Search** finds anything the map draws — a station code, a river, a named water body, a named
+point source — and takes you to it: a station or a source opens its popup, a river or a water body
+flashes. If what you picked has been filtered out, its layer is switched back on, since being
+shown the thing is the point of asking for it. Unnamed features are left out; a list reading
+"Pond" six hundred times is worse than a shorter one.
 
 **The month slider** moves the whole map through the record: every station marker and every chip
 repaints, so the reach can be watched changing rather than read one month at a time. The class
@@ -128,7 +134,7 @@ counts move with it, which is the quickest read of whether the basin is improvin
 |---|---|
 | Monitoring stations | 16 stations, drawn as their WQI and coloured by DOE class |
 | Water bodies | 1,101 Digital Earth outlines, coloured by type |
-| Pollution sources | 651 sites that can put a load into the river, one shape per category |
+| Point sources | 651 sites that can put a load into the river, one shape per category |
 | Sungai Langat & tributaries | 682 km of mapped channel, main channel drawn heavier |
 | Langat catchment | 2,140 km², the clip for everything else |
 | Selangor boundary | the state LUAS is responsible for, Federal Territories excluded |
@@ -149,7 +155,7 @@ counts move with it, which is the quickest read of whether the basin is improvin
 
 ---
 
-## Pollution sources
+## Point sources
 
 What can put a load into the river, from OpenStreetMap. Each category has its own **shape** as
 well as its own colour, so the five stay tellable apart on a busy satellite basemap, in
@@ -278,7 +284,7 @@ and every figure recomputes from them.
 | Water bodies, 1,101 outlines | [Digital Earth · `malaysia_water_bodies.geojson`](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/malaysia_water_bodies.geojson) | **Real** |
 | Sungai Langat catchment, 2,140 km² | [HydroSHEDS · HydroBASINS Asia level 8](https://www.hydrosheds.org/products/hydrobasins) | **Real** |
 | River network, 489 reaches, 682 km | [OpenStreetMap](https://www.openstreetmap.org) via Overpass | **Real** |
-| Pollution sources, 651 sites | [OpenStreetMap](https://www.openstreetmap.org) via Overpass | **Real** (risk score ⚠️ derived) |
+| Point sources, 651 sites | [OpenStreetMap](https://www.openstreetmap.org) via Overpass | **Real** (risk score ⚠️ derived) |
 | Selangor state boundary | [DOSM · `administrative_1_state.geojson`](https://github.com/dosm-malaysia/data-open) | **Real** |
 | Satellite imagery | Esri · Google · EOX · NASA GIBS | **Real** |
 | Station parameter readings, 16 × 56 months | Generated for demonstration | ⚠️ **SAMPLE** |
@@ -353,7 +359,7 @@ The site is static, so there is nothing to build — any static host works:
 - Open data — [data.gov.my](https://data.gov.my)
 - State boundary — [Department of Statistics Malaysia](https://github.com/dosm-malaysia/data-open)
 - Catchment — [HydroSHEDS HydroBASINS](https://www.hydrosheds.org/) (CC BY 4.0, WWF / USGS)
-- Rivers and pollution sources — [OpenStreetMap](https://www.openstreetmap.org) contributors (ODbL)
+- Rivers and point sources — [OpenStreetMap](https://www.openstreetmap.org) contributors (ODbL)
 - Water bodies — Digital Earth
 - Imagery — Esri, Google, [EOX Sentinel-2 cloudless](https://s2maps.eu), NASA EOSDIS GIBS
 - Map library — [Leaflet](https://leafletjs.com/) · Charts — [Chart.js](https://www.chartjs.org/)
