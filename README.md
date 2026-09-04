@@ -101,7 +101,7 @@ The map fills the window and every corner says what it is counting.
 | Corner | What it holds |
 |---|---|
 | Top left | The station total, and the count in each WQI class this month |
-| Top right | The basemap in use, with all eight behind it |
+| Top right | Search, and the basemap in use with all eight behind it |
 | Bottom left | Layer masters, each with its own count |
 | Bottom centre | The month on show — a slider across all 56, with play |
 | Bottom right | The legend, which is also the filter |
@@ -117,15 +117,21 @@ each WQI class this month in another. They carry the same colour and roman numer
 and the legend, and they filter the same way: click *Slightly Polluted* and those stations leave
 the map.
 
-**Search** sits in the app bar and finds anything the map draws — a station code, a river, a named
+**Search** sits beside the basemap button and finds anything the map draws — a station code, a river, a named
 water body, a named point source — then takes you to it: a station or a source opens its popup, a
 river or a water body flashes. If what you picked has been filtered out, its layer is switched
 back on, since being shown the thing is the point of asking for it. Unnamed features are left out;
 a list reading "Pond" six hundred times is worse than a shorter one.
 
-**Click a river to see where it goes.** OSM draws a waterway in the direction it flows, so the
-ETL turns that into `next` — the reach below — and `nexti`, the vertex it joins at. Clicking a
-reach walks that chain to the sea, lights the route, and says how far and through what:
+**Flow direction is always on.** OSM draws a waterway in the direction it flows, so animating a
+dash pattern along the line *is* the direction — nothing has to be inferred at draw time, and no
+arrows have to be placed. A dashed pass sits over the channels and moves downstream; it is never
+interactive, so it never takes a click away from the river beneath it. It can be switched off, and
+it respects `prefers-reduced-motion`.
+
+**Click a river to see where it goes.** The same directed geometry becomes `next` — the reach
+below — and `nexti`, the vertex it joins at. Clicking a reach walks that chain to the sea, lights
+the route, and says how far and through what:
 
 > Sungai Pajam → Sungai Beranang → Sungai Semenyih → Sungai Langat · 142.8 km · 18 reaches
 
@@ -148,6 +154,7 @@ counts move with it, which is the quickest read of whether the basin is improvin
 | Water bodies | 1,101 Digital Earth outlines, coloured by type |
 | Point sources | 651 sites that can put a load into the river, one shape per category |
 | Sungai Langat & tributaries | 682 km of mapped channel, main channel drawn heavier |
+| Flow direction | the same channels, dashed and animated downstream |
 | Langat catchment | 2,140 km², the clip for everything else |
 | Selangor boundary | the state LUAS is responsible for, Federal Territories excluded |
 

@@ -39,6 +39,7 @@ const POPUP = {
 let map = null, base = null, current = 'esri';
 let stationLayer = null, basinLayer = null, stateLayer = null;
 const waterLayers = {};       // water:<group>
+let flowLayer = null;         // the animated direction overlay
 const sourceLayers = {};      // src:<category>
 const riverLayers = {};       // river:main | river:trib
 
@@ -148,6 +149,26 @@ function buildRivers() {
     visible.add(`river:${key}`);
   }
   MASTERS.rivers = ['river:main', 'river:trib'];
+
+  /* A dashed pass drawn over the channels. OSM's coordinates already run
+     downstream, so animating the dash offset along the line IS the flow
+     direction — nothing has to be inferred at draw time. It carries no
+     information the lines below do not, so it is never interactive and never
+     takes a click away from them. */
+  flowLayer = L.geoJSON(DATA.rivers, {
+    style: (f) => ({
+      color: '#ffffff',
+      weight: f.properties.main ? 2.4 : 1.3,
+      opacity: 0.85,
+      /* Both patterns repeat every 20px, so one keyframe distance animates
+         both seamlessly. */
+      dashArray: f.properties.main ? '6 14' : '4 16',
+      className: 'flow-anim',
+      interactive: false,
+    }),
+  });
+  visible.add('flow:anim');
+  MASTERS.flow = ['flow:anim'];
 }
 
 /* ---------------- Water bodies ---------------- */
@@ -338,6 +359,7 @@ function applyVisibility() {
   set(basinLayer, visible.has('bound:catchment'));
   set(stateLayer, visible.has('bound:selangor'));
   for (const [k, l] of Object.entries(riverLayers)) set(l, visible.has(`river:${k}`));
+  set(flowLayer, visible.has('flow:anim'));
   for (const [k, l] of Object.entries(waterLayers)) set(l, visible.has(`water:${k}`));
   for (const [k, l] of Object.entries(sourceLayers)) set(l, visible.has(`src:${k}`));
 
@@ -638,7 +660,9 @@ function buildLegend() {
     + row('bound:selangor', line('#ffffff'), 'Selangor', 'LUAS jurisdiction')
     + row('river:main', line('#0aa3d9', true), 'Sungai Langat', 'main channel')
     + row('river:trib', line('#45bfe0', true), 'Tributaries',
-      `${riverLayers.trib?.getLayers().length ?? 0} reaches`);
+      `${riverLayers.trib?.getLayers().length ?? 0} reaches`)
+    + row('flow:anim', '<span class="ml-line flowkey"></span>', 'Flow direction',
+      'downstream');
 
   document.querySelectorAll('[data-vis]').forEach((b) => {
     b.onclick = () => toggle(b.dataset.vis);

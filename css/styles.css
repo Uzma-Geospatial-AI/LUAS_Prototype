@@ -472,19 +472,19 @@ select{cursor:pointer}
   color:var(--muted);margin-top:2px;white-space:nowrap}
 
 /* --- Under the level card: search --- */
-/* In the app bar, next to the station picker. It only searches the map, so it
-   is hidden on the reading pages. */
-.map-search{position:relative;width:min(300px,26vw)}
-body:not([data-view="map"]) .map-search{display:none}
+/* Beside the basemap button, in the same corner of the map */
+.tr-row{display:flex;align-items:flex-start;gap:8px}
+.map-search{position:relative;width:min(290px,28vw)}
 .ms-field{
-  display:flex;align-items:center;gap:8px;padding:0 11px;
-  background:var(--surface-2);border:1px solid var(--line);border-radius:999px;
+  display:flex;align-items:center;gap:8px;padding:0 12px;
+  background:rgba(255,255,255,.94);backdrop-filter:blur(9px);
+  border:1px solid rgba(255,255,255,.7);border-radius:10px;
+  box-shadow:0 6px 22px rgba(12,18,40,.26);
 }
-.ms-field:focus-within{border-color:var(--cyan-2);background:var(--surface);
-  box-shadow:0 0 0 3px rgba(10,163,217,.13)}
+.ms-field:focus-within{border-color:var(--cyan-2);background:#fff}
 .ms-field svg{width:14px;height:14px;flex:none;color:var(--muted)}
 .ms-field input{
-  flex:1;min-width:0;border:0;background:none;padding:7px 0;
+  flex:1;min-width:0;border:0;background:none;padding:9px 0;
   font-family:inherit;font-size:12px;color:var(--text);
 }
 .ms-field input::placeholder{color:var(--muted-2)}
@@ -633,6 +633,19 @@ body:not([data-view="map"]) .map-search{display:none}
 }
 .pin-btn svg{width:13px;height:13px}
 .pin-btn:hover{background:var(--navy);color:#fff}
+
+/* Flow direction. OSM draws a waterway downstream, so moving the dash offset
+   along the line is the direction the water goes — no arrows to place, and it
+   reads at any zoom. Both dash patterns repeat every 20px so one keyframe
+   distance suits both. */
+@keyframes flowDash{to{stroke-dashoffset:-40}}
+.flow-anim{animation:flowDash 1.7s linear infinite;pointer-events:none}
+.ml-line.flowkey{
+  border-top:0;height:3px;width:22px;border-radius:2px;
+  background:repeating-linear-gradient(90deg,#fff 0 6px,transparent 6px 10px);
+  outline:1px solid rgba(0,0,0,.18);
+}
+@media(prefers-reduced-motion:reduce){.flow-anim{animation:none}}
 
 /* The water a source reaches, flashed so it can be picked out of the map */
 @keyframes flashWater{

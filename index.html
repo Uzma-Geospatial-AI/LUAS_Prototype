@@ -87,15 +87,6 @@
       <div class="ab-status"><span class="live-dot"></span> <span id="tbStatus">—</span></div>
     </div>
     <div class="ab-meta">
-      <div class="map-search" id="mapSearchBox">
-        <label class="ms-field">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>
-          <input id="mapSearch" type="search" autocomplete="off" spellcheck="false"
-            placeholder="Search the map…">
-        </label>
-        <div class="ms-list" id="mapSearchList" hidden></div>
-      </div>
       <label class="pill pick" title="The station every phase is written for">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
           stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="2.8"/>
@@ -122,11 +113,22 @@
 
     <!-- top right — basemap -->
     <div class="map-tr">
+      <div class="tr-row">
+        <div class="map-search" id="mapSearchBox">
+          <label class="ms-field">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>
+            <input id="mapSearch" type="search" autocomplete="off" spellcheck="false"
+              placeholder="Search the map…">
+          </label>
+          <div class="ms-list" id="mapSearchList" hidden></div>
+        </div>
       <button class="map-pill" id="baseToggle" aria-expanded="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z"/><circle cx="12" cy="12" r="10"/></svg>
         <span id="baseLabel">Basemap</span>
         <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m6 9 6 6 6-6"/></svg>
       </button>
+      </div>
       <div class="base-pop" id="basePop" hidden>
         <div id="mapBasemaps"></div>
         <div class="mp-date" id="mapDateRow">
@@ -157,6 +159,9 @@
       <label class="tog"><input type="checkbox" data-mapov="rivers" checked>
         <span class="tog-sw"></span>
         <span class="tog-t">Sungai Langat &amp; tributaries <i id="ovRivers"></i></span></label>
+      <label class="tog"><input type="checkbox" data-mapov="flow" checked>
+        <span class="tog-sw"></span>
+        <span class="tog-t">Flow direction <i>animated</i></span></label>
       <label class="tog"><input type="checkbox" data-mapov="basin" checked>
         <span class="tog-sw"></span>
         <span class="tog-t">Langat catchment <i id="ovBasin"></i></span></label>
