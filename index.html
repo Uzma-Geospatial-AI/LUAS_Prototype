@@ -87,6 +87,15 @@
       <div class="ab-status"><span class="live-dot"></span> <span id="tbStatus">—</span></div>
     </div>
     <div class="ab-meta">
+      <div class="map-search" id="mapSearchBox">
+        <label class="ms-field">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>
+          <input id="mapSearch" type="search" autocomplete="off" spellcheck="false"
+            placeholder="Search the map…">
+        </label>
+        <div class="ms-list" id="mapSearchList" hidden></div>
+      </div>
       <label class="pill pick" title="The station every phase is written for">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
           stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="2.8"/>
@@ -110,16 +119,6 @@
     <!-- top left — what is on the map right now -->
     <div class="map-kpis" id="mapKpis"></div>
 
-    <!-- under it — find anything the map draws -->
-    <div class="map-search" id="mapSearchBox">
-      <label class="ms-field">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>
-        <input id="mapSearch" type="search" autocomplete="off" spellcheck="false"
-          placeholder="Search stations, rivers, water, sources…">
-      </label>
-      <div class="ms-list" id="mapSearchList" hidden></div>
-    </div>
 
     <!-- top right — basemap -->
     <div class="map-tr">

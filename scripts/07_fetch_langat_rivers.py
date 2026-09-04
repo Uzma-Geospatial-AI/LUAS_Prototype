@@ -4,9 +4,22 @@ Source: OpenStreetMap via Overpass API (ODbL 1.0 © OpenStreetMap contributors)
 
 Every `waterway=river` whose course falls inside the catchment drains to Sungai
 Langat — that is what a catchment is — so the basin polygon from
-06_fetch_langat_basin.py is the filter, and no drainage topology has to be
-worked out. Streams and drains are left out: at the zooms this map is read at
-they would be noise, and the main channels are what the load budget is about.
+06_fetch_langat_basin.py is the filter. Streams and drains are left out: at the
+zooms this map is read at they would be noise, and the main channels are what
+the load budget is about.
+
+Flow direction
+--------------
+OSM draws a waterway in the direction it flows, so a way's coordinates already
+run downstream. That is the only real signal available for "where does this go".
+
+Matching one way's end against another way's START is not enough: a tributary
+joins the middle of the river it feeds, not its head, so almost every
+confluence is missed that way and traces die after one reach. The end node is
+therefore matched against ANY vertex of another way. Each reach gets `next`,
+the reach below it, and `nexti`, the vertex it joins at — so the distance
+downstream counts only the part of the next reach that is actually below the
+junction, not the whole of it.
 
 Run 06_fetch_langat_basin.py first.
 """
@@ -155,6 +168,62 @@ for el in elements:
     feats.append({'type': 'Feature', 'properties': props,
                   'geometry': {'type': 'LineString', 'coordinates': dedup}})
 
+# ---------------- Flow direction ----------------
+# Every vertex of every reach, so a confluence anywhere along a river is found.
+SNAP_M = 75.0            # a confluence displaced by simplification and clipping
+#                          75 m takes reaches that trace to Sungai Langat from
+#                          117 to 394 of 489; 150 m reaches 454 but starts
+#                          linking across to parallel channels, so it is not
+#                          worth the wrong answers.
+
+vertices = {}
+for i, f in enumerate(feats):
+    for k, c in enumerate(f['geometry']['coordinates']):
+        vertices.setdefault((round(c[0], 5), round(c[1], 5)), []).append((i, k))
+
+vertex_pts = list(vertices.items())
+
+
+def downstream_of(i, key):
+    """The reach this one flows into, and the vertex it joins at.
+
+    Prefer a junction with channel left below it; a match on another reach's
+    very last vertex is still a link, just one with nothing of its own to
+    contribute."""
+    best = None
+    for j, k in vertices.get(key, ()):
+        if j == i:
+            continue
+        room = len(feats[j]['geometry']['coordinates']) - 1 - k
+        if best is None or room > best[2]:
+            best = (j, k, room)
+    if best:
+        return best[0], best[1]
+
+    kx = math.cos(math.radians(key[1])) * 111320.0
+    near, nd = None, SNAP_M
+    for (x, y), jk in vertex_pts:
+        d = math.hypot((x - key[0]) * kx, (y - key[1]) * 111320.0)
+        if d <= nd:
+            hit = next(((j, k) for j, k in jk if j != i), None)
+            if hit:
+                near, nd = hit, d
+    return near if near else (None, None)
+
+
+linked = ends = 0
+for i, f in enumerate(feats):
+    c = f['geometry']['coordinates'][-1]
+    j, k = downstream_of(i, (round(c[0], 5), round(c[1], 5)))
+    if j is None:
+        ends += 1
+        continue
+    f['properties']['next'] = feats[j]['properties']['id']
+    f['properties']['nexti'] = k
+    linked += 1
+
+print('flow: %d reaches link downstream, %d are ends' % (linked, ends))
+
 feats.sort(key=lambda f: -f['properties']['m'])
 
 named = sum(1 for f in feats if f['properties'].get('name'))
@@ -180,7 +249,11 @@ payload = {
         'total_km': round(total_km, 1),
         'simplify_m': round(SIMPLIFY_DEG * 111320.0),
         'note': ('Every river inside the catchment drains to Sungai Langat. '
-                 'Streams and drains are excluded.'),
+                 'Streams and drains are excluded. "next" is the reach this one '
+                 'flows into, taken from the direction OSM draws a waterway in; '
+                 'a reach without it is the mouth, or the edge of the mapped '
+                 'network. "nexti" is the vertex of that reach the junction sits '
+                 'at, so only the channel below the junction counts as downstream.'),
     },
     'features': feats,
 }

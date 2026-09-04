@@ -100,7 +100,7 @@ The map fills the window and every corner says what it is counting.
 
 | Corner | What it holds |
 |---|---|
-| Top left | The level indicator, and a search box under it |
+| Top left | The station total, and the count in each WQI class this month |
 | Top right | The basemap in use, with all eight behind it |
 | Bottom left | Layer masters, each with its own count |
 | Bottom centre | The month on show — a slider across all 56, with play |
@@ -112,17 +112,29 @@ layer masters command a group of rows — switching one off clears the group, an
 on, off or part-on from its members, so the two panels cannot disagree. The legend folds to a
 single pill when it is in the way.
 
-**The level indicator** across the top. The WQI classes are an ordered scale, so one stacked bar
-running I to V shows where the stations sit *and* how they are spread in a single read — segment
-width is the count, and every class keeps a minimum width so the empty ones still hold their place
-on the scale. Segments carry the same colour and roman numeral as the markers and the legend, and
-they filter the same way: click *Slightly Polluted* and those stations leave the map.
+**The class counts** across the top: the station total in one box, then how many stations sit in
+each WQI class this month in another. They carry the same colour and roman numeral as the markers
+and the legend, and they filter the same way: click *Slightly Polluted* and those stations leave
+the map.
 
-**Search** finds anything the map draws — a station code, a river, a named water body, a named
-point source — and takes you to it: a station or a source opens its popup, a river or a water body
-flashes. If what you picked has been filtered out, its layer is switched back on, since being
-shown the thing is the point of asking for it. Unnamed features are left out; a list reading
-"Pond" six hundred times is worse than a shorter one.
+**Search** sits in the app bar and finds anything the map draws — a station code, a river, a named
+water body, a named point source — then takes you to it: a station or a source opens its popup, a
+river or a water body flashes. If what you picked has been filtered out, its layer is switched
+back on, since being shown the thing is the point of asking for it. Unnamed features are left out;
+a list reading "Pond" six hundred times is worse than a shorter one.
+
+**Click a river to see where it goes.** OSM draws a waterway in the direction it flows, so the
+ETL turns that into `next` — the reach below — and `nexti`, the vertex it joins at. Clicking a
+reach walks that chain to the sea, lights the route, and says how far and through what:
+
+> Sungai Pajam → Sungai Beranang → Sungai Semenyih → Sungai Langat · 142.8 km · 18 reaches
+
+Matching one way's end against another's *start* is not enough — a tributary joins the middle of
+the river it feeds, so almost every confluence is missed and traces die after one reach. Ends are
+matched against any vertex, and only the channel below the junction counts as downstream.
+Confluences displaced by clipping and simplification are snapped within 75 m, which takes reaches
+that trace to Sungai Langat from 117 to **394 of 489**. The remaining 95 stop where the mapped
+network stops, and the popup says so rather than implying the water ends there.
 
 **The month slider** moves the whole map through the record: every station marker and every chip
 repaints, so the reach can be watched changing rather than read one month at a time. The class

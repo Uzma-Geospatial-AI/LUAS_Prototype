@@ -27,6 +27,15 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
 
 const ALL = { ...IMAGERY, ...REFERENCE_MAPS };
 
+/* Leaflet keeps every pane inside one stacking context at z-index 400, so a
+   popup cannot be lifted above the cards floating in the corners. Panning it
+   clear of them is the fix: these paddings are the space the cards occupy. */
+const POPUP = {
+  maxWidth: 300,
+  autoPanPaddingTopLeft: [20, 132],
+  autoPanPaddingBottomRight: [250, 150],
+};
+
 let map = null, base = null, current = 'esri';
 let stationLayer = null, basinLayer = null, stateLayer = null;
 const waterLayers = {};       // water:<group>
@@ -36,6 +45,7 @@ const riverLayers = {};       // river:main | river:trib
 const stationMarkers = new Map();   // station code -> marker
 const sourceMarkers = new Map();    // osm id -> marker
 let searchIndex = null;
+let traceLayer = null;
 
 const visible = new Set();
 const MASTERS = {};           // layers-card switch -> the ids it commands
@@ -128,8 +138,10 @@ function buildRivers() {
         layer.bindTooltip(
           `<b>${r.name ? esc(r.name) : 'Unnamed river'}</b><br>`
           + `${(r.m / 1000).toFixed(1)} km of mapped channel`
-          + (r.main ? '<br>Main channel' : ''),
+          + (r.main ? '<br>Main channel' : '') + '<br><i>Click to trace downstream</i>',
           { sticky: true });
+        layer.bindPopup(() => riverPopup(r), POPUP);
+        layer.on('click', () => drawTrace(r.id));
         if (r.id != null) receiving.set(`river:${r.id}`, { layer, vis: `river:${key}` });
       },
     });
@@ -207,7 +219,7 @@ function buildSources() {
           { direction: 'top', offset: [0, -size / 2 - 2] })
         /* A function, not a string: it is re-run on open and on every layer
            toggle, so the answer follows what is actually on the map. */
-        .bindPopup(() => sourcePopup(p, c), { maxWidth: 300 });
+        .bindPopup(() => sourcePopup(p, c), POPUP);
     }));
     visible.add(`src:${key}`);
     ids.push(`src:${key}`);
@@ -394,7 +406,7 @@ function paintStations() {
     })
       .bindTooltip(`<b>${esc(st.code)} — ${esc(st.name)}</b><br>WQI ${r.wqi.toFixed(1)} · ${cls.status}`,
         { direction: 'top', offset: [0, -14] })
-      .bindPopup(stationPopup(st, r, cls, comp, target), { maxWidth: 300 })
+      .bindPopup(stationPopup(st, r, cls, comp, target), POPUP)
       .addTo(stationLayer);
     stationMarkers.set(st.code, marker);
   }
@@ -402,14 +414,11 @@ function paintStations() {
 
 /* The four chips describe the map as it stands, not the latest reading, so
    they move with the slider. */
-/* One level indicator rather than five boxes: the WQI classes are an ordered
-   scale, so a stacked bar running I to V shows where the stations sit AND how
-   they are spread in a single read. Segment width is the count; every class
-   keeps a minimum width so the whole scale is always present, including the
-   empty ones. The ticks beneath share the same flex ratios, so they line up.
+/* The station total, then the count in each WQI class this month. Two cards,
+   because the total is a fact about the network and the counts are a reading
+   of one month — they answer different questions.
 
-   Segments filter, like the legend rows they mirror — a segment carrying a
-   class key that does nothing when clicked would be lying about itself. */
+   The class boxes filter, like the legend rows they mirror. */
 function paintKpis() {
   const counts = Object.fromEntries(WQI_CLASSES.map((c) => [c.id, 0]));
   for (const st of DATA.stations) {
@@ -417,25 +426,21 @@ function paintKpis() {
   }
   const n = DATA.stations.length;
 
-  const seg = (c) => {
-    const v = counts[c.id];
-    const off = !visible.has(`wqi:${c.id}`);
-    return `<button class="lv-seg${v ? '' : ' zero'}${off ? ' off' : ''}"
-      style="--c:${c.color};flex-grow:${v}" data-vis="wqi:${c.id}"
-      title="Class ${c.id} — ${esc(c.status)}: ${v} of ${n} stations · ${esc(c.use)}"
-      >${v}</button>`;
-  };
-  const tick = (c) => `<span style="flex-grow:${counts[c.id]}">${c.id}</span>`;
+  const item = (c) => `
+    <button class="cl-item${visible.has(`wqi:${c.id}`) ? '' : ' off'}"
+      data-vis="wqi:${c.id}"
+      title="Class ${c.id} — ${esc(c.status)}: ${counts[c.id]} of ${n} stations · ${esc(c.use)}">
+      <span class="cl-b" style="background:${c.color}">${c.id}</span>
+      <span class="cl-n">${counts[c.id]}</span>
+    </button>`;
 
   $('mapKpis').innerHTML = `
-    <div class="mkpi levelcard">
+    <div class="mkpi">
       <span class="mk-ic" style="background:#22235f">◉</span>
-      <span class="lv-total"><span class="mk-v">${n}</span>
-        <span class="mk-l">Stations</span></span>
-      <span class="lv-wrap">
-        <span class="lv-bar">${WQI_CLASSES.map(seg).join('')}</span>
-        <span class="lv-ticks">${WQI_CLASSES.map(tick).join('')}</span>
-      </span>
+      <span><span class="mk-v">${n}</span><span class="mk-l">Stations</span></span>
+    </div>
+    <div class="mkpi classcard">
+      ${WQI_CLASSES.map(item).join('')}
     </div>`;
 }
 
@@ -532,7 +537,7 @@ function buildBasemaps() {
   }
 
   map.on('popupopen', (e) => { openPopup = e.popup; wirePopup(e.popup); });
-  map.on('popupclose', () => { openPopup = null; });
+  map.on('popupclose', () => { openPopup = null; clearTrace(); });
 }
 
 /* Popup markup is rebuilt on every open and on every layer toggle, so its
@@ -649,6 +654,96 @@ function buildLegend() {
   };
   L.DomEvent.disableClickPropagation(card);
   L.DomEvent.disableScrollPropagation(card);
+}
+
+/* ---------------- Where the water goes ----------------
+   OSM draws a waterway in the direction it flows, and the ETL turned that into
+   `next` (the reach below) and `nexti` (the vertex it joins at). Walking that
+   chain answers the question a spill actually raises: where does this end up? */
+function flowChain(startId) {
+  const out = [];
+  const seen = new Set();
+  let id = startId, at = 0;
+
+  while (id != null && !seen.has(id)) {
+    seen.add(id);
+    const t = receiving.get(`river:${id}`);
+    if (!t?.layer?.feature) break;
+    const r = t.layer.feature.properties;
+    const part = t.layer.feature.geometry.coordinates.slice(at);
+    if (part.length > 1) out.push({ name: r.name, main: !!r.main, part });
+    at = r.nexti ?? 0;
+    id = r.next;
+  }
+  return out;
+}
+
+const MPD = 111320;
+function partKm(part) {
+  let m = 0;
+  for (let i = 1; i < part.length; i++) {
+    const [x1, y1] = part[i - 1], [x2, y2] = part[i];
+    const kx = Math.cos((y1 + y2) / 2 * Math.PI / 180) * MPD;
+    m += Math.hypot((x2 - x1) * kx, (y2 - y1) * MPD);
+  }
+  return m / 1000;
+}
+
+function flowSummary(id) {
+  const chain = flowChain(id);
+  const names = [];
+  for (const c of chain) {
+    if (c.name && names[names.length - 1] !== c.name) names.push(c.name);
+  }
+  return {
+    chain,
+    names,
+    km: chain.reduce((t, c) => t + partKm(c.part), 0),
+    reaches: chain.length,
+    toSea: chain.some((c) => c.main),
+  };
+}
+
+function clearTrace() {
+  if (traceLayer) { map.removeLayer(traceLayer); traceLayer = null; }
+}
+
+function drawTrace(id) {
+  clearTrace();
+  const { chain } = flowSummary(id);
+  if (chain.length < 2) return;
+  traceLayer = L.layerGroup(chain.map((c) => L.polyline(
+    c.part.map(([x, y]) => [y, x]),
+    { color: '#f5e01c', weight: 5, opacity: 0.9, interactive: false },
+  ))).addTo(map);
+  traceLayer.eachLayer((l) => l.bringToFront());
+}
+
+function riverPopup(r) {
+  const f = flowSummary(r.id);
+  const down = f.names.slice(1);            /* the first name is this reach */
+
+  return `
+    <div class="map-pop">
+      <div class="pop-head" style="background:${r.main ? '#0aa3d9' : '#45bfe0'}">
+        <div class="pop-code">${r.main ? 'Main channel' : 'Tributary'}</div>
+        <div class="pop-name">${r.name ? esc(r.name) : 'Unnamed river'}</div>
+      </div>
+      <div class="pop-body">
+        <table class="pop-tbl">
+          <tr><td>This reach</td><td class="num">${(r.m / 1000).toFixed(1)} km</td></tr>
+          <tr><td>Downstream</td><td class="num">${f.km.toFixed(1)} km</td></tr>
+          <tr><td>Reaches crossed</td><td class="num">${f.reaches}</td></tr>
+        </table>
+        ${down.length
+          ? `<div class="pop-flow"><b>Flows into</b>
+              <span>${down.map(esc).join(' → ')}</span></div>`
+          : ''}
+        <div class="pop-${f.toSea ? 'hint' : 'note'}">${f.toSea
+          ? 'Joins Sungai Langat and on to the Strait of Malacca.'
+          : 'The mapped network ends here — the reach below was not mapped, or falls outside the catchment.'}</div>
+      </div>
+    </div>`;
 }
 
 /* ---------------- Search ----------------
