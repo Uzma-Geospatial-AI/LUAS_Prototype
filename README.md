@@ -8,10 +8,13 @@ Live: https://uzma-geospatial-ai.github.io/LUAS_Prototype/
 
 1. **Map** — satellite imagery, the catchment and its rivers, 16 stations, 1,101 water bodies
    and 651 point sources, all filterable and steppable through 56 months.
-2. **Phase 1 · Station Assessment** — six DOE parameters → WQI → does the reach hold Class II?
-3. **Phase 2 · Quality Monitoring** — how often each parameter breaches, and how it trends.
-4. **Phase 3 · LEDS · TMDL · SESAMS** — what the reach can carry, what it carries now, and
-   how much is left to licence.
+2. **Phase 1 · Total Maximum Daily Load** — what the reach can carry, what it carries now, and
+   how much is left to licence. This is the function the system is built around.
+3. **Phase 2 · Station Assessment** — six DOE parameters → WQI → does the reach hold Class II?
+4. **Phase 3 · Quality Monitoring** — how often each parameter breaches, and how it trends.
+
+Each view has its own URL fragment — `#map`, `#tmdl`, `#station`, `#quality` — named for what it
+is rather than for its position, so a renumbering cannot make the label and the link disagree.
 
 Fully static — no backend, no build step, no API keys. Any station can be selected from the
 app bar and every phase follows it.
@@ -45,9 +48,9 @@ LUAS_Prototype/
 │   ├── mapview.js             the map, its four corners and the legend filter
 │   ├── symbols.js             one shape per point source category
 │   ├── satellite.js           imagery catalogue + spectral index reference
-│   ├── phase1.js              station assessment + class calculator
-│   ├── phase2.js              monitoring, water bodies, national context
-│   └── phase3.js              TMDL budget + licence register
+│   ├── phase3.js              Phase 1 — TMDL budget + licence register
+│   ├── phase1.js              Phase 2 — station assessment + class calculator
+│   └── phase2.js              Phase 3 — monitoring, water bodies, national context
 ├── data/
 │   ├── langat_basin.geojson       the catchment
 │   ├── langat_rivers.geojson      489 river reaches
@@ -233,44 +236,7 @@ nearest, because how close a site sits to water is a property of the site, not o
 
 ---
 
-## Phase 1 — Station assessment
-
-`js/wqi.js` implements the **official DOE Malaysia formula** in full:
-
-```
-WQI = 0.22·SI_DO + 0.19·SI_BOD + 0.16·SI_COD
-    + 0.15·SI_NH3N + 0.16·SI_SS + 0.12·SI_pH
-```
-
-DO is normalised to percent saturation through a temperature-dependent solubility curve before
-being sub-indexed. Every WQI in the system is recomputed in the browser from the six raw
-parameters — none is stored.
-
-The index alone does not decide compliance, so each reading is also tested against the **INWQS
-ambient standards**:
-
-| Class | NH₃-N | BOD₅ | COD | SS | DO | pH |
-|---|---|---|---|---|---|---|
-| I | 0.1 | 1 | 10 | 25 | ≥ 7 | 6.5 – 8.5 |
-| **II** | **0.3** | **3** | **25** | **50** | **≥ 5** | **6 – 9** |
-| III | 0.9 | 6 | 50 | 150 | ≥ 3 | 5 – 9 |
-| IV | 2.7 | 12 | 100 | 300 | — | 5 – 9 |
-
-A calculator takes six parameters typed by hand and returns the index, its class, every
-sub-index, and a pass/fail — parameter by parameter.
-
----
-
-## Phase 2 — Quality monitoring
-
-- **Exceedance frequency** per parameter across the record, worst first
-- **Receiving water bodies** grouped by type, with surface areas
-- **Parameter trends** against the standard, one chart each
-- **National context** — basin pollution status from data.gov.my, by parameter and year
-
----
-
-## Phase 3 — LEDS · TMDL · SESAMS
+## Phase 1 — LEDS · TMDL · SESAMS
 
 ```
 TMDL = ΣWLA + ΣLA + MOS
@@ -304,6 +270,44 @@ and every figure recomputes from them.
 > removes them for good.
 
 ---
+
+## Phase 2 — Station assessment
+
+`js/wqi.js` implements the **official DOE Malaysia formula** in full:
+
+```
+WQI = 0.22·SI_DO + 0.19·SI_BOD + 0.16·SI_COD
+    + 0.15·SI_NH3N + 0.16·SI_SS + 0.12·SI_pH
+```
+
+DO is normalised to percent saturation through a temperature-dependent solubility curve before
+being sub-indexed. Every WQI in the system is recomputed in the browser from the six raw
+parameters — none is stored.
+
+The index alone does not decide compliance, so each reading is also tested against the **INWQS
+ambient standards**:
+
+| Class | NH₃-N | BOD₅ | COD | SS | DO | pH |
+|---|---|---|---|---|---|---|
+| I | 0.1 | 1 | 10 | 25 | ≥ 7 | 6.5 – 8.5 |
+| **II** | **0.3** | **3** | **25** | **50** | **≥ 5** | **6 – 9** |
+| III | 0.9 | 6 | 50 | 150 | ≥ 3 | 5 – 9 |
+| IV | 2.7 | 12 | 100 | 300 | — | 5 – 9 |
+
+A calculator takes six parameters typed by hand and returns the index, its class, every
+sub-index, and a pass/fail — parameter by parameter.
+
+---
+
+## Phase 3 — Quality monitoring
+
+- **Exceedance frequency** per parameter across the record, worst first
+- **Receiving water bodies** grouped by type, with surface areas
+- **Parameter trends** against the standard, one chart each
+- **National context** — basin pollution status from data.gov.my, by parameter and year
+
+---
+
 
 ## Data
 

@@ -1,5 +1,5 @@
 /* ============================================================
-   phase1.js — Phase 1: Station assessment
+   phase1.js — Phase 2: Station assessment
 
    Sungai Langat at Dengkil. Six parameters in, WQI out, and the verdict
    that matters operationally: does this reach hold Class II?

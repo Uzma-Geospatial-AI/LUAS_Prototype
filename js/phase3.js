@@ -1,5 +1,5 @@
 /* ============================================================
-   phase3.js — Phase 3: LEDS · TMDL · SESAMS
+   phase3.js — Phase 1: LEDS · TMDL · SESAMS
 
    How much load may this reach carry, how much is it carrying now, and how
    much is left to licence.
@@ -13,6 +13,13 @@ import {
   EFFLUENT_STANDARDS, RIVER_FACTOR, fmtLoad, fmtVol, riverLoad,
 } from './loads.js';
 import { store, registerAsJson, registerAsCsv, download } from './store.js';
+
+/* The explanation lives behind the marker, so the card shows the number */
+const tipmark = (text) => {
+  const t = String(text).replace(/[&<>"]/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  return `<button type="button" class="tipmark" tabindex="0" data-tip="${t}" aria-label="${t}">i</button>`;
+};
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -83,7 +90,14 @@ function syncConditions() {
   $('p3Flow').value = c.designFlow;
   $('p3Mos').value = c.mosPercent;
   $('p3FlowVerified').checked = !!c.flowVerified;
-  $('p3FlowWarn').style.display = c.flowVerified ? 'none' : 'flex';
+  const flag = $('p3FlowFlag');
+  flag.textContent = c.flowVerified ? 'verified' : 'estimate';
+  flag.classList.toggle('ok', !!c.flowVerified);
+  flag.title = c.flowVerified
+    ? 'Checked against the DID gauged low-flow record.'
+    : 'Not yet checked against a gauged record. Every load figure on this page '
+      + 'scales directly with this number, so replace it with the DID gauged '
+      + 'low-flow record (MAM7 or 7Q10) and tick Verified.';
 }
 
 /* ============================================================
@@ -131,14 +145,17 @@ function renderHeadline(budgets, head, cond, reading) {
       <div class="k-lab">Receiving environment</div>
       <div class="k-val" style="font-size:25px">${(w.total / 1e6).toFixed(1)}<span class="k-unit">km²</span></div>
       <div class="k-sub">${w.groups.treatment.n} treatment &amp; oxidation basins</div>
-      <div class="k-note">Open water that retains discharge before it reaches the channel.</div>
+      <div class="k-note">Across the catchment ${tipmark('Lakes, ponds, wetlands and treatment '
+        + 'basins across the catchment. They receive and hold discharge before it reaches the '
+        + 'channel, so they are the environment this budget discharges into.')}</div>
     </div>
 
     <div class="card kpi">
       <div class="k-lab">Licensed load committed</div>
       <div class="k-val" style="font-size:25px">${nf(totalLicensed, 0)}<span class="k-unit">kg/day</span></div>
       <div class="k-sub">${store.licences().filter((l) => l.active !== false).length} active licences</div>
-      <div class="k-note">Sum across BOD, COD, SS and NH₃-N.</div>
+      <div class="k-note">Four pollutants ${tipmark('The wasteload permitted by every active '
+        + 'licence in the register, summed across BOD, COD, SS and NH₃-N.')}</div>
     </div>`;
 }
 

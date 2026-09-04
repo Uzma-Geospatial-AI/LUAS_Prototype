@@ -112,6 +112,15 @@ code{background:var(--surface-2);padding:1px 5px;border-radius:4px;
 .pill.pick:hover{border-color:var(--cyan);background:var(--surface)}
 
 /* An "i" that holds the explanation until it is asked for */
+/* A short standing mark where a paragraph used to be: the figure it sits on is
+   an estimate, and that has to stay visible even with the detail folded away. */
+.flag{
+  display:inline-block;vertical-align:1px;margin-left:5px;padding:1px 7px;
+  border-radius:999px;background:#fdf1d6;color:#8a5a06;border:1px solid #f0dca8;
+  font:700 8.5px var(--fm);text-transform:uppercase;letter-spacing:.08em;cursor:help;
+}
+.flag.ok{background:#e8f6ec;color:#136a32;border-color:#bfe4c9}
+
 .tipmark{
   display:inline-grid;place-items:center;width:14px;height:14px;vertical-align:1px;
   margin-left:4px;border:0;border-radius:50%;background:var(--line);

@@ -58,12 +58,12 @@
     <div class="sb-sec">Monitoring</div>
     <button data-view="map" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3z"/><path d="M9 3v15M15 6v15"/></svg>
       <span><b>Map</b><i>The catchment</i></span></button>
-    <button data-view="phase1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-      <span><b>Station Assessment</b><i>Phase 1</i></span></button>
-    <button data-view="phase2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 3-4 3 3 4-6"/></svg>
-      <span><b>Quality Monitoring</b><i>Phase 2</i></span></button>
-    <button data-view="phase3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 7h14"/><path d="m5 7-2 6a3 3 0 0 0 6 0z"/><path d="m19 7 2 6a3 3 0 0 1-6 0z"/></svg>
-      <span><b>Load accounting</b><i>Phase 3</i></span></button>
+    <button data-view="tmdl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 7h14"/><path d="m5 7-2 6a3 3 0 0 0 6 0z"/><path d="m19 7 2 6a3 3 0 0 1-6 0z"/></svg>
+      <span><b>Load accounting</b><i>Phase 1 · TMDL</i></span></button>
+    <button data-view="station"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      <span><b>Station Assessment</b><i>Phase 2</i></span></button>
+    <button data-view="quality"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 3-4 3 3 4-6"/></svg>
+      <span><b>Quality Monitoring</b><i>Phase 3</i></span></button>
 
     <div class="sb-sec">Tools</div>
     <button class="sb-tool" id="sbExportJson"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 11l4 4 4-4"/><path d="M4 19h16"/></svg>
@@ -202,7 +202,7 @@
 </section>
 
 <!-- ================= PHASE 1 ================= -->
-<section class="view" id="v-phase1">
+<section class="view" id="v-station">
   <div class="page">
 
     <div class="page-head">
@@ -270,7 +270,7 @@
 </section>
 
 <!-- ================= PHASE 2 ================= -->
-<section class="view" id="v-phase2">
+<section class="view" id="v-quality">
   <div class="page">
 
     <div class="page-head">
@@ -317,14 +317,13 @@
 </section>
 
 <!-- ================= PHASE 3 ================= -->
-<section class="view" id="v-phase3">
+<section class="view" id="v-tmdl">
   <div class="page">
 
     <div class="page-head">
-      <h2>Load accounting</h2>
+      <h2>Total Maximum Daily Load <button type="button" class="tipmark" tabindex="0" data-tip="The mass of a pollutant this reach can receive per day and still hold its class. It splits into ΣWLA, the wasteload allocated to licensed point sources; ΣLA, the load allocation for background and non-point sources; and MOS, the margin of safety." aria-label="The mass of a pollutant this reach can receive per day and still hold its class. It splits into ΣWLA, the wasteload allocated to licensed point sources; ΣLA, the load allocation for background and non-point sources; and MOS, the margin of safety.">i</button></h2>
       <p>What the reach can carry, what it carries now, and how much is left to licence.</p>
-      <div class="formula">TMDL = ΣWLA + ΣLA + MOS<span>loading capacity = licensed point sources
-        + background &amp; non-point + margin of safety</span></div>
+      <div class="formula">TMDL = ΣWLA + ΣLA + MOS</div>
     </div>
 
     <!-- Design conditions -->
@@ -339,7 +338,8 @@
           <select id="p3Class"></select>
         </div>
         <div class="field">
-          <label for="p3Flow">Design river flow <span class="unit">m³/s</span> <button type="button" class="tipmark" tabindex="0" data-tip="A TMDL is written for a low-flow condition (MAM7 or 7Q10), when the river has least capacity to assimilate a load. Every load figure scales directly with it." aria-label="A TMDL is written for a low-flow condition (MAM7 or 7Q10), when the river has least capacity to assimilate a load. Every load figure scales directly with it.">i</button></label>
+          <label for="p3Flow">Design river flow <span class="unit">m³/s</span>
+            <span class="flag" id="p3FlowFlag">estimate</span> <button type="button" class="tipmark" tabindex="0" data-tip="A TMDL is written for a low-flow condition (MAM7 or 7Q10), when the river has least capacity to assimilate a load. Every load figure scales directly with it." aria-label="A TMDL is written for a low-flow condition (MAM7 or 7Q10), when the river has least capacity to assimilate a load. Every load figure scales directly with it.">i</button></label>
           <input id="p3Flow" type="number" step="0.1" min="0.1">
           <label class="check-inline">
             <input type="checkbox" id="p3FlowVerified">
@@ -355,17 +355,12 @@
           <select id="p3Std"></select>
         </div>
       </div>
-      <div class="notice warn" id="p3FlowWarn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
-        <div><b>Design flow is an estimate.</b> Every load figure scales directly with it.
-        Replace it with the DID gauged low-flow record, then tick <b>Verified</b>.</div>
-      </div>
     </div>
 
     <div class="grid verdict-grid" id="p3Headline" style="margin-top:14px"></div>
 
     <div class="section-title">
-      <h2>Load Budget</h2>
+      <h2>Load Budget <button type="button" class="tipmark" tabindex="0" data-tip="River load = mg/L × m³/s × 86.4. Licence wasteload = mg/L × m³/day ÷ 1000. The in-river concentration is the 12-month median at the selected station, which is steadier than any single sample. Diffuse is whatever the river carries that the licences do not account for." aria-label="River load = mg/L × m³/s × 86.4. Licence wasteload = mg/L × m³/day ÷ 1000. The in-river concentration is the 12-month median at the selected station, which is steadier than any single sample. Diffuse is whatever the river carries that the licences do not account for.">i</button></h2>
       <span class="st-sub" id="p3BudgetNote"></span>
     </div>
     <div class="card pad0 tbl-scroll">
@@ -392,8 +387,7 @@
     <div class="card pad0" style="margin-top:14px">
       <div class="card-head">
         <h3>Where the capacity goes</h3>
-        <div class="card-sub">Each bar is the full loading capacity, split into what is committed,
-          what is carried by diffuse sources, and what is left</div>
+        <div class="card-sub">Loading capacity, split into committed, diffuse and left <button type="button" class="tipmark" tabindex="0" data-tip="Each bar is the full loading capacity for one pollutant. The segments are the load already licensed, the diffuse load the river carries anyway, and whatever remains to be allocated." aria-label="Each bar is the full loading capacity for one pollutant. The segments are the load already licensed, the diffuse load the river carries anyway, and whatever remains to be allocated.">i</button></div>
       </div>
       <div class="chart-box lg"><canvas id="p3Chart"></canvas></div>
     </div>
@@ -449,12 +443,6 @@
       <div class="preview" id="p3Preview"></div>
     </div>
 
-    <div class="notice info" style="margin-top:18px">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-      <div><b>Units.</b> River load = mg/L × m³/s × 86.4 · licence wasteload =
-      mg/L × m³/day ÷ 1000. In-river concentration is the 12-month median at Dengkil.
-      Diffuse is whatever the river carries that licences do not account for.</div>
-    </div>
 
     <!-- SESAMS register -->
     <div class="section-title">
@@ -464,8 +452,7 @@
 
     <div class="notice warn" id="p3ExampleBar">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
-      <div style="flex:1"><b>Five worked examples, not real licences.</b> No LUAS register is
-        published as open data, so these make the budget computable.</div>
+      <div style="flex:1"><b>Five worked examples, not real licences.</b></div>
       <button class="btn btn-ghost" id="p3ClearExamples">Clear examples</button>
     </div>
     <div class="notice info" id="p3RestoreBar" style="display:none">
@@ -508,7 +495,7 @@
   <div class="footer-col">
     <b>Lembaga Urus Air Selangor (LUAS)</b><br>
     Sungai Langat water quality and discharge load management system.
-    Map · Phase 1 assessment · Phase 2 monitoring · Phase 3 LEDS / TMDL / SESAMS.
+    Map · Phase 1 TMDL · Phase 2 station assessment · Phase 3 quality monitoring.
   </div>
   <div class="footer-col" style="text-align:right">
     WQI formula and INWQS: Department of Environment Malaysia (DOE)<br>

@@ -14,8 +14,8 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-const VIEWS = ['map', 'phase1', 'phase2', 'phase3'];
-const ready = { map: false, phase2: false, phase3: false };
+const VIEWS = ['map', 'tmdl', 'station', 'quality'];
+const ready = { map: false, quality: false, tmdl: false };
 
 /* ---------------- Clock ---------------- */
 function tick() {
@@ -43,12 +43,12 @@ function show(view) {
   } else if (ready.map) {
     pauseMap();          /* nothing to see while the map is hidden */
   }
-  if (view === 'phase1') { renderPhase1(); resizePhase1(); }
-  if (view === 'phase2') {
-    if (!ready.phase2) { renderPhase2(); ready.phase2 = true; } else resizePhase2();
+  if (view === 'station') { renderPhase1(); resizePhase1(); }
+  if (view === 'quality') {
+    if (!ready.quality) { renderPhase2(); ready.quality = true; } else resizePhase2();
   }
-  if (view === 'phase3') {
-    if (!ready.phase3) { buildLicenceForm(); ready.phase3 = true; }
+  if (view === 'tmdl') {
+    if (!ready.tmdl) { buildLicenceForm(); ready.tmdl = true; }
     renderPhase3();
     resizePhase3();
   }
@@ -128,8 +128,8 @@ function buildStationPicker() {
   document.addEventListener('storechange', () => {
     updatePills();
     if (ready.map) refreshMap();
-    if (ready.phase2) renderPhase2();
-    if (ready.phase3) renderPhase3();
+    if (ready.quality) renderPhase2();
+    if (ready.tmdl) renderPhase3();
     renderPhase1();
   });
 
@@ -143,7 +143,7 @@ function buildStationPicker() {
   placeTips();
   document.addEventListener('storechange', placeTips);
   window.addEventListener('resize', placeTips);
-  new MutationObserver(placeTips).observe($('v-phase3'), { childList: true, subtree: true });
+  new MutationObserver(placeTips).observe($('v-tmdl'), { childList: true, subtree: true });
 
   /* Back / forward and pasted links both land on the right view */
   window.addEventListener('hashchange', () => {

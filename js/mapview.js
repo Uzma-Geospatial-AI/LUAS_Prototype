@@ -540,7 +540,7 @@ function stationPopup(st, r, cls, comp, target) {
         </table>
         <button class="pop-btn" data-goto="${esc(st.code)}">
           ${st.code === DATA.focus.code
-            ? 'Open Phase 1 assessment →'
+            ? 'Open the assessment →'
             : `Assess ${esc(st.name)} instead →`}</button>
       </div>
     </div>`;
@@ -612,7 +612,7 @@ function wirePopup(popup) {
     goto.onclick = () => {
       map.closePopup();
       document.dispatchEvent(new CustomEvent('gotophase',
-        { detail: { view: 'phase1', station: goto.dataset.goto } }));
+        { detail: { view: 'station', station: goto.dataset.goto } }));
     };
   }
   const pin = root?.querySelector('[data-flash]');
