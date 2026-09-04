@@ -166,12 +166,24 @@ are measured to rivers *and* water bodies, and **410 of the 651 sites are nearer
 than a channel**. Clicking a source names the water it reaches, and the pin beside the distance
 flies to the site and flashes that river or pond.
 
-**The answer follows what is switched on.** The nearest is recorded per layer — `river:main`,
-`water:pond` and the rest — so with the ponds hidden a site reports the nearest *river* instead
-of a pond the reader cannot see. 461 of the 651 sites have both a water body and a river within
-range, so this changes the answer often. When it does, the popup says so; with every water layer
-off it says there is nothing to measure to. The risk score does not move — it is scaled from the
-overall nearest, because it is a property of the site, not of the view.
+**The answer follows what is switched on.** Rivers are a receiving water as much as ponds are,
+so the nearest is recorded per layer — `river:main`, `river:trib`, `water:pond` and the rest —
+and the popup names the closest among the layers currently visible:
+
+| Shown | This site answers |
+|---|---|
+| everything | Pond · 371 m |
+| water bodies off | Sungai Langat · 2,638 m |
+| rivers off | Pond · 371 m |
+| nothing | no water layer is switched on |
+
+`near` reaches **5 km**, well past the 1.5 km riparian buffer. The buffer decides which sites are
+listed; it must not decide what a listed site is allowed to say, or a site whose only visible
+layer is a river 1.6 km off goes blank — which it did for 165 of the 651 sites before this.
+
+When the shown answer is not the overall nearest the popup says so, and it flags an answer that
+falls outside the riparian zone. The risk score does not move: it is scaled from the overall
+nearest, because how close a site sits to water is a property of the site, not of the view.
 
 > ⚠️ **The risk score is a screening aid, not a measurement.** It is the category's load weight
 > — judgement, not metering — scaled by closeness to water. Use it to order inspections, never to

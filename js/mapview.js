@@ -187,7 +187,7 @@ function buildSources() {
       })
         .bindTooltip(
           `<b>${p.name ? esc(p.name) : esc(c.label)}</b><br>`
-          + `${esc(c.label)}<br>${p.dist} m from ${esc(overallNearest(p)?.n ?? 'water')}`,
+          + `${esc(c.label)}<br>${metres(p.dist)} from ${esc(overallNearest(p)?.n ?? 'water')}`,
           { direction: 'top', offset: [0, -size / 2 - 2] })
         /* A function, not a string: it is re-run on open and on every layer
            toggle, so the answer follows what is actually on the map. */
@@ -217,6 +217,13 @@ function overallNearest(p) {
   return Object.values(p.near ?? {})[0] ?? null;
 }
 
+/* Rivers are a receiving water as much as ponds are, so both count here. */
+function anyWaterVisible() {
+  return [...(MASTERS.water ?? []), ...(MASTERS.rivers ?? [])].some((k) => visible.has(k));
+}
+
+const metres = (m) => `${Math.round(m).toLocaleString('en')} m`;
+
 const PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"'
   + ' stroke-linecap="round" stroke-linejoin="round">'
   + '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/>'
@@ -226,7 +233,21 @@ function sourcePopup(p, c) {
   const to = nearestVisible(p);
   const kind = to ? to.key.split(':')[0] : null;
   const flashKey = to ? `${kind}:${to.id}` : null;
-  const shown = to && to.d !== p.dist;      /* a nearer one is switched off */
+  const hidden = to && to.d !== p.dist;     /* a nearer one is switched off */
+  const buffer = DATA.sources?.meta?.buffer_m ?? 1500;
+
+  let hint = '';
+  if (!to) {
+    hint = anyWaterVisible()
+      ? 'Nothing on the layers shown is within reach of this site.'
+      : `No water layer is switched on. The overall nearest is ${metres(p.dist)}.`;
+  } else if (hidden) {
+    hint = `Nearest among the layers shown. The overall nearest is `
+      + `${metres(p.dist)}, on a layer that is hidden.`;
+    if (to.d > buffer) {
+      hint += ` This one is beyond the ${metres(buffer)} riparian zone.`;
+    }
+  }
 
   return `
     <div class="map-pop">
@@ -238,7 +259,7 @@ function sourcePopup(p, c) {
         <table class="pop-tbl">
           ${to ? `<tr>
             <td>Nearest water<div class="pop-sub">${esc(to.n)}</div></td>
-            <td class="num">${to.d} m
+            <td class="num">${metres(to.d)}
               ${receiving.has(flashKey)
                 ? `<button class="pin-btn" data-flash="${flashKey}"
                      data-at="${p.at[1]},${p.at[0]}"
@@ -246,14 +267,10 @@ function sourcePopup(p, c) {
             </td></tr>`
           : ''}
           <tr><td>Screening risk</td>
-            <td class="num" title="Scaled from the overall nearest water, ${p.dist} m">
+            <td class="num" title="Scaled from the overall nearest water, ${metres(p.dist)}">
               ${p.risk.toFixed(2)} / 5</td></tr>
         </table>
-        ${to
-          ? (shown ? `<div class="pop-hint">Nearest among the layers shown \u2014
-              the overall nearest is ${p.dist} m away on a hidden layer.</div>` : '')
-          : `<div class="pop-hint">No water layer is switched on, so there is nothing
-              to measure to. The overall nearest is ${p.dist} m.</div>`}
+        ${hint ? `<div class="pop-hint">${hint}</div>` : ''}
         <div class="pop-pol"><b>Typically carries</b><br>${esc(c.pol)}</div>
         <div class="pop-note">Screening only \u2014 no discharge here is metered</div>
       </div>

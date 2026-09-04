@@ -29,6 +29,11 @@ visible, and with the ponds hidden it names the nearest river instead of a pond
 nobody can see. `dist` stays the overall nearest, because the risk score is a
 property of the site and must not move when a layer is toggled.
 
+`near` reaches out to 5 km, well past the 1.5 km riparian buffer. The buffer
+decides which sites are listed; it must not decide what a listed site is
+allowed to say. A site whose only visible layer is a river 1.6 km off should
+report that river, not go blank.
+
 Each source carries a risk score: the category's relative load weight scaled by
 how close it sits to water. It is a screening aid for prioritising inspection,
 NOT a measured discharge — nothing here is metered.
@@ -55,7 +60,8 @@ CACHE = os.path.join(ROOT, 'sources_raw.json')
 OVERPASS = 'https://overpass-api.de/api/interpreter'
 UA = 'LUAS-Prototype/1.0 (https://github.com/Uzma-Geospatial-AI/LUAS_Prototype)'
 
-BUFFER_M = 1500
+BUFFER_M = 1500       # decides which sites are in the riparian zone at all
+REACH_M = 5000        # how far to look when answering "nearest on this layer"
 MPD = 111320.0
 
 # What to call an unnamed water body in the popup
@@ -180,11 +186,15 @@ def pt_seg_m(px, py, s):
     return math.hypot(ax + t * dx, ay + t * dy)
 
 
-def nearest_water(lon, lat, rings=2):
+RINGS = int(math.ceil(REACH_M / (CELL * MPD)))   # cells to sweep for REACH_M
+
+
+def nearest_water(lon, lat, rings=RINGS):
     """The nearest edge per layer key, plus the overall nearest main channel.
 
-    Returns {viskey: (distance, id, name)} for every layer with something
-    inside the search, and the distance to the nearest main channel."""
+    Sweeps out to REACH_M rather than stopping at the first hit, because the
+    answer has to hold for any subset of layers — the nearest pond being 50 m
+    away says nothing about where the nearest river is."""
     gx0, gy0 = int(math.floor(lon / CELL)), int(math.floor(lat / CELL))
     per = {}
     best, best_main = 1e12, 1e12
@@ -203,8 +213,6 @@ def nearest_water(lon, lat, rings=2):
                         best = d
                     if s[7] and d < best_main:
                         best_main = d
-        if best < r * CELL * MPD:
-            break
     return per, best, best_main
 
 
@@ -268,11 +276,11 @@ for el in elements:
     if name:
         props['name'] = name
     # One entry per layer, so the map can answer for any combination of them.
-    # Anything past the buffer is dropped: it is not a receiving water for this
-    # site, it is just the closest thing of that type somewhere out there.
+    # Kept out to REACH_M, not the riparian buffer: the buffer says which sites
+    # are listed, not what a listed site may say when a layer is hidden.
     near = {}
     for key, (d, fid, wname) in sorted(per.items(), key=lambda kv: kv[1][0]):
-        if d <= BUFFER_M:
+        if d <= REACH_M:
             near[key] = {'id': fid, 'n': wname, 'd': round(d)}
     if near:
         props['near'] = near
@@ -312,6 +320,7 @@ payload = {
         'url': 'https://www.openstreetmap.org',
         'licence': 'ODbL 1.0 © OpenStreetMap contributors',
         'buffer_m': BUFFER_M,
+        'reach_m': REACH_M,
         'clip': ('Sungai Langat catchment (HydroBASINS %s), then %d m of the nearest '
                  'receiving water' % (basin['features'][0]['properties']['hybas_id'], BUFFER_M)),
         'categories': CATS,
