@@ -6,7 +6,7 @@
 
      TMDL = ΣWLA + ΣLA + MOS
    ============================================================ */
-import { DATA, designReading, latestIdx, readingAt, waterSummary } from './data.js';
+import { DATA, designReading, latestIdx, readingAt, waterSummary, setFocus } from './data.js';
 import { LOAD_PARAMS, PARAM_META, INWQS, TARGET_CLASSES } from './wqi.js';
 import {
   budgetAll, headroom, headroomInPE, licenceLoads, licenceCompliance,
@@ -36,9 +36,52 @@ function currentReading() {
   return designReading(DATA.focus, 12);
 }
 
+/* Two tabs: what the water can carry, and what has been licensed against it.
+   They were one long page, and the register at the bottom read as an appendix
+   to the budget rather than the other half of the job. */
+function buildTabs() {
+  const panes = [...document.querySelectorAll('#v-tmdl .tabpane')];
+  for (const b of document.querySelectorAll('#v-tmdl .tab')) {
+    b.onclick = () => {
+      for (const x of document.querySelectorAll('#v-tmdl .tab')) {
+        const on = x === b;
+        x.classList.toggle('active', on);
+        x.setAttribute('aria-selected', String(on));
+      }
+      for (const p of panes) p.classList.toggle('active', p.id === `tab-${b.dataset.tab}`);
+      resizePhase3();          /* a chart sized while hidden comes out wrong */
+    };
+  }
+}
+
+/* The page says which water the budget is written for, and lets it be
+   changed here rather than only from the app bar. */
+function buildForPicker() {
+  const sel = $('p3For');
+  const byRiver = {};
+  for (const st of DATA.stations) (byRiver[st.river] ??= []).push(st);
+  sel.innerHTML = Object.entries(byRiver).map(([river, list]) => `
+    <optgroup label="${esc(river)}">
+      ${list.map((st) => `<option value="${st.code}">${esc(st.name)} · ${st.code}</option>`).join('')}
+    </optgroup>`).join('');
+  sel.onchange = () => setFocus(sel.value);
+}
+
 export function renderPhase3() {
   if (!condInit) { buildConditions(); condInit = true; }
   syncConditions();
+
+  /* Name the water this budget is written for, and say where its numbers come
+     from — a capacity with no stated subject invites being read as the whole
+     river's. */
+  const st = DATA.focus;
+  const sel = $('p3For');
+  if (sel) sel.value = st.code;
+  const note = $('p3ForNote');
+  if (note) {
+    note.textContent = `${st.river} · ${st.district} · in-river concentration is `
+      + `the 12-month median measured at this station`;
+  }
 
   const cond = store.conditions();
   const licences = store.licences();
@@ -320,6 +363,8 @@ function renderRegister(licences, stdKey, budgets) {
 
 /* ---------------- Add / edit form ---------------- */
 export function buildLicenceForm() {
+  buildTabs();
+  buildForPicker();
   $('p3ConcFields').innerHTML = LOAD_PARAMS.map((p) => `
     <div class="field">
       <label for="l_${p}">${PARAM_META[p].short} <span class="unit">mg/L</span></label>

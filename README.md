@@ -242,6 +242,21 @@ nearest, because how close a site sits to water is a property of the site, not o
 TMDL = ΣWLA + ΣLA + MOS
 ```
 
+Two tabs, because they are two jobs:
+
+| Tab | What it does |
+|---|---|
+| **Loading capacity** | What this water can carry, and how much of it is left |
+| **Licences** | What is permitted to discharge into it — the SESAMS register |
+
+The capacity tab opens by naming the water it is **written for**, and lets it be changed there
+rather than only from the app bar. A loading capacity with no stated subject invites being read
+as the whole river's.
+
+> ⚠️ The register is not partitioned by receiving water — every licence in it counts against
+> whichever water is selected. Tying a licence to the reach it discharges into is a change to the
+> record, not the interface.
+
 | Term | Meaning | Where it comes from |
 |---|---|---|
 | **TMDL** | Loading capacity of the reach | standard × design flow × 86.4 |

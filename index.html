@@ -326,6 +326,19 @@
       <div class="formula">TMDL = ΣWLA + ΣLA + MOS</div>
     </div>
 
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-tab="capacity" role="tab" aria-selected="true">
+        <b>Loading capacity</b><span>What this water can carry</span></button>
+      <button class="tab" data-tab="licences" role="tab" aria-selected="false">
+        <b>Licences</b><span>What is permitted to discharge into it</span></button>
+    </div>
+
+    <div class="tabpane active" id="tab-capacity">
+      <div class="written-for">
+        <label for="p3For">Written for</label>
+        <select id="p3For"></select>
+        <span class="wf-note" id="p3ForNote"></span>
+      </div>
     <!-- Design conditions -->
     <div class="card cond-card">
       <div class="cond-head">
@@ -391,7 +404,9 @@
       </div>
       <div class="chart-box lg"><canvas id="p3Chart"></canvas></div>
     </div>
+    </div>
 
+    <div class="tabpane" id="tab-licences">
     <div class="section-title">
       <h2>Add a Licence</h2>
       <span class="st-sub">Does it fit the remaining capacity?</span>
@@ -487,7 +502,7 @@
       <label class="btn btn-ghost" style="cursor:pointer">
         Import JSON<input type="file" id="p3Import" accept=".json" hidden></label>
     </div>
-
+    </div>
   </div>
 </section>
 

@@ -325,6 +325,38 @@ td.act{white-space:nowrap;text-align:right}
   margin:5px 0 1px;color:var(--wc)}
 .wb-card .wb-a{font-size:11px;color:var(--muted);font-family:var(--fm)}
 
+/* Two small tabs inside one page: the capacity, and the licences against it */
+.tabs{display:flex;gap:6px;margin:0 0 16px;border-bottom:1px solid var(--line)}
+.tab{
+  display:flex;flex-direction:column;gap:1px;padding:9px 15px 10px;border:0;
+  background:none;font-family:inherit;text-align:left;cursor:pointer;
+  border-bottom:2.5px solid transparent;margin-bottom:-1px;transition:.15s;
+}
+.tab b{font-size:13.5px;font-weight:650;color:var(--muted)}
+.tab span{font-size:10.5px;color:var(--muted-2)}
+.tab:hover b{color:var(--text)}
+.tab.active{border-bottom-color:var(--navy)}
+.tab.active b{color:var(--navy)}
+.tabpane{display:none}
+.tabpane.active{display:block}
+
+/* The water the budget is written for */
+.written-for{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;
+  padding:10px 14px;background:var(--surface);border:1px solid var(--line);
+  border-left:3px solid var(--cyan);border-radius:var(--r);
+}
+.written-for label{font-size:10px;text-transform:uppercase;letter-spacing:.09em;
+  font-weight:700;color:var(--muted)}
+.written-for select{
+  flex:none;max-width:min(320px,100%);
+  border:1.5px solid var(--line);border-radius:var(--r-sm);padding:5px 9px;
+  font-family:inherit;font-size:13px;font-weight:600;color:var(--text);
+  background:var(--surface-2);cursor:pointer;
+}
+.written-for select:focus{outline:none;border-color:var(--cyan-2)}
+.wf-note{font-size:11px;color:var(--muted)}
+
 /* ---------------- Forms ---------------- */
 .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:13px}
 .field{display:flex;flex-direction:column;gap:5px}
