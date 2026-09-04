@@ -100,7 +100,7 @@ The map fills the window and every corner says what it is counting.
 
 | Corner | What it holds |
 |---|---|
-| Top left | Four chips: stations, WQI at the selected station, how many meet the target class, pollution sources |
+| Top left | Station count, then one box per WQI class with how many stations are in it this month |
 | Top right | The basemap in use, with all eight behind it |
 | Bottom left | Layer masters, each with its own count |
 | Bottom centre | The month on show — a slider across all 56, with play |
@@ -112,8 +112,15 @@ layer masters command a group of rows — switching one off clears the group, an
 on, off or part-on from its members, so the two panels cannot disagree. The legend folds to a
 single pill when it is in the way.
 
+**The class breakdown** across the top: 16 stations, then a box per WQI class — I, II, III, IV,
+V — carrying the count for the month on show. The boxes use the same colour and roman numeral as
+the markers and the legend, and they filter the same way: click *Slightly Polluted* and those
+stations leave the map. A box that looks like a class key and does nothing when clicked would be
+lying about itself.
+
 **The month slider** moves the whole map through the record: every station marker and every chip
-repaints, so the reach can be watched changing rather than read one month at a time.
+repaints, so the reach can be watched changing rather than read one month at a time. The class
+counts move with it, which is the quickest read of whether the basin is improving.
 
 ### Layers
 

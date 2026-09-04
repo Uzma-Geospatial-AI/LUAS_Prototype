@@ -447,7 +447,14 @@ select{cursor:pointer}
 
 /* --- Top left: what is on the map right now --- */
 .map-kpis{position:absolute;top:14px;left:14px;z-index:900;display:flex;gap:8px;flex-wrap:wrap}
-.mkpi{display:flex;align-items:center;gap:9px;padding:8px 13px 8px 10px}
+.mkpi{display:flex;align-items:center;gap:9px;padding:8px 13px 8px 10px;
+  border:1px solid rgba(255,255,255,.7);font-family:inherit;text-align:left;
+  color:inherit}
+/* The class chips filter the stations, like the legend rows they mirror */
+.mkpi.kcls{cursor:pointer;transition:opacity .14s,background .14s}
+.mkpi.kcls:hover{background:#fff}
+.mkpi.kcls.off{opacity:.45}
+.mkpi.kcls.off .mk-ic{filter:grayscale(1)}
 .mk-ic{width:26px;height:26px;border-radius:7px;flex:none;display:grid;place-items:center;
   font:700 11px var(--fm);color:#fff}
 .mk-v{display:block;font:700 16px var(--fm);line-height:1.05;color:var(--text)}

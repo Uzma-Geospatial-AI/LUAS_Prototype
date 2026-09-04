@@ -61,6 +61,15 @@ export function initMap() {
   buildSources();
   stationLayer = L.layerGroup().addTo(map);
 
+  /* Delegated: paintKpis replaces the chips on every month step, so a
+     handler bound to a chip would not survive. */
+  const kpis = $('mapKpis');
+  kpis.onclick = (e) => {
+    const b = e.target.closest('[data-vis]');
+    if (b) toggle(b.dataset.vis);
+  };
+  L.DomEvent.disableClickPropagation(kpis);
+
   buildBasemaps();
   buildLayerToggles();
   buildLegend();
@@ -384,26 +393,32 @@ function paintStations() {
 
 /* The four chips describe the map as it stands, not the latest reading, so
    they move with the slider. */
+/* How many stations sit in each WQI class this month. The chips carry the
+   same colour and roman numeral as the legend and the markers, and they are
+   switches for the same reason the legend rows are — a box that looks like a
+   class key and does nothing when clicked is a box that lies about itself. */
 function paintKpis() {
-  const target = store.conditions().targetClass;
-  const w = waterSummary();
-  const f = readingAt(DATA.focus, monthIdx);
-  const cls = wqiClass(f.wqi);
-  const meeting = DATA.stations
-    .filter((st) => classCompliance(readingAt(st, monthIdx).raw, target).pass).length;
+  const counts = Object.fromEntries(WQI_CLASSES.map((c) => [c.id, 0]));
+  for (const st of DATA.stations) {
+    counts[wqiClass(readingAt(st, monthIdx).wqi).id]++;
+  }
 
-  const chip = (color, mark, value, label) => `
+  const total = `
     <div class="mkpi">
-      <span class="mk-ic" style="background:${color}">${mark}</span>
-      <span><span class="mk-v">${value}</span><span class="mk-l">${label}</span></span>
+      <span class="mk-ic" style="background:#22235f">◉</span>
+      <span><span class="mk-v">${DATA.stations.length}</span>
+        <span class="mk-l">Stations</span></span>
     </div>`;
 
-  $('mapKpis').innerHTML =
-    chip('#22235f', '◉', DATA.stations.length, 'Stations')
-    + chip(cls.color, cls.id, f.wqi.toFixed(1), `WQI · ${esc(DATA.focus.name)}`)
-    + chip(meeting ? '#17a04a' : '#d92d20', '✓',
-      `${meeting}/${DATA.stations.length}`, `Meet Class ${target}`)
-    + chip('#45bfe0', '○', sourceSummary().count, 'Pollution sources');
+  const cls = (c) => `
+    <button class="mkpi kcls${visible.has(`wqi:${c.id}`) ? '' : ' off'}"
+      data-vis="wqi:${c.id}" title="${esc(c.status)} · ${esc(c.use)}">
+      <span class="mk-ic" style="background:${c.color}">${c.id}</span>
+      <span><span class="mk-v">${counts[c.id]}</span>
+        <span class="mk-l">${esc(c.status)}</span></span>
+    </button>`;
+
+  $('mapKpis').innerHTML = total + WQI_CLASSES.map(cls).join('');
 }
 
 function stationPopup(st, r, cls, comp, target) {
