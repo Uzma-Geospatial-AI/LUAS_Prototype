@@ -429,7 +429,11 @@
             </div>
 
             <div class="prem-mode active" id="premPick">
-              <select id="lSource"></select>
+              <div class="prem-row">
+                <select id="lSource"></select>
+                <button type="button" class="btn btn-ghost locate" id="lShowPick" disabled
+                  title="Open the map at this premises">Show on map</button>
+              </div>
               <div class="hint" id="lSourceNote">Choose one of the point sources already mapped.</div>
             </div>
 
@@ -440,6 +444,8 @@
                 <input id="lLon" type="number" step="0.00001" placeholder="Longitude · 101.68380">
                 <button type="button" class="btn btn-ghost" id="lPickOnMap"
                   title="Take the coordinates from the middle of the map">Use map centre</button>
+                <button type="button" class="btn btn-ghost locate" id="lShowNew" disabled
+                  title="Open the map at these coordinates">Show on map</button>
               </div>
               <div class="hint" id="lLatLonNote">It will be drawn on the map once the licence is added.</div>
             </div>

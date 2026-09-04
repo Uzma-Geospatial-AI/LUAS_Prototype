@@ -149,9 +149,11 @@ function buildSourcePicker() {
       prefilled = null;
       $('lSourceNote').textContent = 'Choose one of the point sources already mapped.';
       $('lPrefill').hidden = true;
+      $('lShowPick').disabled = true;
       previewLicence();
       return;
     }
+    $('lShowPick').disabled = false;
 
     const q = f.properties;
     const [lon, lat] = f.geometry.coordinates;
@@ -180,6 +182,7 @@ function buildSourcePicker() {
     $('lFlow').value = prefilled.flow;
     for (const param of LOAD_PARAMS) $(`l_${param}`).value = prefilled.conc[param];
     $('lPrefill').hidden = false;
+    $('lShowPick').disabled = false;
     editing = null;
     setAddLabel();
     previewLicence();
@@ -204,6 +207,19 @@ function buildSourcePicker() {
   for (const b of document.querySelectorAll('[data-prem]')) {
     b.onclick = () => setPremMode(b.dataset.prem);
   }
+  const goTo = (lat, lon) => document.dispatchEvent(
+    new CustomEvent('showonmap', { detail: { lat, lon } }));
+
+  $('lShowPick').onclick = () => {
+    const f = su.features.find((x) => String(x.properties.id) === $('lSource').value);
+    if (f) goTo(f.geometry.coordinates[1], f.geometry.coordinates[0]);
+  };
+  $('lShowNew').onclick = () => {
+    const lat = num($('lLat').value);
+    const lon = num($('lLon').value);
+    if (!Number.isNaN(lat) && !Number.isNaN(lon)) goTo(lat, lon);
+  };
+
   $('lPickOnMap').onclick = () => {
     const c = mapCentre();
     if (!c) return;
@@ -211,7 +227,13 @@ function buildSourcePicker() {
     $('lLon').value = c[1].toFixed(5);
     previewLicence();
   };
-  for (const id of ['lLat', 'lLon']) $(id).addEventListener('input', previewLicence);
+  for (const id of ['lLat', 'lLon']) {
+    $(id).addEventListener('input', () => {
+      $('lShowNew').disabled = Number.isNaN(num($('lLat').value))
+        || Number.isNaN(num($('lLon').value));
+      previewLicence();
+    });
+  }
 }
 
 function buildTabs() {
@@ -636,6 +658,8 @@ function readPremises() {
 function clearForm() {
   prefilled = null;
   if ($('lPrefill')) $('lPrefill').hidden = true;
+  /* The form is empty, so there is nowhere to be shown */
+  for (const id of ['lShowPick', 'lShowNew']) if ($(id)) $(id).disabled = true;
   setAddLabel();
   ['lRef', 'lPremises', 'lFlow', 'lLat', 'lLon', ...LOAD_PARAMS.map((p) => `l_${p}`)]
     .forEach((id) => { $(id).value = ''; });

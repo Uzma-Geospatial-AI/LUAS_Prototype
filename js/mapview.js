@@ -45,6 +45,7 @@ const sourceLayers = {};      // src:<category>
 const riverLayers = {};       // river:main | river:trib
 
 const stationMarkers = new Map();   // station code -> marker
+const sourceIds = new Set();        // every point source id the map draws
 const sourceMarkers = new Map();    // osm id -> marker
 let searchIndex = null;
 let traceLayer = null;
@@ -101,7 +102,13 @@ export function initMap() {
   map.on('zoomend', () => { restyleWater(); restyleRivers(); });
 
   applyVisibility();
-  map.fitBounds(basinLayer.getBounds().pad(0.06));   // open on the catchment
+  if (pendingFly) {
+    const [lat, lon, z] = pendingFly;
+    pendingFly = null;
+    map.setView([lat, lon], z);
+  } else {
+    map.fitBounds(basinLayer.getBounds().pad(0.06));   // open on the catchment
+  }
   return map;
 }
 
@@ -276,6 +283,7 @@ function buildSources() {
         zIndexOffset: Math.round(p.risk * 20),
       });
       sourceMarkers.set(p.id, marker);
+      sourceIds.add(p.id);
       return marker
         .bindTooltip(
           `<b>${p.name ? esc(p.name) : esc(c.label)}</b><br>`
@@ -363,9 +371,25 @@ function sourcePopup(p, c) {
               ${p.risk.toFixed(2)} / 5</td></tr>
         </table>
         ${hint ? `<div class="pop-hint">${hint}</div>` : ''}
+        ${licenceBlock(p.id)}
         <div class="pop-pol"><b>Typically carries</b><br>${esc(c.pol)}</div>
         <div class="pop-note">Screening only \u2014 no discharge here is metered</div>
       </div>
+    </div>`;
+}
+
+/* What the register says about this premises. The map must not disagree with
+   the licence page about the same place. */
+function licenceBlock(srcId) {
+  const l = store.licences().find((x) => x.srcId === srcId && !x.example);
+  if (!l) return '';
+  const total = ['bod', 'cod', 'ss', 'an']
+    .reduce((t, k) => t + (l.conc?.[k] ?? 0) * (l.flow ?? 0) / 1000, 0);
+  return `
+    <div class="pop-lic">
+      <b>Licensed · ${esc(l.ref)}${l.estimated ? ' <span class="est-dot">EST</span>' : ''}</b>
+      ${(l.flow ?? 0).toLocaleString('en')} m³/day at Standard ${esc(l.standard ?? 'A')}
+      · ${total.toFixed(1)} kg/day permitted${l.active === false ? '<br>Inactive' : ''}
     </div>`;
 }
 
@@ -460,18 +484,34 @@ function paintLicences() {
   for (const l of store.licences()) {
     if (typeof l.lat !== 'number' || typeof l.lon !== 'number') continue;
     const off = l.active === false;
-    L.marker([l.lat, l.lon], {
-      zIndexOffset: 500,
-      icon: L.divIcon({
+    /* A premises taken from the map is already drawn as a point source, so the
+       licence rings it rather than covering it with a second marker. */
+    const onMap = l.srcId != null && receiving !== null && sourceIds.has(l.srcId);
+    const icon = onMap
+      ? L.divIcon({
+        className: '',
+        html: `<div class="lic-ring${off ? ' off' : ''}"><i>L</i></div>`,
+        iconSize: [30, 30], iconAnchor: [15, 15],
+      })
+      : L.divIcon({
         className: '',
         html: `<div class="lic-pin${off ? ' off' : ''}${l.example ? ' eg' : ''}">L</div>`,
         iconSize: [22, 22], iconAnchor: [11, 11],
-      }),
-    })
-      .bindTooltip(`<b>${esc(l.premises)}</b><br>${esc(l.ref)}`,
-        { direction: 'top', offset: [0, -12] })
-      .bindPopup(() => licencePopup(l), POPUP)
-      .addTo(licenceLayer);
+      });
+
+    if (onMap) {
+      /* The ring is a mark on a marker that is already there and already
+         clickable. Taking the click would hide the source's own popup — which
+         is where the licence is now shown. */
+      L.marker([l.lat, l.lon], { zIndexOffset: 420, icon, interactive: false })
+        .addTo(licenceLayer);
+    } else {
+      L.marker([l.lat, l.lon], { zIndexOffset: 500, icon })
+        .bindTooltip(`<b>${esc(l.premises)}</b><br>${esc(l.ref)}`,
+          { direction: 'top', offset: [0, -12] })
+        .bindPopup(() => licencePopup(l), POPUP)
+        .addTo(licenceLayer);
+    }
   }
   countLicences();
 }
@@ -505,6 +545,15 @@ function licencePopup(l) {
           ${l.active === false ? 'Inactive' : 'Active licence'}</div>
       </div>
     </div>`;
+}
+
+/* Take the map to a premises. Called after the view has switched, so the map
+   exists by then; if it does not, the target is held until it does. */
+let pendingFly = null;
+
+export function flyToPoint(lat, lon, zoom = 16) {
+  if (!map) { pendingFly = [lat, lon, zoom]; return; }
+  map.flyTo([lat, lon], Math.max(map.getZoom(), zoom), { duration: 0.8 });
 }
 
 /* The form offers the map centre as a starting coordinate */

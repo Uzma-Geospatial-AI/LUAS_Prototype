@@ -274,10 +274,15 @@ twice in the budget.
 > figure clears it. The whole wasteload allocation is computed from these numbers, so a register
 > that invented them silently would be dangerous.
 
-Either way the licence carries a position, and anything with a position is drawn on the map as a
-**Licensed premises** — its own layer, legend key and popup showing the permitted flow and the
-wasteload each pollutant contributes. The register marks which rows are located, so a register of
-six and a map of two is not a puzzle.
+Either way the licence carries a position, and anything with a position is drawn:
+
+- a premises **already on the map** is ringed where it stands, not covered by a second marker,
+  and its own popup gains the licence — reference, permitted flow, wasteload. Two markers for one
+  place would be the map disagreeing with itself.
+- a **new location** gets its own pin, since nothing else draws it.
+
+**Show on map** beside either mode opens the map at that premises. The register marks which rows
+are located and which are not, so a register of six against a map of two is not a puzzle.
 
 > ⚠️ The register is not partitioned by receiving water — every licence in it counts against
 > whichever water is selected. Tying a licence to the reach it discharges into is a change to the

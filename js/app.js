@@ -8,7 +8,7 @@ import { store, registerAsJson, registerAsCsv, download } from './store.js';
 import { renderPhase1, resizePhase1 } from './phase1.js';
 import { renderPhase2, renderNational, resizePhase2 } from './phase2.js';
 import { renderPhase3, buildLicenceForm, resizePhase3 } from './phase3.js';
-import { initMap, resizeMap, refreshMap, pauseMap } from './mapview.js';
+import { initMap, resizeMap, refreshMap, pauseMap, flyToPoint } from './mapview.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -159,6 +159,14 @@ function buildStationPicker() {
   document.addEventListener('gotophase', (e) => {
     if (e.detail.station) setFocus(e.detail.station);
     show(e.detail.view);
+  });
+
+  /* "Show on map" from the licence form: switch first, then fly — show('map')
+     builds the map on its first visit, and flying before that has nothing to
+     fly. */
+  document.addEventListener('showonmap', (e) => {
+    show('map');
+    flyToPoint(e.detail.lat, e.detail.lon);
   });
 
   show(location.hash.slice(1) || 'map');

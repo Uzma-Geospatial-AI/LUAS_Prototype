@@ -392,6 +392,11 @@ td.act{white-space:nowrap;text-align:right}
 .loc-pin{margin-left:6px;color:var(--navy-2);font-size:9px;vertical-align:1px}
 .loc-none{margin-left:6px;color:var(--line-2);font-size:11px;vertical-align:1px}
 
+.prem-row{display:flex;gap:8px;align-items:center}
+.prem-row select{flex:1;min-width:0}
+.btn.locate{flex:none;padding:6px 12px;font-size:11.5px;white-space:nowrap}
+.btn.locate:disabled{opacity:.45;cursor:default}
+
 /* A licensed premises on the map */
 .lic-pin{
   width:22px;height:22px;border-radius:6px;border:2px solid #f5e01c;
@@ -399,6 +404,19 @@ td.act{white-space:nowrap;text-align:right}
   font:700 10px var(--fm);box-shadow:0 2px 6px rgba(0,0,0,.45);
 }
 .lic-pin.off{background:var(--muted-2);border-color:#fff;opacity:.75}
+/* A source that is already drawn gets a ring, not a second marker */
+.lic-ring{
+  width:30px;height:30px;border-radius:50%;border:2.5px solid #f5e01c;
+  box-shadow:0 0 0 1.5px rgba(20,25,50,.55),inset 0 0 0 1.5px rgba(20,25,50,.35);
+  position:relative;pointer-events:none;
+}
+.lic-ring i{
+  position:absolute;right:-5px;top:-5px;width:14px;height:14px;border-radius:50%;
+  background:var(--navy);color:#fff;font:700 8px var(--fm);font-style:normal;
+  display:grid;place-items:center;border:1.5px solid #f5e01c;
+}
+.lic-ring.off{border-color:var(--muted-2);opacity:.6}
+.lic-ring.off i{background:var(--muted-2);border-color:#fff}
 .lic-pin.eg{border-style:dashed}
 .lic-key{
   width:16px;height:16px;flex:none;border-radius:5px;border:1.5px solid #f5e01c;
@@ -751,6 +769,15 @@ select{cursor:pointer}
 .pop-hint{margin-top:8px;padding:6px 9px;border-radius:var(--r-sm);
   background:#eef7fd;border:1px solid #c5e3f5;color:#134a6b;
   font-size:10.5px;line-height:1.45}
+.pop-lic{
+  margin-top:9px;padding:7px 10px;border-radius:var(--r-sm);
+  background:#eef0fb;border:1px solid #d6dbf3;color:var(--navy);
+  font-size:11px;line-height:1.5;
+}
+.pop-lic b{display:block;font-size:11.5px;margin-bottom:1px}
+.est-dot{background:#fdf1d6;color:#8a5a06;border-radius:3px;padding:0 4px;
+  font:700 8px var(--fm);letter-spacing:.06em;vertical-align:1px}
+
 .pop-pol{margin-top:9px;font-size:11px;color:var(--muted);line-height:1.5}
 .pop-pol b{color:var(--text);font-size:10px;text-transform:uppercase;letter-spacing:.07em}
 
