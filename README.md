@@ -123,6 +123,16 @@ river or a water body flashes. If what you picked has been filtered out, its lay
 back on, since being shown the thing is the point of asking for it. Unnamed features are left out;
 a list reading "Pond" six hundred times is worse than a shorter one.
 
+**Channel width carries the load.** There is no measured width in the source — 3 of 1,182 OSM
+ways have a `width` tag, and the mapped riverbank polygons cover 0.31 km² of a 682 km network — so
+the line is scaled by what the reach *drains* instead: the mapped channel length accumulated from
+every reach above it, 16 m at a headwater stub and 540 km at the trunk. A river widens roughly
+with the square root of what it carries, which is enough to make a confluence read as one: two
+thin tributaries meet and the channel below them is visibly heavier. Width also grows with zoom,
+the trunk draws over the tributary joining it, and the ends are rounded so they blend.
+
+> ⚠️ It is an **accumulation, not a measurement**. The popup shows the figure it was scaled from.
+
 **Flow direction is always on.** OSM draws a waterway in the direction it flows, so animating a
 dash pattern along the line *is* the direction — nothing has to be inferred at draw time, and no
 arrows have to be placed. A dashed pass sits over the channels and moves downstream; it is never
@@ -153,7 +163,7 @@ counts move with it, which is the quickest read of whether the basin is improvin
 | Monitoring stations | 16 stations, drawn as their WQI and coloured by DOE class |
 | Water bodies | 1,101 Digital Earth outlines, coloured by type |
 | Point sources | 651 sites that can put a load into the river, one shape per category |
-| Sungai Langat & tributaries | 682 km of mapped channel, main channel drawn heavier |
+| Sungai Langat & tributaries | 682 km of mapped channel, drawn at a width scaled by what it carries |
 | Flow direction | the same channels, dashed and animated downstream |
 | Langat catchment | 2,140 km², the clip for everything else |
 | Selangor boundary | the state LUAS is responsible for, Federal Territories excluded |

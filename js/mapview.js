@@ -94,7 +94,7 @@ export function initMap() {
 
   /* A 1 ha pond is sub-pixel across the whole basin, so the outline has to
      carry the colour itself until the zoom makes the shape readable. */
-  map.on('zoomend', restyleWater);
+  map.on('zoomend', () => { restyleWater(); restyleRivers(); });
 
   applyVisibility();
   map.fitBounds(basinLayer.getBounds().pad(0.06));   // open on the catchment
@@ -123,17 +123,51 @@ function buildCatchment() {
 }
 
 /* ---------------- Rivers ---------------- */
+/* There is no measured width in the source — 3 of 1,182 ways carry a `width`
+   tag — so the line is scaled by what the reach drains instead: the mapped
+   channel length accumulated from every reach above it. A real river widens
+   roughly with the square root of what it carries, and that is enough to make
+   a confluence read as one: two thin tributaries meet and the channel below
+   them is visibly heavier. It is an accumulation, not a measurement. */
+let maxUp = 1;
+
+function riverWeight(up) {
+  const z = map?.getZoom() ?? 11;
+  const zoom = Math.max(0.55, Math.min(2.2, (z - 8) / 5));
+  return zoom * (1.1 + 5.5 * Math.sqrt((up ?? 0) / maxUp));
+}
+
+function riverStyle(f) {
+  const r = f.properties;
+  return {
+    color: r.main ? '#0aa3d9' : '#45bfe0',
+    weight: riverWeight(r.up),
+    opacity: r.main ? 0.95 : 0.85,
+    lineCap: 'round',            /* so a tributary blends into its trunk */
+    lineJoin: 'round',
+  };
+}
+
+function restyleRivers() {
+  for (const l of Object.values(riverLayers)) l.setStyle(riverStyle);
+  flowLayer?.setStyle(flowStyle);
+  riverLayers.main?.bringToFront();
+  flowLayer?.bringToFront();
+}
+
 function buildRivers() {
   const feats = DATA.rivers.features;
+  maxUp = Math.max(1, ...feats.map((f) => f.properties.up ?? 0));
+
+  /* Smallest first, so the trunk draws over the tributary joining it */
+  const byUp = (a, b) => (a.properties.up ?? 0) - (b.properties.up ?? 0);
   const split = {
-    main: feats.filter((f) => f.properties.main),
-    trib: feats.filter((f) => !f.properties.main),
+    trib: feats.filter((f) => !f.properties.main).sort(byUp),
+    main: feats.filter((f) => f.properties.main).sort(byUp),
   };
   for (const [key, list] of Object.entries(split)) {
     riverLayers[key] = L.geoJSON({ type: 'FeatureCollection', features: list }, {
-      style: key === 'main'
-        ? { color: '#0aa3d9', weight: 3.2, opacity: 0.95 }
-        : { color: '#45bfe0', weight: 1.4, opacity: 0.8 },
+      style: riverStyle,
       onEachFeature: (f, layer) => {
         const r = f.properties;
         layer.bindTooltip(
@@ -155,20 +189,25 @@ function buildRivers() {
      direction — nothing has to be inferred at draw time. It carries no
      information the lines below do not, so it is never interactive and never
      takes a click away from them. */
-  flowLayer = L.geoJSON(DATA.rivers, {
-    style: (f) => ({
-      color: '#ffffff',
-      weight: f.properties.main ? 2.4 : 1.3,
-      opacity: 0.85,
-      /* Both patterns repeat every 20px, so one keyframe distance animates
-         both seamlessly. */
-      dashArray: f.properties.main ? '6 14' : '4 16',
-      className: 'flow-anim',
-      interactive: false,
-    }),
-  });
+  flowLayer = L.geoJSON(DATA.rivers, { style: flowStyle });
   visible.add('flow:anim');
   MASTERS.flow = ['flow:anim'];
+}
+
+/* The moving dashes ride on top of the channel, at about half its width, so a
+   big river reads as a broad flow and a headwater as a thread. */
+function flowStyle(f) {
+  const w = riverWeight(f.properties.up);
+  return {
+    color: '#ffffff',
+    weight: Math.max(1, w * 0.5),
+    opacity: 0.9,
+    /* Both patterns repeat every 20px, so one keyframe distance animates
+       every reach seamlessly. */
+    dashArray: f.properties.main ? '6 14' : '4 16',
+    className: 'flow-anim',
+    interactive: false,
+  };
 }
 
 /* ---------------- Water bodies ---------------- */
@@ -360,6 +399,8 @@ function applyVisibility() {
   set(stateLayer, visible.has('bound:selangor'));
   for (const [k, l] of Object.entries(riverLayers)) set(l, visible.has(`river:${k}`));
   set(flowLayer, visible.has('flow:anim'));
+  riverLayers.main?.bringToFront();
+  flowLayer?.bringToFront();
   for (const [k, l] of Object.entries(waterLayers)) set(l, visible.has(`water:${k}`));
   for (const [k, l] of Object.entries(sourceLayers)) set(l, visible.has(`src:${k}`));
 
@@ -758,6 +799,9 @@ function riverPopup(r) {
           <tr><td>This reach</td><td class="num">${(r.m / 1000).toFixed(1)} km</td></tr>
           <tr><td>Downstream</td><td class="num">${f.km.toFixed(1)} km</td></tr>
           <tr><td>Reaches crossed</td><td class="num">${f.reaches}</td></tr>
+          <tr><td>Draining through here
+            <div class="pop-sub">line width is scaled from this</div></td>
+            <td class="num">${r.up < 1000 ? metres(r.up) : `${(r.up / 1000).toFixed(1)} km`}</td></tr>
         </table>
         ${down.length
           ? `<div class="pop-flow"><b>Flows into</b>

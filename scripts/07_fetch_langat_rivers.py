@@ -26,6 +26,7 @@ Run 06_fetch_langat_basin.py first.
 import json
 import math
 import os
+import sys
 import urllib.parse
 import urllib.request
 
@@ -224,6 +225,45 @@ for i, f in enumerate(feats):
 
 print('flow: %d reaches link downstream, %d are ends' % (linked, ends))
 
+# ---------------- Accumulated channel ----------------
+# How much mapped channel drains through each reach. There is no measured
+# width in the source — 3 of 1,182 ways carry a `width` tag — so this is what
+# is honestly available: the trunk carries everything above it, a headwater
+# carries only itself. A river's width goes roughly with the square root of
+# what it drains, which is enough to draw a confluence that looks like one.
+by_id = {f['properties']['id']: i for i, f in enumerate(feats)}
+children = {}
+for i, f in enumerate(feats):
+    nx = f['properties'].get('next')
+    if nx is not None and nx in by_id:
+        children.setdefault(by_id[nx], []).append(i)
+
+up = [None] * len(feats)
+
+
+def upstream_m(i, guard):
+    if up[i] is not None:
+        return up[i]
+    if i in guard:                      # a direction error would loop forever
+        return feats[i]['properties']['m']
+    guard.add(i)
+    total = feats[i]['properties']['m']
+    for c in children.get(i, ()):
+        total += upstream_m(c, guard)
+    guard.discard(i)
+    up[i] = total
+    return total
+
+
+sys.setrecursionlimit(5000)
+for i in range(len(feats)):
+    upstream_m(i, set())
+for i, f in enumerate(feats):
+    f['properties']['up'] = round(up[i])
+
+print('accumulated channel: %.1f km at the largest reach, %.1f km median'
+      % (max(up) / 1000, sorted(up)[len(up) // 2] / 1000))
+
 feats.sort(key=lambda f: -f['properties']['m'])
 
 named = sum(1 for f in feats if f['properties'].get('name'))
@@ -253,7 +293,10 @@ payload = {
                  'flows into, taken from the direction OSM draws a waterway in; '
                  'a reach without it is the mouth, or the edge of the mapped '
                  'network. "nexti" is the vertex of that reach the junction sits '
-                 'at, so only the channel below the junction counts as downstream.'),
+                 'at, so only the channel below the junction counts as downstream. '
+                 '"up" is the mapped channel length draining through the reach; the '
+                 'map scales line width by its square root. It is an accumulation, '
+                 'NOT a measured width — the source has almost none.'),
     },
     'features': feats,
 }
