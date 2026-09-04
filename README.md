@@ -166,6 +166,13 @@ are measured to rivers *and* water bodies, and **410 of the 651 sites are nearer
 than a channel**. Clicking a source names the water it reaches, and the pin beside the distance
 flies to the site and flashes that river or pond.
 
+**The answer follows what is switched on.** The nearest is recorded per layer — `river:main`,
+`water:pond` and the rest — so with the ponds hidden a site reports the nearest *river* instead
+of a pond the reader cannot see. 461 of the 651 sites have both a water body and a river within
+range, so this changes the answer often. When it does, the popup says so; with every water layer
+off it says there is nothing to measure to. The risk score does not move — it is scaled from the
+overall nearest, because it is a property of the site, not of the view.
+
 > ⚠️ **The risk score is a screening aid, not a measurement.** It is the category's load weight
 > — judgement, not metering — scaled by closeness to water. Use it to order inspections, never to
 > attribute a load. Nothing in this layer is metered.

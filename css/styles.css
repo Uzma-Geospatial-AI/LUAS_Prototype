@@ -582,6 +582,9 @@ select{cursor:pointer}
 }
 .flash-water{animation:flashWater .62s ease-in-out 5}
 
+.pop-hint{margin-top:8px;padding:6px 9px;border-radius:var(--r-sm);
+  background:#eef7fd;border:1px solid #c5e3f5;color:#134a6b;
+  font-size:10.5px;line-height:1.45}
 .pop-pol{margin-top:9px;font-size:11px;color:var(--muted);line-height:1.5}
 .pop-pol b{color:var(--text);font-size:10px;text-transform:uppercase;letter-spacing:.07em}
 

@@ -19,9 +19,15 @@ Two filters, in this order:
 "Receiving water" is a river OR a water body. Half the sites here sit beside a
 pond, an oxidation basin or an ex-mining lake, and that is what actually
 receives them; the river only gets it afterwards. Measuring to the channel
-alone overstates the distance and names the wrong feature, so each source
-records which feature is nearest, how far, and where it is — enough for the map
-to fly to it and flash it.
+alone overstates the distance and names the wrong feature.
+
+Which one to name, though, depends on what the reader has switched on. So the
+nearest is recorded for EVERY layer the map can toggle — `river:main`,
+`river:trib`, `water:pond` and the rest — under `near`, keyed exactly as the
+map keys its layers. The map picks the closest among the layers currently
+visible, and with the ponds hidden it names the nearest river instead of a pond
+nobody can see. `dist` stays the overall nearest, because the risk score is a
+property of the site and must not move when a layer is toggled.
 
 Each source carries a risk score: the category's relative load weight scaled by
 how close it sits to water. It is a screening aid for prioritising inspection,
@@ -120,9 +126,9 @@ BPOLYS = bgeom['coordinates'] if bgeom['type'] == 'MultiPolygon' else [bgeom['co
 BBOX = basin['features'][0]['properties']['bbox']
 
 # Every edge of every receiving water goes into one list, each tagged with the
-# feature it belongs to, so one sweep finds the nearest of either kind.
-SEG = []          # (x1, y1, x2, y2, kind, id, name, main)
-FEATURES = {}     # (kind, id) -> a point to fly to
+# LAYER KEY it belongs to — the same key the map toggles it under — so one
+# sweep can answer "nearest among these layers" for any combination.
+SEG = []          # (x1, y1, x2, y2, viskey, id, name, main)
 
 rivers = json.load(open(RIVERS, encoding='utf-8'))
 for ft in rivers['features']:
@@ -130,11 +136,10 @@ for ft in rivers['features']:
     fid = pr.get('id')
     name = pr.get('name') or 'Unnamed river'
     main = bool(pr.get('main'))
+    viskey = 'river:main' if main else 'river:trib'
     c = ft['geometry']['coordinates']
-    mid = c[len(c) // 2]
-    FEATURES[('river', fid)] = (round(mid[0], 5), round(mid[1], 5))
     for (x1, y1), (x2, y2) in zip(c, c[1:]):
-        SEG.append((x1, y1, x2, y2, 'river', fid, name, main))
+        SEG.append((x1, y1, x2, y2, viskey, fid, name, main))
 
 water = json.load(open(WATER, encoding='utf-8'))
 for ft in water['features']:
@@ -142,14 +147,15 @@ for ft in water['features']:
     fid = pr.get('id')
     if fid is None:
         continue
-    name = pr.get('name') or WATER_LABEL.get(pr.get('group'), 'Water body')
-    FEATURES[('water', fid)] = (pr['lon'], pr['lat'])
+    group = pr.get('group') or 'other'
+    name = pr.get('name') or WATER_LABEL.get(group, 'Water body')
+    viskey = 'water:' + group
     g = ft['geometry']
     polys = g['coordinates'] if g['type'] == 'MultiPolygon' else [g['coordinates']]
     for poly in polys:
         for ring in poly:
             for (x1, y1), (x2, y2) in zip(ring, ring[1:]):
-                SEG.append((x1, y1, x2, y2, 'water', fid, name, False))
+                SEG.append((x1, y1, x2, y2, viskey, fid, name, False))
 
 # A grid so each source only tests the segments near it — 3,400 sources against
 # 4,100 segments is 14 million distance tests otherwise.
@@ -175,9 +181,13 @@ def pt_seg_m(px, py, s):
 
 
 def nearest_water(lon, lat, rings=2):
-    """Nearest receiving water of either kind, and the nearest main channel."""
+    """The nearest edge per layer key, plus the overall nearest main channel.
+
+    Returns {viskey: (distance, id, name)} for every layer with something
+    inside the search, and the distance to the nearest main channel."""
     gx0, gy0 = int(math.floor(lon / CELL)), int(math.floor(lat / CELL))
-    best, hit, best_main = 1e12, None, 1e12
+    per = {}
+    best, best_main = 1e12, 1e12
     for r in range(rings + 1):
         for gx in range(gx0 - r, gx0 + r + 1):
             for gy in range(gy0 - r, gy0 + r + 1):
@@ -186,13 +196,16 @@ def nearest_water(lon, lat, rings=2):
                 for i in grid.get((gx, gy), ()):
                     s = SEG[i]
                     d = pt_seg_m(lon, lat, s)
+                    key = s[4]
+                    if key not in per or d < per[key][0]:
+                        per[key] = (d, s[5], s[6])
                     if d < best:
-                        best, hit = d, s
+                        best = d
                     if s[7] and d < best_main:
                         best_main = d
         if best < r * CELL * MPD:
             break
-    return best, hit, best_main
+    return per, best, best_main
 
 
 # ---------------- Ask Overpass ----------------
@@ -236,7 +249,7 @@ for el in elements:
         n_outside_basin += 1
         continue
 
-    d_any, hit, d_main = nearest_water(lon, lat)
+    per, d_any, d_main = nearest_water(lon, lat)
     if d_any > BUFFER_M:
         n_far += 1
         continue
@@ -254,12 +267,15 @@ for el in elements:
     name = tags.get('name') or tags.get('operator')
     if name:
         props['name'] = name
-    if hit is not None:
-        kind, fid, wname = hit[4], hit[5], hit[6]
-        props['to'] = {'kind': kind, 'id': fid, 'name': wname}
-        at = FEATURES.get((kind, fid))
-        if at:
-            props['to']['at'] = list(at)
+    # One entry per layer, so the map can answer for any combination of them.
+    # Anything past the buffer is dropped: it is not a receiving water for this
+    # site, it is just the closest thing of that type somewhere out there.
+    near = {}
+    for key, (d, fid, wname) in sorted(per.items(), key=lambda kv: kv[1][0]):
+        if d <= BUFFER_M:
+            near[key] = {'id': fid, 'n': wname, 'd': round(d)}
+    if near:
+        props['near'] = near
     if d_main < 1e11:
         props['dist_langat'] = round(d_main)
     feats.append({
@@ -276,8 +292,15 @@ print('dropped: %d uncategorised, %d outside the catchment, %d beyond %d m of a 
 print('kept %d sources in the riparian zone' % len(feats))
 for c, n in counts.most_common():
     print('  %-10s %4d  %s' % (c, n, CATS[c]['label']))
-kinds = Counter(f['properties'].get('to', {}).get('kind') for f in feats)
-print('nearest receiving water is a: %s' % dict(kinds))
+kinds = Counter(
+    next(iter(f['properties'].get('near', {})), 'none').split(':')[0] for f in feats)
+print('overall nearest receiving water is a: %s' % dict(kinds))
+layers = Counter(k for f in feats for k in f['properties'].get('near', {}))
+print('sites with each layer inside the buffer:')
+for k, n in layers.most_common():
+    print('  %-18s %4d' % (k, n))
+print('layers per site: %.1f average'
+      % (sum(len(f['properties'].get('near', {})) for f in feats) / max(1, len(feats))))
 for b in (100, 250, 500, 1000, 1500):
     print('  within %5d m of water: %d'
           % (b, sum(1 for f in feats if f['properties']['dist'] <= b)))
@@ -292,11 +315,13 @@ payload = {
         'clip': ('Sungai Langat catchment (HydroBASINS %s), then %d m of the nearest '
                  'receiving water' % (basin['features'][0]['properties']['hybas_id'], BUFFER_M)),
         'categories': CATS,
-        'note': ('"to" is the nearest receiving water — a river or a water body, '
-                 'whichever is closer — with the id the map uses to find and flash it. '
-                 'Risk is the category load weight scaled by closeness to that water. '
-                 'It is a screening aid for prioritising inspection, not a measured '
-                 'discharge — none of these sources is metered.'),
+        'note': ('"near" holds the closest receiving water per map layer, keyed as '
+                 'the map keys its layers, so the answer can follow what is switched '
+                 'on. "dist" is the overall nearest and does not move when a layer is '
+                 'toggled, because the risk score is scaled from it. Risk is the '
+                 'category load weight scaled by closeness to water: a screening aid '
+                 'for prioritising inspection, not a measured discharge — none of '
+                 'these sources is metered.'),
     },
     'features': feats,
 }

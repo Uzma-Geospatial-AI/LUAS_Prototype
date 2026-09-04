@@ -40,6 +40,7 @@ const MASTERS = {};           // layers-card switch -> the ids it commands
 const receiving = new Map();
 
 let monthIdx = null, timer = null;
+let openPopup = null;
 
 const pad = (n) => String(n).padStart(2, '0');
 const iso = (d) => `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
@@ -186,14 +187,34 @@ function buildSources() {
       })
         .bindTooltip(
           `<b>${p.name ? esc(p.name) : esc(c.label)}</b><br>`
-          + `${esc(c.label)}<br>${p.dist} m from ${p.to ? esc(p.to.name) : 'water'}`,
+          + `${esc(c.label)}<br>${p.dist} m from ${esc(overallNearest(p)?.n ?? 'water')}`,
           { direction: 'top', offset: [0, -size / 2 - 2] })
-        .bindPopup(sourcePopup(p, c), { maxWidth: 300 });
+        /* A function, not a string: it is re-run on open and on every layer
+           toggle, so the answer follows what is actually on the map. */
+        .bindPopup(() => sourcePopup(p, c), { maxWidth: 300 });
     }));
     visible.add(`src:${key}`);
     ids.push(`src:${key}`);
   }
   MASTERS.sources = ids;
+}
+
+/* The nearest receiving water among the layers currently switched on. With
+   the ponds hidden this returns the nearest river, because naming a pond the
+   reader cannot see would be answering a question they did not ask. */
+function nearestVisible(p) {
+  let best = null;
+  for (const [key, v] of Object.entries(p.near ?? {})) {
+    if (!visible.has(key)) continue;
+    if (!best || v.d < best.d) best = { ...v, key };
+  }
+  return best;
+}
+
+/* The closest of all, regardless of what is shown. `near` comes out of the
+   ETL sorted by distance, so the first entry is it. */
+function overallNearest(p) {
+  return Object.values(p.near ?? {})[0] ?? null;
 }
 
 const PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"'
@@ -202,7 +223,11 @@ const PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-w
   + '<circle cx="12" cy="10" r="2.8"/></svg>';
 
 function sourcePopup(p, c) {
-  const to = p.to;
+  const to = nearestVisible(p);
+  const kind = to ? to.key.split(':')[0] : null;
+  const flashKey = to ? `${kind}:${to.id}` : null;
+  const shown = to && to.d !== p.dist;      /* a nearer one is switched off */
+
   return `
     <div class="map-pop">
       <div class="pop-head" style="background:${c.color}">
@@ -212,20 +237,25 @@ function sourcePopup(p, c) {
       <div class="pop-body">
         <table class="pop-tbl">
           ${to ? `<tr>
-            <td>Nearest water<div class="pop-sub">${esc(to.name)}</div></td>
-            <td class="num">${p.dist} m
-              ${receiving.has(`${to.kind}:${to.id}`)
-                ? `<button class="pin-btn" data-flash="${to.kind}:${to.id}"
+            <td>Nearest water<div class="pop-sub">${esc(to.n)}</div></td>
+            <td class="num">${to.d} m
+              ${receiving.has(flashKey)
+                ? `<button class="pin-btn" data-flash="${flashKey}"
                      data-at="${p.at[1]},${p.at[0]}"
-                     title="Show ${esc(to.name)} on the map">${PIN}</button>` : ''}
+                     title="Show ${esc(to.n)} on the map">${PIN}</button>` : ''}
             </td></tr>`
-          : `<tr><td>Distance to water</td><td class="num">${p.dist} m</td></tr>`}
-          ${p.dist_langat != null
-            ? `<tr><td>To Sungai Langat</td><td class="num">${p.dist_langat} m</td></tr>` : ''}
-          <tr><td>Screening risk</td><td class="num">${p.risk.toFixed(2)} / 5</td></tr>
+          : ''}
+          <tr><td>Screening risk</td>
+            <td class="num" title="Scaled from the overall nearest water, ${p.dist} m">
+              ${p.risk.toFixed(2)} / 5</td></tr>
         </table>
+        ${to
+          ? (shown ? `<div class="pop-hint">Nearest among the layers shown \u2014
+              the overall nearest is ${p.dist} m away on a hidden layer.</div>` : '')
+          : `<div class="pop-hint">No water layer is switched on, so there is nothing
+              to measure to. The overall nearest is ${p.dist} m.</div>`}
         <div class="pop-pol"><b>Typically carries</b><br>${esc(c.pol)}</div>
-        <div class="pop-note">Screening only — no discharge here is metered</div>
+        <div class="pop-note">Screening only \u2014 no discharge here is metered</div>
       </div>
     </div>`;
 }
@@ -268,6 +298,14 @@ function applyVisibility() {
 
   repaint();
   syncControls();
+
+  /* An open source popup answers "nearest water" from the visible layers, so
+     it has to be re-run when they change. update() re-invokes the content
+     function; the buttons inside are new elements, so re-wire them. */
+  if (openPopup) {
+    openPopup.update();
+    wirePopup(openPopup);
+  }
 }
 
 function toggle(id) {
@@ -443,24 +481,28 @@ function buildBasemaps() {
     L.DomEvent.disableScrollPropagation(el);
   }
 
-  /* Popups are rebuilt on every open, so their buttons are wired here */
-  map.on('popupopen', (e) => {
-    const root = e.popup.getElement();
-    const goto = root?.querySelector('[data-goto]');
-    if (goto) {
-      goto.onclick = () => {
-        map.closePopup();
-        document.dispatchEvent(new CustomEvent('gotophase',
-          { detail: { view: 'phase1', station: goto.dataset.goto } }));
-      };
-    }
-    const pin = root?.querySelector('[data-flash]');
-    if (pin) {
-      pin.onclick = () => showReceiving(
-        pin.dataset.flash,
-        pin.dataset.at ? pin.dataset.at.split(',').map(Number) : null);
-    }
-  });
+  map.on('popupopen', (e) => { openPopup = e.popup; wirePopup(e.popup); });
+  map.on('popupclose', () => { openPopup = null; });
+}
+
+/* Popup markup is rebuilt on every open and on every layer toggle, so its
+   buttons are fresh elements each time and have to be wired each time. */
+function wirePopup(popup) {
+  const root = popup.getElement();
+  const goto = root?.querySelector('[data-goto]');
+  if (goto) {
+    goto.onclick = () => {
+      map.closePopup();
+      document.dispatchEvent(new CustomEvent('gotophase',
+        { detail: { view: 'phase1', station: goto.dataset.goto } }));
+    };
+  }
+  const pin = root?.querySelector('[data-flash]');
+  if (pin) {
+    pin.onclick = () => showReceiving(
+      pin.dataset.flash,
+      pin.dataset.at ? pin.dataset.at.split(',').map(Number) : null);
+  }
 }
 
 function setBase(key) {
