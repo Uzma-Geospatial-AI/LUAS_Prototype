@@ -119,7 +119,7 @@ export function initMap() {
 
   /* A 1 ha pond is sub-pixel across the whole basin, so the outline has to
      carry the colour itself until the zoom makes the shape readable. */
-  map.on('zoomend', () => { restyleWater(); restyleRivers(); syncStill(); });
+  map.on('zoomend', () => { restyleWater(); restyleRivers(); restyleWaterFlow(); syncStill(); });
 
   applyVisibility();
   if (pendingFly) {
@@ -316,7 +316,7 @@ function drawWaterFlow(f, b) {
   const opts = { pane: 'waterflow', interactive: false, color: '#ffffff' };
   if (b.flow === 'out' && b.outlet) {
     L.polyline([[b.lat, b.lon], [b.outlet[1], b.outlet[0]]], {
-      ...opts, weight: 2, opacity: 0.9, dashArray: '5 15', className: 'flow-anim',
+      ...opts, weight: flowWeight(), opacity: 0.9, dashArray: '6 14', className: 'flow-anim',
     }).addTo(waterFlowLayer);
   } else if (b.flow === 'still' && b.group !== 'channel') {
     /* Every ring turns the same way, so the winding of the source polygon
@@ -334,11 +334,23 @@ function drawWaterFlow(f, b) {
     const scales = b.area_m2 >= 5000 ? [1, 0.66, 0.33] : [1];
     for (const k of scales) {
       L.polygon(cw.map(([lon, lat]) => [b.lat + (lat - b.lat) * k, b.lon + (lon - b.lon) * k]), {
-        ...opts, weight: k === 1 ? 1.3 : 1, opacity: k === 1 ? 0.75 : 0.5, fill: false,
-        dashArray: '3 7', className: 'still-anim',
+        ...opts, weight: flowWeight(), opacity: 0.9, fill: false,
+        dashArray: '6 14', className: 'still-anim',
       }).addTo(stillLayer);
     }
   }
+}
+
+/* The water-body flow is drawn as heavy as the main channel's own flow at
+   the same zoom, so a pond and the river beside it read as one system.
+   The river's weight follows the zoom, so this is re-applied with it. */
+function flowWeight() {
+  return Math.max(1, riverWeight(maxUp) * 0.5);
+}
+function restyleWaterFlow() {
+  const style = { weight: flowWeight() };
+  waterFlowLayer?.eachLayer((l) => l.setStyle(style));
+  stillLayer?.eachLayer((l) => l.setStyle(style));
 }
 
 /* The rings are worth drawing only once a pond is bigger than its ring */

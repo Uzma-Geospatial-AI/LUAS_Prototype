@@ -278,7 +278,21 @@ table.data tfoot .totals td{background:var(--surface-2);border-top:2px solid var
   border-bottom:0;font-size:12.5px}
 .empty-row{color:var(--muted);padding:22px 13px !important;text-align:center}
 table.budget th{font-size:9.5px}
-table.register td{padding:8px 11px}
+/* The columns stay where they are: a fixed layout sizes them from the
+   colgroup, not from whichever rows happen to be on the page, so a sort or a
+   page turn changes the rows and nothing else. Only Premises is elastic. */
+table.register{table-layout:fixed;min-width:1180px}
+table.register col.c-ref{width:172px}
+table.register col.c-std{width:58px}
+table.register col.c-flow{width:76px}
+table.register col.c-conc{width:60px}
+table.register col.c-load{width:68px}
+table.register col.c-stat{width:118px}
+table.register col.c-act{width:176px}
+table.register td{padding:8px 11px;overflow-wrap:anywhere}
+table.register td .badge,table.register td .pill-status{white-space:nowrap}
+table.register td.act{white-space:nowrap;text-align:right}
+table.register td:first-child b{display:block;white-space:nowrap}
 /* A located row opens the map: it says so on hover, and nowhere else */
 table.register tr.row-go{cursor:pointer;transition:background .12s}
 table.register tr.row-go:hover td{background:var(--surface-2)}

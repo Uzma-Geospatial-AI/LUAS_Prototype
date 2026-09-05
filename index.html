@@ -522,6 +522,15 @@
 
     <div class="card pad0 tbl-scroll" style="margin-top:12px">
       <table class="data register">
+        <!-- Fixed widths: the columns must not move when the rows under
+             them change, and with a fixed layout only the Premises column
+             is elastic. -->
+        <colgroup>
+          <col class="c-ref"><col class="c-prem"><col class="c-std"><col class="c-flow">
+          <col class="c-conc"><col class="c-conc"><col class="c-conc"><col class="c-conc">
+          <col class="c-load"><col class="c-load"><col class="c-load"><col class="c-load">
+          <col class="c-stat"><col class="c-act">
+        </colgroup>
         <thead>
           <tr>
             <th rowspan="2" class="sortable" data-sort="ref">Licence</th>
