@@ -1,0 +1,450 @@
+{
+ "source": "Jabatan Pengairan dan Saliran (JPS) - Public InfoBanjir",
+ "url": "https://publicinfobanjir.water.gov.my/aras-air/data-paras-air/?state=SEL&type=NEGERI",
+ "basin": "Sungai Langat",
+ "latest": "05/09/2026 23:30",
+ "note": "Snapshot taken when this file was built. Not a live feed.",
+ "stations": [
+  {
+   "id": "3118446",
+   "key": "3118104_",
+   "name": "Sg. Langat di Batu 20",
+   "district": "Hulu Langat",
+   "basin": "Sungai Langat",
+   "sub": "Sg. Langat",
+   "lat": 3.194027,
+   "lon": 101.85525,
+   "level": 88.46,
+   "updated": "05/09/2026 23:00",
+   "trend": "No Change",
+   "th": {
+    "normal": 86.8,
+    "waspada": 89.8,
+    "amaran": 90.1,
+    "bahaya": 90.4
+   },
+   "status": "normal",
+   "inCatchment": true
+  },
+  {
+   "id": "3118445",
+   "key": "3118103_",
+   "name": "Sg. Lui di Kg. Sg. Lui",
+   "district": "Hulu Langat",
+   "basin": "Sungai Langat",
+   "sub": "Sg. Lui",
+   "lat": 3.173611,
+   "lon": 101.872222,
+   "level": null,
+   "updated": "05/09/2026 23:30",
+   "trend": "No Change",
+   "th": {
+    "normal": 76.8,
+    "waspada": 77.3,
+    "amaran": 77.8,
+    "bahaya": 78.3
+   },
+   "status": "offline",
+   "inCatchment": true
+  },
+  {
+   "id": "3018402",
+   "key": "3018104_",
+   "name": "Sg. Langat di Batu 15",
+   "district": "Hulu Langat",
+   "basin": "Sungai Langat",
+   "sub": "Sg. Langat",
+   "lat": 3.136888,
+   "lon": 101.834722,
+   "level": 53.33,
+   "updated": "05/09/2026 22:15",
+   "trend": "No Change",
+   "th": {
+    "normal": 52.1,
+    "waspada": 55.3,
+    "amaran": 55.6,
+    "bahaya": 55.9
+   },
+   "status": "normal",
+   "inCatchment": true
+  },
+  {
+   "id": "3017482",
+   "key": "3017082_",
+   "name": "Sg. Langat di Batu 12",
+   "district": "Hulu Langat",
+   "basin": "Sungai Langat",
+   "sub": "Sg. Langat",
+   "lat": 3.093388,
+   "lon": 101.797777,
+   "level": 40.17,
+   "updated": "05/09/2026 23:15",
+   "trend": "Rising",
+   "th": {
+    "normal": 39.4,
+    "waspada": 41.4,
+    "amaran": 42.1,
+    "bahaya": 42.4
+   },
+   "status": "normal",
+   "inCatchment": true
+  },
+  {
+   "id": "3017408",
+   "key": "KGBARUBALAKONG",
+   "name": "Sg. Balak di Kg. Baru Balakong",
+   "district": "Hulu Langat",
+   "basin": "Sungai Langat",
+   "sub": "Sg. Balak",
+   "lat": 3.027667,
+   "lon": 101.748778,
+   "level": 35.42,
+   "updated": "05/09/2026 23:15",
+   "trend": "No Change",
+   "th": {
+    "normal": 37.0,
+    "waspada": 37.3,
+    "amaran": 37.6,
+    "bahaya": 37.9
+   },
+   "status": "normal",
+   "inCatchment": true
+  },
+  {
+   "id": "3017409",
+   "key": "SGKANTANKAJANG",
+   "name": "Sg. Kantan",
+   "district": "Hulu Langat",
+   "basin": "Sungai Langat",
+   "sub": "Sg. Kantan",
+   "lat": 3.003463,
+   "lon": 101.788466,
+   "level": 26.17,
+   "updated": "05/09/2026 23:15",
+   "trend": "No Change",
+   "th": {
+    "normal": 27.25,
+    "waspada": 28.5,
+    "amaran": 28.8,
+    "bahaya": 29.1
+   },
+   "status": "normal",
+   "inCatchment": true
+  },
+  {
+   "id": "3115404",
+   "key": "TMNTTDIGROVEKAJANG",
+   "name": "Sg. Jelok di Taman TTDI Grove",
+   "district": "Hulu Langat",
+   "basin": "Sungai Langat",
+   "sub": "Sg. Jelok",
+   "lat": 2.997946,
+   "lon": 101.809367,
+   "level": 34.22,
+   "updated": "05/09/2026 23:15",
+   "trend": "Rising",
+   "th": {
+    "normal": 35.1,
+    "waspada": 35.85,
+    "amaran": 36.15,
+    "bahaya": 36.45
+   },
+   "status": "normal",
+   "inCatchment": true
+  },
+  {
+   "id": "2917401",
+   "key": "2917112_",
+   "name": "Sg. Langat di Pekan Kajang",
+   "district": "Hulu Langat",
+   "basin": "Sungai Langat",
+   "sub": "Sg. Langat",
+   "lat": 2.992694,
+   "lon": 101.786111,
+   "level": 22.06,
+   "updated": "05/09/2026 23:15",
+   "trend": "No Change",
+   "th": {
+    "normal": 22.9,
+    "waspada": 24.4,
+    "amaran": 25.4,
+    "bahaya": 26.4
+   },
+   "status": "normal",
+   "inCatchment": true
+  },
+  {
+   "id": "2917402",
+   "key": "TMNWESTCOUNTRYKAJANG",
+   "name": "Sg. Langat di Taman West Country Kajang",
+   "district": "Hulu Langat",
+   "basin": "Sungai Langat",
+   "sub": "Sg. Langat",
+   "lat": 2.964028,
+   "lon": 101.784194,
+   "level": 18.34,
+   "updated": "05/09/2026 23:15",
+   "trend": "Receding",
+   "th": {
+    "normal": 19.65,
+    "waspada": 21.4,
+    "amaran": 21.9,
+    "bahaya": 22.4
+   },
+   "status": "normal",
+   "inCatchment": true
+  },
+  {
+   "id": "2918403",
+   "key": "2918080_",
+   "name": "Sg. Semenyih di Jalan Seri Tanjung",
+   "district": "Hulu Langat",
+   "basin": "Sungai Langat",
+   "sub": "Sg. Semenyih",
+   "lat": 2.958777,
+   "lon": 101.849472,
+   "level": 31.25,
+   "updated": "05/09/2026 23:15",
+   "trend": "No Change",
+   "th": {
+    "normal": 31.0,
+    "waspada": 34.0,
+    "amaran": 34.5,
+    "bahaya": 35.0
+   },
+   "status": "normal",
+   "inCatchment": true
+  },
+  {
+   "id": "2914401",
+   "key": "25939",
+   "name": "RS Batu 8",
+   "district": "Kuala Langat",
+   "basin": "Sungai Langat",
+   "sub": "Sg. Langat",
+   "lat": 2.939051,
+   "lon": 101.422061,
+   "level": 1.03,
+   "updated": "05/09/2026 23:15",
+   "trend": "Receding",
+   "th": {
+    "normal": 0.1,
+    "waspada": 3.5,
+    "amaran": 4.0,
+    "bahaya": 4.5
+   },
+   "status": "normal",
+   "inCatchment": false
+  },
+  {
+   "id": "2817403",
+   "key": "JENDERAMHILIR",
+   "name": "Sg. Langat di Jenderam Hilir",
+   "district": "Sepang",
+   "basin": "Sungai Langat",
+   "sub": "Sg. Langat",
+   "lat": 2.896966,
+   "lon": 101.72834,
+   "level": 4.25,
+   "updated": "05/09/2026 23:15",
+   "trend": "Rising",
+   "th": {
+    "normal": 7.4,
+    "waspada": 10.4,
+    "amaran": 10.7,
+    "bahaya": 11.0
+   },
+   "status": "normal",
+   "inCatchment": true
+  },
+  {
+   "id": "2817480",
+   "key": "2817180_",
+   "name": "Sg. Semenyih di Pekan Bangi Lama",
+   "district": "Hulu Langat",
+   "basin": "Sungai Langat",
+   "sub": "Sg. Semenyih",
+   "lat": 2.896389,
+   "lon": 101.775,
+   "level": 13.22,
+   "updated": "05/09/2026 23:15",
+   "trend": "Rising",
+   "th": {
+    "normal": 13.7,
+    "waspada": 15.7,
+    "amaran": 16.2,
+    "bahaya": 16.7
+   },
+   "status": "normal",
+   "inCatchment": true
+  },
+  {
+   "id": "0241301WL",
+   "key": "26556",
+   "name": "Sg. Beranang di Kg. Sesapan Batu Rembau",
+   "district": "Hulu Langat",
+   "basin": "Sungai Langat",
+   "sub": "Sg. Beranang",
+   "lat": 2.878951,
+   "lon": 101.871569,
+   "level": null,
+   "updated": "05/09/2026 23:30",
+   "trend": "No Change",
+   "th": {
+    "normal": 32.5,
+    "waspada": 34.0,
+    "amaran": 34.5,
+    "bahaya": 35.0
+   },
+   "status": "offline",
+   "inCatchment": true
+  },
+  {
+   "id": "2817404",
+   "key": "25945",
+   "name": "Sg. Jenderam di Jenderam Hulu",
+   "district": "Sepang",
+   "basin": "Sungai Langat",
+   "sub": "Sg. Jenderam",
+   "lat": 2.872754,
+   "lon": 101.72026,
+   "level": 9.58,
+   "updated": "05/09/2026 23:15",
+   "trend": "No Change",
+   "th": {
+    "normal": 8.9,
+    "waspada": 11.0,
+    "amaran": 12.0,
+    "bahaya": 12.3
+   },
+   "status": "normal",
+   "inCatchment": true
+  },
+  {
+   "id": "2814401",
+   "key": "KGTELUKPULAI",
+   "name": "P/A Kg. Teluk Pulai",
+   "district": "Kuala Langat",
+   "basin": "Sungai Langat",
+   "sub": "Sg. Langat",
+   "lat": 2.863142,
+   "lon": 101.445427,
+   "level": -0.13,
+   "updated": "05/09/2026 23:15",
+   "trend": "No Change",
+   "th": {
+    "normal": 0.7,
+    "waspada": 1.3,
+    "amaran": 1.6,
+    "bahaya": 1.9
+   },
+   "status": "normal",
+   "inCatchment": true
+  },
+  {
+   "id": "2816441",
+   "key": "2816041_",
+   "name": "Sg. Langat di Dengkil",
+   "district": "Sepang",
+   "basin": "Sungai Langat",
+   "sub": "Sg. Langat",
+   "lat": 2.855777,
+   "lon": 101.681416,
+   "level": 3.14,
+   "updated": "05/09/2026 23:15",
+   "trend": "Rising",
+   "th": {
+    "normal": 3.9,
+    "waspada": 6.4,
+    "amaran": 6.9,
+    "bahaya": 7.5
+   },
+   "status": "normal",
+   "inCatchment": true
+  },
+  {
+   "id": "2815480",
+   "key": "2815180_",
+   "name": "Sg. Langat di JPS Sg. Manggis",
+   "district": "Kuala Langat",
+   "basin": "Sungai Langat",
+   "sub": "Sg. Langat",
+   "lat": 2.825278,
+   "lon": 101.542778,
+   "level": 0.99,
+   "updated": "05/09/2026 23:15",
+   "trend": "Rising",
+   "th": {
+    "normal": 0.5,
+    "waspada": 2.2,
+    "amaran": 2.7,
+    "bahaya": 3.2
+   },
+   "status": "normal",
+   "inCatchment": true
+  },
+  {
+   "id": "2816443",
+   "key": "2816138_",
+   "name": "Sg. Langat di Bukit Changgang",
+   "district": "Kuala Langat",
+   "basin": "Sungai Langat",
+   "sub": "Sg. Langat",
+   "lat": 2.813472,
+   "lon": 101.641916,
+   "level": 0.69,
+   "updated": "05/09/2026 23:15",
+   "trend": "Rising",
+   "th": {
+    "normal": 1.9,
+    "waspada": 3.3,
+    "amaran": 3.8,
+    "bahaya": 4.2
+   },
+   "status": "normal",
+   "inCatchment": true
+  },
+  {
+   "id": "2717401",
+   "key": "2717134_",
+   "name": "Sg. Labu di Kg. Salak Tinggi",
+   "district": "Sepang",
+   "basin": "Sungai Langat",
+   "sub": "Sg. Batang Labu",
+   "lat": 2.788667,
+   "lon": 101.741972,
+   "level": 6.8,
+   "updated": "05/09/2026 23:15",
+   "trend": "Receding",
+   "th": {
+    "normal": 7.0,
+    "waspada": 8.2,
+    "amaran": 8.7,
+    "bahaya": 9.2
+   },
+   "status": "normal",
+   "inCatchment": true
+  },
+  {
+   "id": "2717420",
+   "key": "TMNDESAMERPATI",
+   "name": "Sg. Jijan di Taman Desa Merpati",
+   "district": "Sepang",
+   "basin": "Sungai Langat",
+   "sub": "Sg. Jijan",
+   "lat": 2.777833,
+   "lon": 101.756611,
+   "level": 8.53,
+   "updated": "05/09/2026 23:15",
+   "trend": "Receding",
+   "th": {
+    "normal": 11.1,
+    "waspada": 11.4,
+    "amaran": 11.7,
+    "bahaya": 12.0
+   },
+   "status": "normal",
+   "inCatchment": true
+  }
+ ]
+}

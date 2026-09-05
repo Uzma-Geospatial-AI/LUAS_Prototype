@@ -418,6 +418,58 @@ td.act{white-space:nowrap;text-align:right}
 .lic-ring.off{border-color:var(--muted-2);opacity:.6}
 .lic-ring.off i{background:var(--muted-2);border-color:#fff}
 .lic-pin.eg{border-style:dashed}
+/* --- JPS river water level: a staff gauge standing on its station --- */
+.wl-gauge{
+  width:15px;height:24px;border-radius:4px;position:relative;overflow:hidden;
+  border:1.6px solid #fff;background:rgba(20,25,50,.62);
+  box-shadow:0 2px 6px rgba(0,0,0,.45);
+}
+/* Fills from the bottom, the way a gauge board is read */
+.wl-gauge i{
+  position:absolute;left:0;right:0;bottom:0;display:block;
+  background:var(--wc);border-top:1.5px solid rgba(255,255,255,.85);
+}
+/* The rim carries the status too, so a station reading below its normal level
+   still says which status it is with nothing filled in. */
+.wl-gauge::after{
+  content:"";position:absolute;inset:0;border-radius:2px;
+  box-shadow:inset 0 0 0 2px var(--wc);
+}
+.wl-gauge.out{background:rgba(20,25,50,.35)}
+.wl-gauge.out::after{box-shadow:inset 0 0 0 2px var(--wc);opacity:.6}
+
+.ml-gauge{
+  width:9px;height:15px;flex:none;border-radius:2.5px;
+  background:var(--wc);border:1.2px solid rgba(0,0,0,.2);
+}
+.ml-row.off .ml-gauge{filter:grayscale(1)}
+
+/* The reading, then the plain distance to the level that would raise an alert */
+.wl-now{
+  display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;
+  padding:7px 10px;margin-bottom:8px;border-radius:var(--r-sm);
+  background:var(--surface-2);border:1px solid var(--line);
+}
+.wl-now b{font:700 19px var(--fm);color:var(--navy);line-height:1}
+.wl-now span{font-size:10.5px;color:var(--muted)}
+
+/* Danger at the top, the way the board is painted. A rung lights when the
+   reading has reached it. */
+.wl-ladder{display:flex;flex-direction:column;gap:2px;margin-bottom:9px}
+.wl-rung{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:3px 8px;border-radius:4px;font-size:10.5px;color:var(--muted);
+  border:1px solid var(--line);border-left:4px solid var(--wc);
+  background:var(--surface);opacity:.62;
+}
+.wl-rung b{font-family:var(--fm);font-size:10.5px;color:var(--text)}
+.wl-rung.on{opacity:1;background:var(--surface-2);color:var(--text);font-weight:600}
+
+/* Its own line: the reading time is not an afterthought to the heading, and
+   wrapping it mid-phrase made it read as one. */
+.ml-when{display:block;font-family:var(--fm);font-size:8.5px;color:var(--muted-2);
+  text-transform:none;letter-spacing:0;margin-top:2px}
+
 .lic-key{
   width:16px;height:16px;flex:none;border-radius:5px;border:1.5px solid #f5e01c;
   background:var(--navy);color:#fff;display:grid;place-items:center;font:700 8px var(--fm);

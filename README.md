@@ -6,8 +6,9 @@ reaches the river. Built by Geospatial AI Sdn Bhd, an Uzma Group company.
 
 Live: https://uzma-geospatial-ai.github.io/LUAS_Prototype/
 
-1. **Map** — satellite imagery, the catchment and its rivers, 16 stations, 1,101 water bodies
-   and 651 point sources, all filterable and steppable through 56 months.
+1. **Map** — satellite imagery, the catchment and its rivers, 16 stations, 21 JPS water level
+   gauges, 1,101 water bodies and 651 point sources, all filterable and steppable through 56
+   months.
 2. **Phase 1 · Total Maximum Daily Load** — what the reach can carry, what it carries now, and
    how much is left to licence. This is the function the system is built around.
 3. **Phase 2 · Station Assessment** — six DOE parameters → WQI → does the reach hold Class II?
@@ -57,6 +58,7 @@ LUAS_Prototype/
 │   ├── waterbodies_langat.geojson 1,101 water body outlines
 │   ├── pollution_sources.geojson  651 sites in the riparian zone
 │   ├── selangor_boundary.geojson  state boundary
+│   ├── water_levels.json          21 JPS river water level stations
 │   ├── stations.json              16 stations x 56 months
 │   └── basin_pollution.json       national basin pollution, data.gov.my
 └── scripts/                   the ETL, one step per file
@@ -120,7 +122,7 @@ The map fills the window and every corner says what it is counting.
 | Bottom right | The legend, which is also the filter |
 
 **The legend is the filter.** Every row is a switch: turn off *Slightly Polluted* and those
-stations leave the map, turn off *Ponds* and the ponds go. Twenty rows across four groups. The
+stations leave the map, turn off *Ponds* and the ponds go. Twenty-four rows across six groups. The
 layer masters command a group of rows — switching one off clears the group, and it reads back as
 on, off or part-on from its members, so the two panels cannot disagree. The legend folds to a
 single pill when it is in the way.
@@ -174,6 +176,7 @@ counts move with it, which is the quickest read of whether the basin is improvin
 | Layer | What it is |
 |---|---|
 | Monitoring stations | 16 stations, drawn as their WQI and coloured by DOE class |
+| River water level | 21 JPS gauges, drawn as a staff gauge and coloured by JPS status |
 | Water bodies | 1,101 Digital Earth outlines, coloured by type |
 | Point sources | 651 sites that can put a load into the river, one shape per category |
 | Sungai Langat & tributaries | 682 km of mapped channel, drawn at a width scaled by what it carries |
@@ -194,6 +197,50 @@ counts move with it, which is the quickest read of whether the basin is improvin
 > Google tiles are read from the public endpoint, which suits a prototype but is not a licensed
 > integration. For production, move to the Google Maps Platform with an API key, or rely on the
 > Esri and Sentinel-2 layers, which are openly licensed.
+
+---
+
+## River water level
+
+The 21 JPS stations in the Langat basin, from [Public
+InfoBanjir](https://publicinfobanjir.water.gov.my/aras-air/data-paras-air/?state=SEL&type=NEGERI).
+Each one draws as an upright **staff gauge** — nothing else on this map is a vertical bar, so the
+layer is tellable apart from the WQI circles and the point source shapes without reading the
+colour. The colours and the wording are JPS's own: Normal, Waspada, Amaran, Bahaya.
+
+The gauge fills from the bottom by how far the reading stands between the station's normal level
+and its danger level. That fraction is never shown as a number, because a percentage between two
+thresholds is not a quantity anyone measures — it only decides how much of the bar is coloured.
+The rim carries the status too, so a station reading below its normal level still says which
+status it is with nothing filled in.
+
+The popup gives the reading, the plain distance to the level that would raise an alert, the
+station's four threshold levels as a gauge board with the current one lit, the trend, and the
+minute the reading was taken.
+
+Two endpoints are joined to build it, because neither is enough alone: the state table carries
+the four thresholds and the reading but **no coordinates at all**, and the map feed carries the
+coordinates, the trend and JPS's status. They join on the station id in the table's graph link,
+so all 21 are matched by id and none by name.
+
+> ⚠️ **It is a snapshot, not a live feed.** Neither endpoint sends
+> `Access-Control-Allow-Origin`, so a static page cannot read InfoBanjir from the browser — the
+> request is blocked before it is made. The readings are fetched by `scripts/09` at build time and
+> the legend states the station clock they were read at. Re-run the script to refresh them. **For
+> anything operational, read InfoBanjir itself.**
+
+The lit rung is the status JPS publishes, not one worked out here by comparing the reading against
+the thresholds. "Normal" is a reference level rather than a line to be crossed, so a station
+sitting below it is still Normal, and lighting nothing would say the opposite. Where a station is
+offline or erroring JPS leaves the status blank; those read **No reading** rather than being given
+a level of their own — several report `0.00` while offline, and 0.00 against a 76.80 m normal level
+would publish as "far below normal" when what it means is "no reading".
+
+Stations are filtered on **JPS's own basin attribution**, not on the catchment polygon: these are
+JPS's stations and it is JPS's basin definition. One of the 21 — *RS Batu 8*, on the coastal plain
+— falls outside the HydroSHEDS polygon the rest of the map is clipped to, because the two
+delineations disagree along the coast. It is kept, it draws where it actually is, and its popup
+says why it is outside the dashed outline.
 
 ---
 
@@ -377,6 +424,7 @@ sub-index, and a pass/fail — parameter by parameter.
 | River network, 489 reaches, 682 km | [OpenStreetMap](https://www.openstreetmap.org) via Overpass | **Real** |
 | Point sources, 651 sites | [OpenStreetMap](https://www.openstreetmap.org) via Overpass | **Real** (risk score ⚠️ derived) |
 | Selangor state boundary | [DOSM · `administrative_1_state.geojson`](https://github.com/dosm-malaysia/data-open) | **Real** |
+| River water level, 21 stations | [JPS · Public InfoBanjir](https://publicinfobanjir.water.gov.my/aras-air/data-paras-air/?state=SEL&type=NEGERI) | **Real** (⚠️ snapshot, not live) |
 | Satellite imagery | Esri · Google · EOX · NASA GIBS | **Real** |
 | Station parameter readings, 16 × 56 months | Generated for demonstration | ⚠️ **SAMPLE** |
 | Effluent discharge licences | Five worked examples | ⚠️ **SAMPLE** |
@@ -417,6 +465,7 @@ python scripts/08_build_pollution_sources.py   # OSM sources in the riparian zon
 python scripts/03_fetch_basin_pollution.py     # data.gov.my water_pollution_basin
 python scripts/04_build_stations.py            # stations (REPLACE with real readings)
 python scripts/05_fetch_selangor_boundary.py   # DOSM state boundary
+python scripts/09_fetch_water_levels.py         # JPS water levels (re-run to refresh)
 ```
 
 Intermediate downloads (`*_raw.geojson`, `*_raw.json`, `hybas_*.zip`) are gitignored and
@@ -452,5 +501,6 @@ The site is static, so there is nothing to build — any static host works:
 - Catchment — [HydroSHEDS HydroBASINS](https://www.hydrosheds.org/) (CC BY 4.0, WWF / USGS)
 - Rivers and point sources — [OpenStreetMap](https://www.openstreetmap.org) contributors (ODbL)
 - Water bodies — Digital Earth
+- River water level — [Jabatan Pengairan dan Saliran · Public InfoBanjir](https://publicinfobanjir.water.gov.my/)
 - Imagery — Esri, Google, [EOX Sentinel-2 cloudless](https://s2maps.eu), NASA EOSDIS GIBS
 - Map library — [Leaflet](https://leafletjs.com/) · Charts — [Chart.js](https://www.chartjs.org/)

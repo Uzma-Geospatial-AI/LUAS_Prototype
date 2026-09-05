@@ -65,6 +65,11 @@ export async function loadAll(onStep) {
   onStep?.(0.85, 'Loading the Selangor boundary…');
   DATA.selangor = await J('data/selangor_boundary.geojson');
 
+  /* JPS river water level. A snapshot with the station clock on it, because
+     InfoBanjir sends no CORS header and a static page cannot read it live. */
+  onStep?.(0.88, 'Loading river water levels…');
+  DATA.levels = await J('data/water_levels.json');
+
   onStep?.(0.85, 'Computing indices…');
   derive();
   const chosen = store.conditions().focusStation ?? FOCUS_STATION;

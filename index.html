@@ -150,6 +150,9 @@
       <label class="tog"><input type="checkbox" data-mapov="stations" checked>
         <span class="tog-sw"></span>
         <span class="tog-t">Monitoring stations <i id="ovStations"></i></span></label>
+      <label class="tog"><input type="checkbox" data-mapov="levels" checked>
+        <span class="tog-sw"></span>
+        <span class="tog-t">River water level <i id="ovLevels"></i></span></label>
       <label class="tog"><input type="checkbox" data-mapov="water" checked>
         <span class="tog-sw"></span>
         <span class="tog-t">Water bodies <i id="ovWater"></i></span></label>
@@ -193,6 +196,9 @@
       <div class="card-body">
         <h5>WQI class · station colour</h5>
         <div id="mapLegendWqi"></div>
+        <h5 class="sep">River water level · JPS
+          <span class="ml-when" id="mapLegendWhen"></span></h5>
+        <div id="mapLegendLevels"></div>
         <h5 class="sep">Point source</h5>
         <div id="mapLegendSources"></div>
         <h5 class="sep">Licences</h5>

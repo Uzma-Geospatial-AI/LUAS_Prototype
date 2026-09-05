@@ -42,12 +42,14 @@ const waterLayers = {};       // water:<group>
 let flowLayer = null;         // the animated direction overlay
 let licenceLayer = null;      // premises with a discharge licence
 const sourceLayers = {};      // src:<category>
+const levelLayers = {};       // wl:<status> — JPS river water level
 const riverLayers = {};       // river:main | river:trib
 
 const stationMarkers = new Map();   // station code -> marker
 const sourceIds = new Set();        // every point source id the map draws
 const sourceMarkers = new Map();    // osm id -> marker
 const licenceMarkers = [];          // standalone licence pins, with their position
+const levelMarkers = new Map();     // JPS station id -> marker
 let searchIndex = null;
 let traceLayer = null;
 
@@ -63,6 +65,19 @@ let openPopup = null;
 const pad = (n) => String(n).padStart(2, '0');
 const iso = (d) => `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
 
+/* JPS sets four threshold levels for every water level station and publishes
+   its own status against them. The wording and the colours are JPS's, so a
+   reader who knows InfoBanjir reads this map without translating. Yellow needs
+   dark text on it, which is what `ink` is for. */
+const LEVEL_STATUS = {
+  bahaya: { label: 'Bahaya', en: 'Danger', color: '#e01b1b' },
+  amaran: { label: 'Amaran', en: 'Warning', color: '#ffa500', ink: '#23262e' },
+  waspada: { label: 'Waspada', en: 'Alert', color: '#ffe600', ink: '#23262e' },
+  normal: { label: 'Normal', en: 'Below the alert level', color: '#0b8f3d' },
+  offline: { label: 'No reading', en: 'Offline or reporting an error', color: '#8d93a6' },
+};
+const LEVEL_ORDER = ['bahaya', 'amaran', 'waspada', 'normal', 'offline'];
+
 export function initMap() {
   if (map) { map.invalidateSize(); repaint(); return; }
 
@@ -77,6 +92,7 @@ export function initMap() {
   buildRivers();
   buildWaterBodies();
   buildSources();
+  buildLevels();
   licenceLayer = L.layerGroup();
   visible.add('licence:all');
   MASTERS.licences = ['licence:all'];
@@ -303,6 +319,116 @@ function buildSources() {
   MASTERS.sources = ids;
 }
 
+/* ---------------- JPS river water level ---------------- */
+function buildLevels() {
+  const list = DATA.levels?.stations ?? [];
+  const ids = [];
+  for (const key of LEVEL_ORDER) {
+    const group = list.filter((s) => s.status === key);
+    if (!group.length) continue;
+    levelLayers[key] = L.layerGroup(group.map((st) => {
+      const marker = L.marker([st.lat, st.lon], {
+        icon: levelIcon(st),
+        /* A station in flood has to be the one you see first */
+        zIndexOffset: 600 + (LEVEL_ORDER.length - LEVEL_ORDER.indexOf(key)) * 40,
+      });
+      levelMarkers.set(st.id, marker);
+      return marker
+        .bindTooltip(`<b>${esc(st.name)}</b><br>${levelLine(st)}`,
+          { direction: 'top', offset: [0, -22] })
+        .bindPopup(() => levelPopup(st), POPUP);
+    }));
+    visible.add(`wl:${key}`);
+    ids.push(`wl:${key}`);
+  }
+  MASTERS.levels = ids;
+}
+
+/* How far the reading stands between the normal level and the danger level.
+   It only decides how much of the gauge is filled — it is never shown as a
+   number, because a percentage between two thresholds is not a quantity
+   anyone measures. Below normal reads empty, above danger reads full. */
+function levelFill(st) {
+  const lo = st.th?.normal;
+  const hi = st.th?.bahaya;
+  if (st.level == null || lo == null || hi == null || hi <= lo) return 0;
+  return Math.max(0, Math.min(1, (st.level - lo) / (hi - lo)));
+}
+
+/* A staff gauge standing on its station: nothing else on this map is an
+   upright bar, so the layer is tellable apart from the WQI circles and the
+   source shapes without reading the colour. */
+function levelIcon(st) {
+  const c = LEVEL_STATUS[st.status] ?? LEVEL_STATUS.offline;
+  const out = st.status === 'offline';
+  return L.divIcon({
+    className: '',
+    html: `<div class="wl-gauge${out ? ' out' : ''}" style="--wc:${c.color}">`
+      + `<i style="height:${out ? 0 : Math.round(levelFill(st) * 100)}%"></i></div>`,
+    iconSize: [15, 24], iconAnchor: [7, 24],
+  });
+}
+
+const wlM = (v) => `${v.toFixed(2)} m`;
+
+function levelLine(st) {
+  const c = LEVEL_STATUS[st.status] ?? LEVEL_STATUS.offline;
+  return st.level == null ? c.label : `${wlM(st.level)} · ${c.label}`;
+}
+
+function levelPopup(st) {
+  const c = LEVEL_STATUS[st.status] ?? LEVEL_STATUS.offline;
+  const th = st.th ?? {};
+
+  /* The ladder reads the way a gauge board does — danger at the top. The lit
+     rung is the status JPS itself publishes, not one worked out here by
+     comparing the reading against the numbers: "Normal" is a reference level
+     rather than a line to be crossed, so a station sitting below it is still
+     Normal and lighting nothing would say the opposite. */
+  const rungs = ['bahaya', 'amaran', 'waspada', 'normal'].map((k) => {
+    const v = th[k];
+    if (v == null) return '';
+    const on = st.status === k;
+    const t = LEVEL_STATUS[k];
+    return `<div class="wl-rung${on ? ' on' : ''}" style="--wc:${t.color}">
+      <span>${t.label}</span><b>${wlM(v)}</b></div>`;
+  }).join('');
+
+  /* Plain subtraction against a published threshold, not a forecast */
+  let gap = '';
+  if (st.level != null && th.waspada != null) {
+    const d = th.waspada - st.level;
+    gap = d >= 0
+      ? `${wlM(d)} below the Waspada level`
+      : `${wlM(-d)} above the Waspada level`;
+  }
+
+  return `
+    <div class="map-pop">
+      <div class="pop-head" style="background:${c.color}${c.ink ? `;color:${c.ink}` : ''}">
+        <div class="pop-code">Aras air sungai · ${esc(c.label)}</div>
+        <div class="pop-name">${esc(st.name)}</div>
+      </div>
+      <div class="pop-body">
+        <div class="wl-now">
+          <b>${st.level == null ? '—' : wlM(st.level)}</b>
+          <span>${st.level == null ? esc(c.en) : esc(gap)}</span>
+        </div>
+        <div class="wl-ladder">${rungs}</div>
+        <table class="pop-tbl">
+          <tr><td>Reading taken</td><td class="num">${esc(st.updated || '—')}</td></tr>
+          ${st.trend ? `<tr><td>Trend</td><td class="num">${esc(st.trend)}</td></tr>` : ''}
+          <tr><td>Sub-basin<div class="pop-sub">${esc(st.district)}</div></td>
+            <td class="num">${esc(st.sub)}</td></tr>
+          <tr><td>JPS station</td><td class="num">${esc(st.id)}</td></tr>
+        </table>
+        <div class="pop-hint">Snapshot from JPS InfoBanjir, not a live feed.${
+          st.inCatchment ? '' : ' JPS files this station under the Langat basin;'
+          + ' it sits outside the HydroSHEDS catchment this map is drawn to.'}</div>
+      </div>
+    </div>`;
+}
+
 /* The nearest receiving water among the layers currently switched on. With
    the ponds hidden this returns the nearest river, because naming a pond the
    reader cannot see would be answering a question they did not ask. */
@@ -436,6 +562,7 @@ function applyVisibility() {
   flowLayer?.bringToFront();
   for (const [k, l] of Object.entries(waterLayers)) set(l, visible.has(`water:${k}`));
   for (const [k, l] of Object.entries(sourceLayers)) set(l, visible.has(`src:${k}`));
+  for (const [k, l] of Object.entries(levelLayers)) set(l, visible.has(`wl:${k}`));
 
   repaint();
   syncControls();
@@ -808,6 +935,7 @@ function buildLayerToggles() {
   $('ovStations').textContent = DATA.stations.length;
   $('ovWater').textContent = w.count.toLocaleString('en');
   $('ovSources').textContent = sourceSummary().count;
+  $('ovLevels').textContent = (DATA.levels?.stations ?? []).length;
   $('ovRivers').textContent = `${Math.round(DATA.rivers.meta.total_km)} km`;
   $('ovBasin').textContent = `${Math.round(w.basinKm2).toLocaleString('en')} km²`;
   $('ovState').textContent = 'state';
@@ -837,6 +965,15 @@ function buildLegend() {
     `<b>${c.status}</b>`,
     c.max > 100 ? '92.7 – 100' : `${c.min < 0 ? '0' : c.min} – ${c.max}`,
     c.use)).join('');
+
+  const lv = DATA.levels?.stations ?? [];
+  $('mapLegendWhen').textContent = DATA.levels?.latest ? `as at ${DATA.levels.latest}` : '';
+  $('mapLegendLevels').innerHTML = LEVEL_ORDER
+    .map((k) => [k, lv.filter((x) => x.status === k).length])
+    .filter(([, n]) => n)
+    .map(([k, n]) => row(`wl:${k}`,
+      `<span class="ml-gauge" style="--wc:${LEVEL_STATUS[k].color}"></span>`,
+      esc(LEVEL_STATUS[k].label), n, LEVEL_STATUS[k].en)).join('');
 
   const su = sourceSummary();
   $('mapLegendSources').innerHTML = Object.entries(su.cats)
@@ -1020,6 +1157,17 @@ function buildSearch() {
     });
   }
 
+  for (const st of DATA.levels?.stations ?? []) {
+    const c = LEVEL_STATUS[st.status] ?? LEVEL_STATUS.offline;
+    idx.push({
+      kind: 'level', id: st.id, at: [st.lat, st.lon],
+      label: st.name,
+      sub: `Water level · ${levelLine(st)}`,
+      hay: `${st.name} ${st.sub} ${st.district} ${st.id} aras air water level`.toLowerCase(),
+      ic: '▮', color: c.color,
+    });
+  }
+
   const su = sourceSummary();
   for (const f of su.features) {
     const q = f.properties;
@@ -1117,6 +1265,15 @@ function locate(h) {
     if (!visible.has(`wqi:${cls.id}`)) { visible.add(`wqi:${cls.id}`); applyVisibility(); }
     map.flyTo(h.at, Math.max(map.getZoom(), 13), { duration: 0.7 });
     map.once('moveend', () => stationMarkers.get(h.id)?.openPopup());
+    return;
+  }
+
+  if (h.kind === 'level') {
+    const st = (DATA.levels?.stations ?? []).find((x) => x.id === h.id);
+    const key = `wl:${st?.status}`;
+    if (st && !visible.has(key)) { visible.add(key); applyVisibility(); }
+    map.flyTo(h.at, Math.max(map.getZoom(), 14), { duration: 0.7 });
+    map.once('moveend', () => levelMarkers.get(h.id)?.openPopup());
     return;
   }
 
