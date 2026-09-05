@@ -35,42 +35,52 @@ const J = (u) => fetch(u).then((r) => {
   return r.json();
 });
 
+/* The eight datasets do not depend on one another, so they are requested
+   together rather than one after the next. Awaited in a chain they cost the
+   sum of eight round trips — about 3 seconds on a throttled phone; started
+   together they cost roughly the slowest one. The progress bar advances as
+   each lands, so it still reports real work rather than a guess. */
 export async function loadAll(onStep) {
-  onStep?.(0.1, 'Loading monitoring stations…');
-  const st = await J('data/stations.json');
-  DATA.stations = st.stations;
-  DATA.meta = st.meta;
-  DATA.months = st.meta.months;
+  const FILES = [
+    ['stations', 'data/stations.json', 'monitoring stations'],
+    ['basin', 'data/basin_pollution.json', 'national basin trend'],
+    ['catchment', 'data/langat_basin.geojson', 'the Sungai Langat catchment'],
+    ['rivers', 'data/langat_rivers.geojson', 'the river network'],
+    ['water', 'data/waterbodies_langat.geojson', 'receiving water bodies'],
+    ['sources', 'data/pollution_sources.geojson', 'point sources'],
+    ['selangor', 'data/selangor_boundary.geojson', 'the Selangor boundary'],
+    ['levels', 'data/water_levels.json', 'river water levels'],
+  ];
 
-  onStep?.(0.5, 'Loading national basin trend…');
-  DATA.basin = await J('data/basin_pollution.json');
+  let done = 0;
+  const got = {};
+  await Promise.all(FILES.map(([key, url, label]) => J(url).then((d) => {
+    got[key] = d;
+    done += 1;
+    onStep?.(0.1 + 0.75 * (done / FILES.length), `Loaded ${label}…`);
+  })));
 
-  onStep?.(0.65, 'Loading the Sungai Langat catchment…');
-  DATA.catchment = await J('data/langat_basin.geojson');
-  DATA.rivers = await J('data/langat_rivers.geojson');
-
-  onStep?.(0.75, 'Loading receiving water bodies…');
-  /* A FeatureCollection: the map draws the outlines, everything else reads
-     the properties, so both views are served off one file. */
-  const wb = await J('data/waterbodies_langat.geojson');
-  DATA.water = {
-    meta: wb.meta,
-    bodies: wb.features.map((f) => f.properties),
-    geo: wb,
-  };
-
-  onStep?.(0.8, 'Loading point sources…');
-  DATA.sources = await J('data/pollution_sources.geojson');
-
-  onStep?.(0.85, 'Loading the Selangor boundary…');
-  DATA.selangor = await J('data/selangor_boundary.geojson');
-
+  DATA.stations = got.stations.stations;
+  DATA.meta = got.stations.meta;
+  DATA.months = got.stations.meta.months;
+  DATA.basin = got.basin;
+  DATA.catchment = got.catchment;
+  DATA.rivers = got.rivers;
+  DATA.sources = got.sources;
+  DATA.selangor = got.selangor;
   /* JPS river water level. A snapshot with the station clock on it, because
      InfoBanjir sends no CORS header and a static page cannot read it live. */
-  onStep?.(0.88, 'Loading river water levels…');
-  DATA.levels = await J('data/water_levels.json');
+  DATA.levels = got.levels;
 
-  onStep?.(0.85, 'Computing indices…');
+  /* A FeatureCollection: the map draws the outlines, everything else reads
+     the properties, so both views are served off one file. */
+  DATA.water = {
+    meta: got.water.meta,
+    bodies: got.water.features.map((f) => f.properties),
+    geo: got.water,
+  };
+
+  onStep?.(0.9, 'Computing indices…');
   derive();
   const chosen = store.conditions().focusStation ?? FOCUS_STATION;
   DATA.focus = DATA.stations.find((s) => s.code === chosen)
