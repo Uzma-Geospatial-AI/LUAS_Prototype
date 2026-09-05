@@ -51,7 +51,6 @@ const riverLayers = {};       // river:main | river:trib
 const stationMarkers = new Map();   // station code -> marker
 const sourceIds = new Set();        // every point source id the map draws
 const sourceMarkers = new Map();    // osm id -> marker
-const sourceCat = new Map();        // osm id -> category key, for the licence estimate
 const licenceMarkers = [];          // standalone licence pins, with their position
 const levelMarkers = new Map();     // JPS station id -> marker
 let searchIndex = null;
@@ -374,7 +373,6 @@ function buildSources() {
         zIndexOffset: Math.round(p.risk * 20),
       });
       sourceMarkers.set(p.id, marker);
-      sourceCat.set(p.id, key);
       sourceIds.add(p.id);
       return marker
         .bindTooltip(
@@ -573,7 +571,7 @@ function sourcePopup(p, c) {
               ${p.risk.toFixed(2)} / 5</td></tr>
         </table>
         ${hint ? `<div class="pop-hint">${hint}</div>` : ''}
-        ${licenceBlock(p.id, p.cat)}
+        ${licenceBlock(p.id)}
         <div class="pop-pol"><b>Typically carries</b><br>${esc(c.pol)}</div>
         <div class="pop-note">Screening only \u2014 no discharge here is metered</div>
       </div>
@@ -584,14 +582,16 @@ function sourcePopup(p, c) {
    an entry the map must not disagree with the licence page about the same
    place; everywhere else the status is the estimate that coloured the
    symbol, and it says so. */
-function licenceBlock(srcId, cat) {
-  const st = licenceStatus(srcId, cat);
+function licenceBlock(srcId) {
+  const st = licenceStatus(srcId);
   const l = st.licence;
   if (!l || l.example) {
+    const badge = l ? (l.bulk ? 'ESTIMATED' : 'EXAMPLE')
+      : (st.estimated ? 'ESTIMATED' : 'NOT IN REGISTER');
     return `
     <div class="pop-lic ${st.licensed ? 'ok' : 'none'}">
       <b>${st.licensed ? 'Licensed' : 'No discharge licence'}
-        <span class="est-dot">${l ? 'EXAMPLE' : 'ESTIMATED'}</span></b>
+        <span class="est-dot">${badge}</span></b>
       ${l ? `${esc(l.ref)} · ${(l.flow ?? 0).toLocaleString('en')} m³/day permitted`
           : 'No licence register is published, so this status is an assumption, not a record.'}
     </div>`;
@@ -718,6 +718,7 @@ function paintLicences() {
 
   for (const l of store.licences()) {
     if (typeof l.lat !== 'number' || typeof l.lon !== 'number') continue;
+    if (l.bulk) continue;     /* the estimate is the symbol's colour, not a ring */
     const off = l.active === false;
     /* A premises taken from the map is already drawn as a point source, so the
        licence rings it rather than covering it with a second marker. */
@@ -757,7 +758,7 @@ function paintLicences() {
      all 651 recolour without one of them being redrawn. */
   let on = 0, off = 0;
   for (const [sid, m] of sourceMarkers) {
-    const st = licenceStatus(sid, sourceCat.get(sid));
+    const st = licenceStatus(sid);
     if (st.licensed) on += 1; else off += 1;
     m.options.icon.options.className = st.licensed ? 'src-sym lic' : 'src-sym';  /* for its next add */
     const el = m.getElement();

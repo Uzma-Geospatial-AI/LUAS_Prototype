@@ -530,7 +530,7 @@ and every figure recomputes from them.
 | River water level, 21 stations | [JPS · Public InfoBanjir](https://publicinfobanjir.water.gov.my/aras-air/data-paras-air/?state=SEL&type=NEGERI) | **Real** (⚠️ snapshot, not live) |
 | Satellite imagery | Esri · Google · EOX · NASA GIBS | **Real** |
 | Station parameter readings, 16 × 56 months | Generated for demonstration | ⚠️ **SAMPLE** |
-| Effluent discharge licences | Five worked examples on real mapped premises | ⚠️ **SAMPLE** (premises real, figures invented) |
+| Effluent discharge licences | Five worked examples plus an estimated licence for every premises the map colours green, all on real mapped premises | ⚠️ **SAMPLE** (premises real, licence status and figures invented) |
 
 > ⚠️ **Station positions are real**, snapped to the Langat channel at real localities. **The six
 > parameter readings at them are not** — they are generated along a plausible

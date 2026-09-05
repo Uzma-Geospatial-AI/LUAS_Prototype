@@ -469,7 +469,7 @@ function renderRegister(licences, stdKey, budgets) {
     return `<tr class="${inactive ? 'row-off' : ''}">
       <td>
         <b>${esc(l.ref)}</b>
-        ${l.example ? '<span class="tag-example">EXAMPLE</span>' : ''}
+        ${l.example ? `<span class="tag-example">${l.bulk ? 'ESTIMATED' : 'EXAMPLE'}</span>` : ''}
         <span class="sub">${esc(l.category ?? '—')}</span>
         ${l.estimated ? '<span class="badge soft est" title="Figures were prefilled from the category and never edited">EST</span>' : ''}
       </td>
@@ -528,10 +528,15 @@ function renderRegister(licences, stdKey, budgets) {
 
   /* Counted, not written: an example superseded by a real licence leaves
      the register, and the banner has to say how many are actually left. */
-  const nEx = store.licences().filter((l) => l.example).length;
-  $('p3ExampleNote').textContent = nEx === 1
-    ? 'One worked example on a mapped premises — not a real licence.'
-    : `${nEx} worked examples on mapped premises — not real licences.`;
+  const ex = store.licences().filter((l) => l.example);
+  const nEx = ex.length;
+  const nBulk = ex.filter((l) => l.bulk).length;
+  const nCur = nEx - nBulk;
+  const cur = nCur === 1 ? 'One worked example' : `${nCur} worked examples`;
+  $('p3ExampleNote').textContent = nBulk
+    ? `${cur} and ${nBulk} estimated licences on mapped premises — not real licences. `
+      + 'No LUAS register is published; the estimate is what colours the map.'
+    : `${cur} on mapped premises — not real licence${nCur === 1 ? '' : 's'}.`;
   $('p3ExampleBar').style.display = store.hasExamples() && nEx ? 'flex' : 'none';
   $('p3RestoreBar').style.display = store.hasExamples() ? 'none' : 'flex';
 }
