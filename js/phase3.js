@@ -1,5 +1,5 @@
 /* ============================================================
-   phase3.js — Phase 1: LEDS · TMDL · SESAMS
+   phase3.js — Phase 3: LEDS · TMDL · SESAMS
 
    How much load may this reach carry, how much is it carrying now, and how
    much is left to licence.

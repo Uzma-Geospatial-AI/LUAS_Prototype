@@ -63,7 +63,7 @@ export const WATER_INDICES = [
         + 'season and the monsoon — the storage that buffers load.' },
   { name: 'NDTI — Normalised Difference Turbidity Index', formula: '(Red − Green) / (Red + Green)',
     ramp: 'linear-gradient(90deg,#0a4a8a,#45bfe0,#e8e3d2,#c98a3a,#7a4a12)', lo: 'Clear', hi: 'Very turbid',
-    body: 'A proxy for suspended solids. SS is one of the four pollutants in the Phase 1 budget, '
+    body: 'A proxy for suspended solids. SS is one of the four pollutants in the Phase 3 budget, '
         + 'and it is the one imagery estimates best.' },
   { name: 'NDCI — Chlorophyll-a Index', formula: '(Red-Edge − Red) / (Red-Edge + Red)',
     ramp: 'linear-gradient(90deg,#1a3a6a,#2f8a4f,#b8d13a,#e8b81a,#d92d20)', lo: 'Low', hi: 'Algal bloom',

@@ -2,8 +2,8 @@
    store.js — Browser-local store
 
    Holds two things the portal lets a user edit:
-     · readings  — six-parameter sampling records entered in Phase 2
-     · licences  — the SESAMS effluent discharge register used in Phase 1
+     · readings  — six-parameter sampling records entered in Phase 1
+     · licences  — the SESAMS effluent discharge register used in Phase 3
      · cond      — the TMDL design conditions
 
    There is no backend, so everything lives in localStorage and belongs to

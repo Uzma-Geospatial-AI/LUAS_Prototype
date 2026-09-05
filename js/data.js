@@ -3,6 +3,7 @@
    ============================================================ */
 import { computeWQI, wqiClass, classCompliance } from './wqi.js';
 import { store } from './store.js';
+import { probe, readNode, SOURCE } from './firebase.js';
 
 /* The station the assessment is written for. It defaults to Sungai Langat at
    Dengkil and can be changed from the app bar or from any marker on the map;
@@ -41,24 +42,41 @@ const J = (u) => fetch(u).then((r) => {
    together they cost roughly the slowest one. The progress bar advances as
    each lands, so it still reports real work rather than a guess. */
 export async function loadAll(onStep) {
+  /* key in DATA · database node · bundled file · what to call it while loading */
   const FILES = [
-    ['stations', 'data/stations.json', 'monitoring stations'],
-    ['basin', 'data/basin_pollution.json', 'national basin trend'],
-    ['catchment', 'data/langat_basin.geojson', 'the Sungai Langat catchment'],
-    ['rivers', 'data/langat_rivers.geojson', 'the river network'],
-    ['water', 'data/waterbodies_langat.geojson', 'receiving water bodies'],
-    ['sources', 'data/pollution_sources.geojson', 'point sources'],
-    ['selangor', 'data/selangor_boundary.geojson', 'the Selangor boundary'],
-    ['levels', 'data/water_levels.json', 'river water levels'],
+    ['stations', 'stations', 'data/stations.json', 'monitoring stations'],
+    ['basin', 'basin_pollution', 'data/basin_pollution.json', 'national basin trend'],
+    ['catchment', 'catchment', 'data/langat_basin.geojson', 'the Sungai Langat catchment'],
+    ['rivers', 'rivers', 'data/langat_rivers.geojson', 'the river network'],
+    ['water', 'waterbodies', 'data/waterbodies_langat.geojson', 'receiving water bodies'],
+    ['sources', 'sources', 'data/pollution_sources.geojson', 'point sources'],
+    ['selangor', 'selangor', 'data/selangor_boundary.geojson', 'the Selangor boundary'],
+    ['levels', 'water_levels', 'data/water_levels.json', 'river water levels'],
   ];
+
+  /* One probe decides for all eight. Asking the database node by node would
+     cost eight timeouts when it is closed or down, and the whole point of
+     keeping the bundled files is that being unable to reach the database
+     costs the reader nothing. */
+  onStep?.(0.08, 'Checking the database…');
+  const live = await probe();
 
   let done = 0;
   const got = {};
-  await Promise.all(FILES.map(([key, url, label]) => J(url).then((d) => {
-    got[key] = d;
-    done += 1;
-    onStep?.(0.1 + 0.75 * (done / FILES.length), `Loaded ${label}…`);
-  })));
+  await Promise.all(FILES.map(([key, node, url, label]) => {
+    const read = live
+      ? readNode(node).catch(() => { SOURCE.fellBack.push(node); return J(url); })
+      : J(url);
+    return read.then((d) => {
+      got[key] = d;
+      done += 1;
+      onStep?.(0.1 + 0.75 * (done / FILES.length), `Loaded ${label}…`);
+    });
+  }));
+
+  SOURCE.from = !live ? 'files'
+    : SOURCE.fellBack.length === 0 ? 'database'
+      : SOURCE.fellBack.length === FILES.length ? 'files' : 'mixed';
 
   DATA.stations = got.stations.stations;
   DATA.meta = got.stations.meta;

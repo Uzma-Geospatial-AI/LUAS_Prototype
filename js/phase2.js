@@ -1,5 +1,5 @@
 /* ============================================================
-   phase2.js — Phase 3: Quality monitoring and pollution
+   phase2.js — Phase 2: Quality monitoring and pollution
 
    How the reach behaves over time: parameter trends against the target
    standard, how often each one puts the river out of class, and where

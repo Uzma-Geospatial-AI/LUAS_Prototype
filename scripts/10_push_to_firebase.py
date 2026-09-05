@@ -138,9 +138,14 @@ def main():
         print('')
         print('      { "rules": { ".read": true, ".write": true } }')
         print('')
-        print('  An open database is writable by anyone who has the URL, so close it again')
-        print('  afterwards - ".read": true, ".write": false is the right resting state for')
-        print('  data a public map reads and nobody should be able to change.')
+        print('  An open database is writable by anyone who has the URL, so set the')
+        print('  resting rules straight afterwards. The site reads /%s, so that subtree' % ROOT_NODE)
+        print('  has to be readable; nothing in the browser writes, so nothing needs write:')
+        print('')
+        print('      { "rules": { "%s": { ".read": true, ".write": false } } }' % ROOT_NODE)
+        print('')
+        print('  A database secret bypasses rules altogether, so this script keeps working')
+        print('  with ".write": false - which is the point.')
         return 1
     if status != 200:
         print('  unexpected response %d: %s' % (status, text[:200]))
@@ -184,6 +189,9 @@ def main():
     print('wrote %d node(s), %s, at %s' % (len(todo), human(total), stamp))
     print('read one back with:')
     print('  curl "%s/%s/water_levels.json"' % (DB, ROOT_NODE))
+    print('')
+    print('the site reads /%s, so the subtree has to be readable:' % ROOT_NODE)
+    print('  { "rules": { "%s": { ".read": true, ".write": false } } }' % ROOT_NODE)
     return 0
 
 

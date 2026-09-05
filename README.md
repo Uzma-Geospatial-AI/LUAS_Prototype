@@ -9,16 +9,19 @@ Live: https://uzma-geospatial-ai.github.io/LUAS_Prototype/
 1. **Map** — satellite imagery, the catchment and its rivers, 16 stations, 21 JPS water level
    gauges, 1,101 water bodies and 651 point sources, all filterable and steppable through 56
    months.
-2. **Phase 1 · Total Maximum Daily Load** — what the reach can carry, what it carries now, and
-   how much is left to licence. This is the function the system is built around.
-3. **Phase 2 · Station Assessment** — six DOE parameters → WQI → does the reach hold Class II?
-4. **Phase 3 · Quality Monitoring** — how often each parameter breaches, and how it trends.
+2. **Phase 1 · Station Assessment** — six DOE parameters → WQI → does the reach hold Class II?
+3. **Phase 2 · Quality Monitoring** — how often each parameter breaches, and how it trends.
+4. **Phase 3 · Total Maximum Daily Load** — what the reach can carry, what it carries now, and
+   how much is left to licence. This is still the function the system is built around; the
+   number follows the LUAS phase order rather than its prominence.
 
 Each view has its own URL fragment — `#map`, `#tmdl`, `#station`, `#quality` — named for what it
 is rather than for its position, so a renumbering cannot make the label and the link disagree.
 
-Fully static — no backend, no build step, no API keys. Any station can be selected from the
-app bar and every phase follows it.
+No build step and no API keys. The datasets are read from a **Firebase Realtime Database**,
+falling back to the copies bundled with the site when the database cannot answer — so the page
+still works with the database closed, empty or unreachable, and the app bar always says which of
+the two served it. Any station can be selected from the app bar and every phase follows it.
 
 ---
 
@@ -28,6 +31,7 @@ app bar and every phase follows it.
 - **Leaflet 1.9.4** — the map, eight basemaps, vector overlays
 - **Chart.js 4.5.0** — trends and the load budget chart
 - **Python 3 standard library** — the whole ETL, including a shapefile reader
+- **Firebase Realtime Database** — the datasets, read over REST with no SDK
 - **GitHub Actions → Pages** — validates JS, JSON and the WQI formula, then deploys
 
 ---
@@ -43,15 +47,16 @@ LUAS_Prototype/
 ├── js/
 │   ├── app.js                 routing, app bar, station picker
 │   ├── data.js                loading, derivation, compliance record
+│   ├── firebase.js            reads the datasets from the Realtime Database
 │   ├── wqi.js                 DOE WQI formula + INWQS class standards
 │   ├── loads.js               load, TMDL, headroom and effluent-standard maths
 │   ├── store.js               localStorage: readings, SESAMS register, conditions
 │   ├── mapview.js             the map, its four corners and the legend filter
 │   ├── symbols.js             one shape per point source category
 │   ├── satellite.js           imagery catalogue + spectral index reference
-│   ├── phase3.js              Phase 1 — TMDL budget + licence register
-│   ├── phase1.js              Phase 2 — station assessment + class calculator
-│   └── phase2.js              Phase 3 — monitoring, water bodies, national context
+│   ├── phase1.js              Phase 1 — station assessment + class calculator
+│   ├── phase2.js              Phase 2 — monitoring, water bodies, national context
+│   └── phase3.js              Phase 3 — TMDL budget + licence register
 ├── data/
 │   ├── langat_basin.geojson       the catchment
 │   ├── langat_rivers.geojson      489 river reaches
@@ -90,6 +95,53 @@ python scripts/01_fetch_waterbodies.py
 ```
 
 > Python 3.10+ recommended. No dependencies.
+
+---
+
+## The database
+
+The eight datasets live in a **Firebase Realtime Database**, one node each under `/luas`, plus a
+`/luas/meta` node recording when each was written and what it is — so the database can be read
+without coming back to this repository to find out what is in it.
+
+| Node | Holds |
+|---|---|
+| `stations` | 16 monitoring stations × 56 months |
+| `water_levels` | 21 JPS river water level stations |
+| `basin_pollution` | national basin pollution, data.gov.my |
+| `catchment` | the Sungai Langat catchment |
+| `rivers` | 489 river reaches |
+| `waterbodies` | 1,101 water body outlines |
+| `sources` | 651 point sources |
+| `selangor` | the state boundary |
+
+`scripts/10_push_to_firebase.py` writes them. The credential comes from `FIREBASE_DB_SECRET` or
+`--auth`, never from the repository; `--check` reports access and writes nothing; `--node X`
+pushes one dataset. The browser reads over REST — a node is one GET returning JSON, which is all
+this needs, and pulling in the Firebase SDK would cost more bytes than the data it fetches.
+
+**The bundled files are the fallback, not dead weight.** Every node falls back to the file of the
+same content in `data/` if the database cannot answer for it — rules closed, node missing, network
+gone. The site is deployed as static files anyway, so those copies are already there and already
+cached; keeping them means an unreachable database degrades to the site working exactly as it did
+before, rather than to a blank page. One short probe of `/luas/meta` decides for all eight, so a
+closed database costs one round trip rather than eight timeouts.
+
+Which source actually answered is shown in the app bar — *served from Firebase · written …*, or
+*served from bundled files · database unavailable (rules closed)*. Where a number came from is not
+something a reader should have to open the network tab to find out.
+
+**Nothing in the browser writes.** A database a public page can write to is a database anyone who
+reads the page source can write to, and this one is on a government portal. The upload runs from
+the ETL with a credential, which bypasses the rules; the resting rules only need to grant a read:
+
+```json
+{ "rules": { "luas": { ".read": true, ".write": false } } }
+```
+
+> ⚠️ The licence register still lives in each browser's `localStorage`, so it is **not shared
+> between users**. Moving it to the database would fix that, but it needs authentication first —
+> a register the public can write to is not a register.
 
 ---
 
@@ -293,7 +345,45 @@ nearest, because how close a site sits to water is a property of the site, not o
 
 ---
 
-## Phase 1 — LEDS · TMDL · SESAMS
+## Phase 1 — Station assessment
+
+`js/wqi.js` implements the **official DOE Malaysia formula** in full:
+
+```
+WQI = 0.22·SI_DO + 0.19·SI_BOD + 0.16·SI_COD
+    + 0.15·SI_NH3N + 0.16·SI_SS + 0.12·SI_pH
+```
+
+DO is normalised to percent saturation through a temperature-dependent solubility curve before
+being sub-indexed. Every WQI in the system is recomputed in the browser from the six raw
+parameters — none is stored.
+
+The index alone does not decide compliance, so each reading is also tested against the **INWQS
+ambient standards**:
+
+| Class | NH₃-N | BOD₅ | COD | SS | DO | pH |
+|---|---|---|---|---|---|---|
+| I | 0.1 | 1 | 10 | 25 | ≥ 7 | 6.5 – 8.5 |
+| **II** | **0.3** | **3** | **25** | **50** | **≥ 5** | **6 – 9** |
+| III | 0.9 | 6 | 50 | 150 | ≥ 3 | 5 – 9 |
+| IV | 2.7 | 12 | 100 | 300 | — | 5 – 9 |
+
+A calculator takes six parameters typed by hand and returns the index, its class, every
+sub-index, and a pass/fail — parameter by parameter.
+
+---
+
+## Phase 2 — Quality monitoring
+
+- **Exceedance frequency** per parameter across the record, worst first
+- **Receiving water bodies** grouped by type, with surface areas
+- **Parameter trends** against the standard, one chart each
+- **National context** — basin pollution status from data.gov.my, by parameter and year
+
+---
+
+
+## Phase 3 — LEDS · TMDL · SESAMS
 
 ```
 TMDL = ΣWLA + ΣLA + MOS
@@ -376,44 +466,6 @@ and every figure recomputes from them.
 
 ---
 
-## Phase 2 — Station assessment
-
-`js/wqi.js` implements the **official DOE Malaysia formula** in full:
-
-```
-WQI = 0.22·SI_DO + 0.19·SI_BOD + 0.16·SI_COD
-    + 0.15·SI_NH3N + 0.16·SI_SS + 0.12·SI_pH
-```
-
-DO is normalised to percent saturation through a temperature-dependent solubility curve before
-being sub-indexed. Every WQI in the system is recomputed in the browser from the six raw
-parameters — none is stored.
-
-The index alone does not decide compliance, so each reading is also tested against the **INWQS
-ambient standards**:
-
-| Class | NH₃-N | BOD₅ | COD | SS | DO | pH |
-|---|---|---|---|---|---|---|
-| I | 0.1 | 1 | 10 | 25 | ≥ 7 | 6.5 – 8.5 |
-| **II** | **0.3** | **3** | **25** | **50** | **≥ 5** | **6 – 9** |
-| III | 0.9 | 6 | 50 | 150 | ≥ 3 | 5 – 9 |
-| IV | 2.7 | 12 | 100 | 300 | — | 5 – 9 |
-
-A calculator takes six parameters typed by hand and returns the index, its class, every
-sub-index, and a pass/fail — parameter by parameter.
-
----
-
-## Phase 3 — Quality monitoring
-
-- **Exceedance frequency** per parameter across the record, worst first
-- **Receiving water bodies** grouped by type, with surface areas
-- **Parameter trends** against the standard, one chart each
-- **National context** — basin pollution status from data.gov.my, by parameter and year
-
----
-
-
 ## Data
 
 | Dataset | Source | Status |
@@ -466,6 +518,7 @@ python scripts/03_fetch_basin_pollution.py     # data.gov.my water_pollution_bas
 python scripts/04_build_stations.py            # stations (REPLACE with real readings)
 python scripts/05_fetch_selangor_boundary.py   # DOSM state boundary
 python scripts/09_fetch_water_levels.py         # JPS water levels (re-run to refresh)
+python scripts/10_push_to_firebase.py          # push all eight to the database
 ```
 
 Intermediate downloads (`*_raw.geojson`, `*_raw.json`, `hybas_*.zip`) are gitignored and

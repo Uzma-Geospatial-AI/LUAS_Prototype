@@ -4,6 +4,7 @@
 import { DATA, loadAll, readingAt, latestIdx, complianceRecord, fmtMonth,
          setFocus } from './data.js';
 import { wqiClass } from './wqi.js';
+import { sourceLabel } from './firebase.js';
 import { store, registerAsJson, registerAsCsv, download } from './store.js';
 import { renderPhase1, resizePhase1 } from './phase1.js';
 import { renderPhase2, renderNational, resizePhase2 } from './phase2.js';
@@ -14,7 +15,7 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-const VIEWS = ['map', 'tmdl', 'station', 'quality'];
+const VIEWS = ['map', 'station', 'quality', 'tmdl'];
 const ready = { map: false, quality: false, tmdl: false };
 
 /* ---------------- Clock ---------------- */
@@ -121,7 +122,11 @@ function buildStationPicker() {
     `Sungai Langat catchment · ${Math.round(basin.area_km2 ?? 0).toLocaleString('en')} km² · `
     + `${DATA.stations.length} stations · `
     + `record ${fmtMonth(DATA.months[0])} – ${fmtMonth(DATA.months[latestIdx()])} · `
-    + `${(DATA.water?.bodies?.length ?? 0)} water bodies · data.gov.my &amp; Digital Earth`;
+    + `${(DATA.water?.bodies?.length ?? 0)} water bodies · data.gov.my &amp; Digital Earth`
+    /* Where the numbers were actually served from. It earns a clause in the
+       status line: which of the two sources answered is not something a
+       reader should have to open the network tab to find out. */
+    + ` · served from ${esc(sourceLabel())}`;
   $('p2Measure').onchange = (e) => renderNational(e.target.value);
 
   /* Changing the target class ripples through every phase */
