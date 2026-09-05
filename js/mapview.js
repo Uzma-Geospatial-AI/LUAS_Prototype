@@ -20,6 +20,7 @@ import { wqiClass, WQI_CLASSES, classCompliance, PARAM_META } from './wqi.js';
 import { store } from './store.js';
 import { IMAGERY, gibsLayer, REFERENCE_MAPS, WATER_INDICES } from './satellite.js';
 import { sourceIcon, sourceSwatch } from './symbols.js';
+import { licenceStatus } from './licenceStatus.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -48,6 +49,7 @@ const riverLayers = {};       // river:main | river:trib
 const stationMarkers = new Map();   // station code -> marker
 const sourceIds = new Set();        // every point source id the map draws
 const sourceMarkers = new Map();    // osm id -> marker
+const sourceCat = new Map();        // osm id -> category key, for the licence estimate
 const licenceMarkers = [];          // standalone licence pins, with their position
 const levelMarkers = new Map();     // JPS station id -> marker
 let searchIndex = null;
@@ -95,8 +97,7 @@ export function initMap() {
   buildLevels();
   licenceLayer = L.layerGroup();
   visible.add('licence:all');
-  visible.add('lic:none');
-  MASTERS.licences = ['licence:all', 'lic:none'];
+  MASTERS.licences = ['licence:all'];
   stationLayer = L.layerGroup().addTo(map);
 
   /* Delegated: paintKpis replaces the chips on every month step, so a
@@ -304,6 +305,7 @@ function buildSources() {
         zIndexOffset: Math.round(p.risk * 20),
       });
       sourceMarkers.set(p.id, marker);
+      sourceCat.set(p.id, key);
       sourceIds.add(p.id);
       return marker
         .bindTooltip(
@@ -502,25 +504,36 @@ function sourcePopup(p, c) {
               ${p.risk.toFixed(2)} / 5</td></tr>
         </table>
         ${hint ? `<div class="pop-hint">${hint}</div>` : ''}
-        ${licenceBlock(p.id)}
+        ${licenceBlock(p.id, p.cat)}
         <div class="pop-pol"><b>Typically carries</b><br>${esc(c.pol)}</div>
         <div class="pop-note">Screening only \u2014 no discharge here is metered</div>
       </div>
     </div>`;
 }
 
-/* What the register says about this premises. The map must not disagree with
-   the licence page about the same place. */
-function licenceBlock(srcId) {
-  const l = store.licences().find((x) => x.srcId === srcId && !x.example);
-  if (!l) return '';
+/* What is known about the licence at this premises. Where the register has
+   an entry the map must not disagree with the licence page about the same
+   place; everywhere else the status is the estimate that coloured the
+   symbol, and it says so. */
+function licenceBlock(srcId, cat) {
+  const st = licenceStatus(srcId, cat);
+  const l = st.licence;
+  if (!l || l.example) {
+    return `
+    <div class="pop-lic ${st.licensed ? 'ok' : 'none'}">
+      <b>${st.licensed ? 'Licensed' : 'No discharge licence'}
+        <span class="est-dot">${l ? 'EXAMPLE' : 'ESTIMATED'}</span></b>
+      ${l ? `${esc(l.ref)} · ${(l.flow ?? 0).toLocaleString('en')} m³/day permitted`
+          : 'No licence register is published, so this status is an assumption, not a record.'}
+    </div>`;
+  }
   const total = ['bod', 'cod', 'ss', 'an']
     .reduce((t, k) => t + (l.conc?.[k] ?? 0) * (l.flow ?? 0) / 1000, 0);
   return `
-    <div class="pop-lic">
-      <b>Licensed · ${esc(l.ref)}${l.estimated ? ' <span class="est-dot">EST</span>' : ''}</b>
+    <div class="pop-lic ${st.licensed ? 'ok' : 'none'}">
+      <b>${st.licensed ? 'Licensed' : 'Licence suspended'} · ${esc(l.ref)}${l.estimated ? ' <span class="est-dot">EST</span>' : ''}</b>
       ${(l.flow ?? 0).toLocaleString('en')} m³/day at Standard ${esc(l.standard ?? 'A')}
-      · ${total.toFixed(1)} kg/day permitted${l.active === false ? '<br>Inactive' : ''}
+      · ${total.toFixed(1)} kg/day permitted
     </div>`;
 }
 
@@ -570,12 +583,6 @@ function applyVisibility() {
   for (const [k, l] of Object.entries(riverLayers)) set(l, visible.has(`river:${k}`));
   set(flowLayer, visible.has('flow:anim'));
   set(licenceLayer, visible.has('licence:all'));
-  /* Licence status cuts across the category layers, so it is a class on the
-     map rather than a layer of its own: 651 symbols show or hide by status
-     without any of them being redrawn. */
-  const box = map.getContainer().classList;
-  box.toggle('hide-lic', !visible.has('licence:all'));
-  box.toggle('hide-nolic', !visible.has('lic:none'));
   riverLayers.main?.bringToFront();
   flowLayer?.bringToFront();
   for (const [k, l] of Object.entries(waterLayers)) set(l, visible.has(`water:${k}`));
@@ -672,34 +679,30 @@ function paintLicences() {
     }
   }
 
-  /* Every point source says whether it holds a licence: the symbol's outline
-     goes green when an active licence in the register sits on it, red when
-     none does. Red means "not in this register" and nothing more — the
-     register is the only thing this system can see, and a suspended licence
-     counts as none. A class on the marker carries it, so all 651 recolour
-     without one of them being redrawn. */
-  const licensed = new Set(store.licences()
-    .filter((l) => l.active !== false && l.srcId != null).map((l) => l.srcId));
-  let none = 0;
+  /* Every point source is coloured by whether it holds a licence: green with
+     one, red without. The register decides where it has an entry; everywhere
+     else the status is an estimate (see licenceStatus.js). The shape still
+     says what the premises is. A class on the marker carries the colour, so
+     all 651 recolour without one of them being redrawn. */
+  let on = 0, off = 0;
   for (const [sid, m] of sourceMarkers) {
-    const on = licensed.has(sid);
-    if (!on) none += 1;
-    m.options.icon.options.className = on ? 'src-sym lic' : 'src-sym';  /* for its next add */
+    const st = licenceStatus(sid, sourceCat.get(sid));
+    if (st.licensed) on += 1; else off += 1;
+    m.options.icon.options.className = st.licensed ? 'src-sym lic' : 'src-sym';  /* for its next add */
     const el = m.getElement();
-    if (el) el.classList.toggle('lic', on);
+    if (el) el.classList.toggle('lic', st.licensed);
   }
-  const c = $('legNoLicN');
-  if (c) c.textContent = none.toLocaleString('en');
+  const a = $('legLicN'), b = $('legNoLicN');
+  if (a) a.textContent = on.toLocaleString('en');
+  if (b) b.textContent = off.toLocaleString('en');
   countLicences();
 }
 
-/* Both readouts come off the same layer, so they cannot drift */
+/* How many register entries are drawn: the rings and pins, not the estimate */
 function countLicences() {
   const n = licenceLayer?.getLayers().length ?? 0;
   const a = $('ovLicences');
-  const b = $('legLicN');
   if (a) a.textContent = n;
-  if (b) b.textContent = n;
 }
 
 function licencePopup(l) {
@@ -1020,10 +1023,17 @@ function buildLegend() {
       esc(LEVEL_STATUS[k].label), n, LEVEL_STATUS[k].en)).join('');
 
   const su = sourceSummary();
+  /* The shape is the category; the colour on the map is licence status, so
+     the swatch is drawn neutral rather than in a colour no marker wears. */
   $('mapLegendSources').innerHTML = Object.entries(su.cats)
     .filter(([k]) => su.groups[k]?.n)
-    .map(([k, c]) => row(`src:${k}`, sourceSwatch(c.shape, c.color, 16),
-      esc(c.label), su.groups[k].n, c.pol)).join('');
+    .map(([k, c]) => row(`src:${k}`, sourceSwatch(c.shape, '#5c6480', 16),
+      esc(c.label), su.groups[k].n, c.pol)).join('')
+    + `<div class="ml-key" title="Where the register has an entry the colour follows it. Everywhere else it is an estimate: no licence register is published as open data.">
+        <span><i class="ml-dot lic-on"></i>Licensed <b id="legLicN">0</b></span>
+        <span><i class="ml-dot lic-off"></i>No licence <b id="legNoLicN">0</b></span>
+        <span class="est-dot">ESTIMATED</span>
+      </div>`;
 
   const w = waterSummary();
   $('mapLegendWater').innerHTML = Object.entries(WATER_GROUPS)
@@ -1044,15 +1054,6 @@ function buildLegend() {
     + row('flow:anim', '<span class="ml-line flowkey"></span>', 'Flow direction',
       'downstream');
 
-  $('mapLegendLic').innerHTML = row('licence:all',
-    '<span class="lic-key">L</span>', 'Licensed',
-    '<span id="legLicN">0</span> located',
-    'Holds an active licence in this register. Drawn with a green outline and ringed.')
-    + row('lic:none',
-      '<span class="lic-key none"></span>', 'Not in register',
-      '<span id="legNoLicN">0</span> sites',
-      'No licence in this register — drawn with a red outline. It says nothing about '
-      + 'whether the premises holds one elsewhere; the register is all this system can see.');
   countLicences();
 
   document.querySelectorAll('[data-vis]').forEach((b) => {
