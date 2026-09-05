@@ -128,16 +128,21 @@ code{background:var(--surface-2);padding:1px 5px;border-radius:4px;
 }
 .tipmark:hover,.tipmark:focus{background:var(--navy);color:#fff;outline:none}
 .tipmark::after{
-  content:attr(data-tip);position:absolute;bottom:calc(100% + 7px);left:-8px;
-  width:236px;padding:8px 10px;border-radius:var(--r-sm);
+  content:attr(data-tip);
+  /* Fixed, so no card, table wrapper or scrolling column can clip it. The
+     coordinates come from the host element, which script can measure; a
+     pseudo element cannot be positioned directly. */
+  position:fixed;left:var(--tip-l,0);top:var(--tip-t,auto);bottom:var(--tip-b,auto);
+  /* The universal selector does not match pseudo elements, so this one is
+     content-box unless it says otherwise — and the script that keeps it on
+     screen has to know its real outer width. */
+  box-sizing:border-box;width:236px;padding:8px 10px;border-radius:var(--r-sm);
   background:var(--navy-3);color:#e8ebf7;font:400 11px/1.5 var(--ff);
   letter-spacing:normal;text-transform:none;text-align:left;
-  box-shadow:var(--shadow-lg);opacity:0;visibility:hidden;transition:.14s;
-  z-index:50;pointer-events:none;
+  box-shadow:var(--shadow-lg);opacity:0;visibility:hidden;transition:opacity .14s;
+  z-index:2000;pointer-events:none;
 }
 .tipmark:hover::after,.tipmark:focus::after{opacity:1;visibility:visible}
-/* Near the right edge the bubble would run off; flip it */
-.tipmark.left::after{left:auto;right:-8px}
 .live-dot{width:7px;height:7px;border-radius:50%;background:#3ddc84;animation:pulse 2.2s infinite}
 @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(61,220,132,.6)}
   50%{opacity:.75;box-shadow:0 0 0 6px rgba(61,220,132,0)}}

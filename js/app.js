@@ -138,17 +138,43 @@ function buildStationPicker() {
     renderPhase1();
   });
 
-  /* An info bubble is 236px wide; near the right edge it opens leftwards */
-  const placeTips = () => {
-    for (const el of document.querySelectorAll('.tipmark')) {
-      const r = el.getBoundingClientRect();
-      el.classList.toggle('left', r.left + 248 > window.innerWidth);
+  /* ---- Info bubbles ----
+     The bubble is fixed, so nothing clips it and the viewport is the only
+     thing it has to fit inside. It is placed when it is asked for rather than
+     for every mark up front, which also means marks rendered later need no
+     announcement. Anchoring by `bottom` upward and `top` downward keeps the
+     bubble's own height out of it — a pseudo element's height cannot be read
+     from script. */
+  const TIP_W = 236;
+  const TIP_GAP = 7;
+  let liveTip = null;
+
+  const placeTip = (el) => {
+    const r = el.getBoundingClientRect();
+    const l = Math.max(8, Math.min(r.left - 8, window.innerWidth - TIP_W - 8));
+    el.style.setProperty('--tip-l', `${Math.round(l)}px`);
+    /* Above the halfway line there is more room below, and the other way
+       round. Either way the bubble opens into the larger gap. */
+    if (r.top < window.innerHeight / 2) {
+      el.style.setProperty('--tip-t', `${Math.round(r.bottom + TIP_GAP)}px`);
+      el.style.setProperty('--tip-b', 'auto');
+    } else {
+      el.style.setProperty('--tip-t', 'auto');
+      el.style.setProperty('--tip-b', `${Math.round(window.innerHeight - r.top + TIP_GAP)}px`);
     }
+    liveTip = el;
   };
-  placeTips();
-  document.addEventListener('storechange', placeTips);
-  window.addEventListener('resize', placeTips);
-  new MutationObserver(placeTips).observe($('v-tmdl'), { childList: true, subtree: true });
+
+  for (const ev of ['pointerenter', 'focus']) {
+    document.addEventListener(ev, (e) => {
+      const el = e.target instanceof Element ? e.target.closest?.('.tipmark') : null;
+      if (el) placeTip(el);
+    }, true);
+  }
+  /* Fixed coordinates go stale the moment the page moves under them */
+  const refresh = () => { if (liveTip?.isConnected) placeTip(liveTip); };
+  document.addEventListener('scroll', refresh, true);
+  window.addEventListener('resize', refresh);
 
   /* Back / forward and pasted links both land on the right view */
   window.addEventListener('hashchange', () => {
