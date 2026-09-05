@@ -844,6 +844,11 @@ select{cursor:pointer}
   50%{stroke-width:11px;stroke:#f5e01c;stroke-opacity:.95}
 }
 .flash-water{animation:flashWater .62s ease-in-out 5}
+/* While the nearest water flashes the popup steps aside, without closing.
+   Leaflet writes the popup's opacity as an inline style when its fade
+   animation is on, and nothing but !important gets past an inline style. */
+.leaflet-popup{transition:opacity .25s}
+.leaflet-popup.peek{opacity:.12 !important;pointer-events:none}
 
 .pop-flow{margin-top:9px;font-size:11.5px;line-height:1.5}
 .pop-flow b{display:block;font-size:9.5px;text-transform:uppercase;

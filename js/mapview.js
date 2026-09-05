@@ -544,6 +544,17 @@ function showReceiving(key, at) {
   void el.getBoundingClientRect();          /* restart the animation */
   el.classList.add('flash-water');
   setTimeout(() => el.classList.remove('flash-water'), 3200);
+
+  /* The popup is anchored to the source and the water is within 1.5 km of
+     it, so the water very often lies under the popup — and panning cannot
+     help, because the two move together. For the length of the flash the
+     popup steps aside without closing: the reader sees the water through it,
+     keeps their place, and it comes back on its own. */
+  const pop = openPopup?.getElement();
+  if (pop) {
+    pop.classList.add('peek');
+    setTimeout(() => pop.classList.remove('peek'), 3300);
+  }
 }
 
 /* ---------------- Visibility ---------------- */

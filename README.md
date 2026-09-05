@@ -217,7 +217,8 @@ the map.
 
 **Search** sits beside the basemap button and finds anything the map draws — a station code, a river, a named
 water body, a named point source — then takes you to it: a station or a source opens its popup, a
-river or a water body flashes. If what you picked has been filtered out, its layer is switched
+river or a water body flashes — and an open popup steps aside for the length of the flash, because
+the water it names is usually right under it. If what you picked has been filtered out, its layer is switched
 back on, since being shown the thing is the point of asking for it. Unnamed features are left out;
 a list reading "Pond" six hundred times is worse than a shorter one.
 
