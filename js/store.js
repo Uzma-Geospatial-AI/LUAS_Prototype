@@ -45,23 +45,11 @@ const uid = () => `u${Date.now().toString(36)}${Math.random().toString(36).slice
    worked example. Every seeded row is flagged `example: true` and is badged
    in the UI; "Clear examples" removes them for good.
    ============================================================ */
-export const EXAMPLE_LICENCES = [
-  { id: 'ex-1', ref: 'LUAS/EL/2023/0142', premises: 'IWK Regional STP — Bandar Baru Bangi',
-    category: 'Sewage treatment', standard: 'A', flow: 24000,
-    conc: { bod: 18, cod: 72, ss: 42, an: 8.5 }, active: true, example: true },
-  { id: 'ex-2', ref: 'LUAS/EL/2022/0087', premises: 'Kawasan Perindustrian Dengkil — common effluent plant',
-    category: 'Industrial', standard: 'A', flow: 6800,
-    conc: { bod: 19, cod: 78, ss: 46, an: 9.2 }, active: true, example: true },
-  { id: 'ex-3', ref: 'LUAS/EL/2024/0031', premises: 'Ladang kelapa sawit Sepang — mill effluent polishing',
-    category: 'Agro-industry', standard: 'A', flow: 3200,
-    conc: { bod: 16, cod: 68, ss: 38, an: 7.4 }, active: true, example: true },
-  { id: 'ex-4', ref: 'LUAS/EL/2021/0219', premises: 'Loji rawatan air Sungai Labu — sludge washwater',
-    category: 'Water treatment', standard: 'A', flow: 1900,
-    conc: { bod: 8, cod: 34, ss: 48, an: 1.2 }, active: true, example: true },
-  { id: 'ex-5', ref: 'LUAS/EL/2020/0154', premises: 'Taman perumahan Dengkil — communal STP (decommissioned)',
-    category: 'Sewage treatment', standard: 'B', flow: 900,
-    conc: { bod: 45, cod: 180, ss: 92, an: 17 }, active: false, example: true },
-];
+/* Filled once the point sources have loaded — see js/examples.js. Empty until
+   then, which only matters for the moment before the first render. */
+let examples = [];
+export const setExamples = (list) => { examples = Array.isArray(list) ? list : []; };
+export const exampleLicences = () => examples;
 
 export const store = {
   /* ---------------- Design conditions ---------------- */
@@ -78,9 +66,19 @@ export const store = {
   },
 
   /* ---------------- Licence register (SESAMS) ---------------- */
+  /* The worked examples are premises taken off the map, so they arrive once
+     the point sources have loaded rather than being written in here. */
+  setExamples,
+  exampleLicences,
+
   licences() {
     const d = read();
-    return d.examplesCleared ? d.licences : [...EXAMPLE_LICENCES, ...d.licences];
+    if (d.examplesCleared) return d.licences;
+    /* One premises, one licence. A real licence entered against a premises
+       supersedes the example on it, rather than both counting into the
+       wasteload and billing that site twice. */
+    const taken = new Set(d.licences.map((l) => l.srcId).filter((x) => x != null));
+    return [...examples.filter((e) => !taken.has(e.srcId)), ...d.licences];
   },
   userLicences: () => read().licences,
   hasExamples: () => !read().examplesCleared,

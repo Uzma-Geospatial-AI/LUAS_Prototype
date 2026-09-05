@@ -14,45 +14,8 @@ import {
   EFFLUENT_STANDARDS, RIVER_FACTOR, fmtLoad, fmtVol, riverLoad,
 } from './loads.js';
 import { store, registerAsJson, registerAsCsv, download } from './store.js';
+import { prefillFor, CAT_LABEL } from './examples.js';
 import { mapCentre } from './mapview.js';
-
-/* ---------------- Prefilling from a mapped premises ----------------
-   Deterministic, not random: the same site gives the same figures every time,
-   so a number cannot change under someone between looking and saving. These
-   are placeholders shaped by the category and the discharge standard — they
-   are NOT permit values, and they are badged as invented wherever they go. */
-const FLOW_BASE = {          // m3/day, a plausible middle for the category
-  kumbahan: 12000,           // sewage and water treatment works
-  industri: 1200,            // an industrial premises
-  ternakan: 600,             // farms and aquaculture
-  sisa: 400,                 // landfill, quarry, waste handling
-  tanah: 250,                // construction and cleared land
-};
-
-function hash(seed, salt) {
-  let h = (Number(seed) % 2147483647) ^ (salt * 2654435761);
-  h = Math.imul(h ^ (h >>> 15), 2246822507);
-  h = Math.imul(h ^ (h >>> 13), 3266489909);
-  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;      /* 0..1 */
-}
-
-/* A permitted concentration sits under its limit, so the placeholder does too
-   — 55% to 95% of it. One that breached its own standard on arrival would be
-   a strange thing to hand someone. */
-function prefillFor(props, stdKey) {
-  const std = EFFLUENT_STANDARDS[stdKey] ?? EFFLUENT_STANDARDS.A;
-  const base = FLOW_BASE[props.cat] ?? 1000;
-  const flow = Math.round(base * (0.5 + 1.5 * hash(props.id, 1)) / 50) * 50;
-  const conc = {};
-  LOAD_PARAMS.forEach((param, i) => {
-    conc[param] = Math.round(std[param] * (0.55 + 0.4 * hash(props.id, i + 2)) * 10) / 10;
-  });
-  /* A reference too, so the record is complete on arrival. The year is the
-     record's, not today's, so a reference does not change with the calendar. */
-  const year = 2020 + Math.floor(hash(props.id, 9) * 6);
-  const serial = String(1 + Math.floor(hash(props.id, 10) * 9998)).padStart(4, '0');
-  return { flow, conc, ref: `LUAS/EL/${year}/${serial}` };
-}
 
 /* One premises, one licence. Picking a premises that already has one must load
    it, not offer a second — two licences on the same site would count its
@@ -164,9 +127,7 @@ function buildSourcePicker() {
       + `<span class="mono">${lat.toFixed(5)}, ${lon.toFixed(5)}</span>`;
 
     /* The category follows the source, so the register groups sensibly */
-    const CAT = { kumbahan: 'Sewage treatment', industri: 'Industrial',
-      ternakan: 'Agro-industry', sisa: 'Waste', tanah: 'Construction' };
-    if (CAT[q.cat]) $('lCategory').value = CAT[q.cat];
+    if (CAT_LABEL[q.cat]) $('lCategory').value = CAT_LABEL[q.cat];
 
     const existing = licenceForSource(q.id);
     if (existing) {
@@ -565,7 +526,13 @@ function renderRegister(licences, stdKey, budgets) {
     b.onclick = () => loadIntoForm(licences.find((l) => l.id === b.dataset.edit));
   });
 
-  $('p3ExampleBar').style.display = store.hasExamples() ? 'flex' : 'none';
+  /* Counted, not written: an example superseded by a real licence leaves
+     the register, and the banner has to say how many are actually left. */
+  const nEx = store.licences().filter((l) => l.example).length;
+  $('p3ExampleNote').textContent = nEx === 1
+    ? 'One worked example on a mapped premises — not a real licence.'
+    : `${nEx} worked examples on mapped premises — not real licences.`;
+  $('p3ExampleBar').style.display = store.hasExamples() && nEx ? 'flex' : 'none';
   $('p3RestoreBar').style.display = store.hasExamples() ? 'none' : 'flex';
 }
 

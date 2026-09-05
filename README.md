@@ -48,6 +48,7 @@ LUAS_Prototype/
 │   ├── app.js                 routing, app bar, station picker
 │   ├── data.js                loading, derivation, compliance record
 │   ├── firebase.js            reads the datasets from the Realtime Database
+│   ├── examples.js            worked-example licences built from mapped premises
 │   ├── wqi.js                 DOE WQI formula + INWQS class standards
 │   ├── loads.js               load, TMDL, headroom and effluent-standard maths
 │   ├── store.js               localStorage: readings, SESAMS register, conditions
@@ -497,8 +498,16 @@ and every figure recomputes from them.
 > figure scales linearly with it.
 
 > ⚠️ **No LUAS licence register is published as open data**, so five worked examples ship with
-> the system to make the budget computable. Every one is badged **EXAMPLE**, and *Clear examples*
-> removes them for good.
+> the system to make the budget computable. They are built from **premises that are actually on
+> the map** — the highest-risk named site in each licensable category, with its real name and
+> position — so each one draws as a ring on the map and the budget adds up against something a
+> reader can go and look at. The **licence reference, flow and concentrations are invented**,
+> deterministically from the premises id, and the same function fills the form when that premises
+> is picked, so register and form can never disagree about the same licence. Every row is badged
+> **EXAMPLE**; nothing adverse is asserted about any named business; entering a real licence
+> against a premises supersedes its example rather than counting alongside it; *Clear examples*
+> removes them all. Construction land gets no example: it is a diffuse, load-allocation problem,
+> not an outfall with a meter on it.
 
 ---
 
@@ -515,7 +524,7 @@ and every figure recomputes from them.
 | River water level, 21 stations | [JPS · Public InfoBanjir](https://publicinfobanjir.water.gov.my/aras-air/data-paras-air/?state=SEL&type=NEGERI) | **Real** (⚠️ snapshot, not live) |
 | Satellite imagery | Esri · Google · EOX · NASA GIBS | **Real** |
 | Station parameter readings, 16 × 56 months | Generated for demonstration | ⚠️ **SAMPLE** |
-| Effluent discharge licences | Five worked examples | ⚠️ **SAMPLE** |
+| Effluent discharge licences | Five worked examples on real mapped premises | ⚠️ **SAMPLE** (premises real, figures invented) |
 
 > ⚠️ **Station positions are real**, snapped to the Langat channel at real localities. **The six
 > parameter readings at them are not** — they are generated along a plausible

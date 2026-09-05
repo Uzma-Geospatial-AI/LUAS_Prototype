@@ -6,6 +6,7 @@ import { DATA, loadAll, readingAt, latestIdx, complianceRecord, fmtMonth,
 import { wqiClass } from './wqi.js';
 import { sourceLabel } from './firebase.js';
 import { store, registerAsJson, registerAsCsv, download } from './store.js';
+import { buildExamples } from './examples.js';
 import { renderPhase1, resizePhase1 } from './phase1.js';
 import { renderPhase2, renderNational, resizePhase2 } from './phase2.js';
 import { renderPhase3, buildLicenceForm, resizePhase3 } from './phase3.js';
@@ -104,6 +105,10 @@ function buildStationPicker() {
       Serve this site over HTTP (run <b>python serve.py</b>)<br>rather than opening the file directly.</span>`;
     return;
   }
+
+  /* The worked examples are premises taken off the map, so they cannot be
+     built until the sources are in. Before any phase renders. */
+  store.setExamples(buildExamples());
 
   buildStationPicker();
   updatePills();
