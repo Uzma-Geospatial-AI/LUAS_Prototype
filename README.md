@@ -132,12 +132,32 @@ Which source actually answered is shown in the app bar — *served from Firebase
 something a reader should have to open the network tab to find out.
 
 **Nothing in the browser writes.** A database a public page can write to is a database anyone who
-reads the page source can write to, and this one is on a government portal. The upload runs from
-the ETL with a credential, which bypasses the rules; the resting rules only need to grant a read:
+reads the page source can write to, and this one is on a government portal. Rules cascade
+downward, so a `false` at the root does not stop a `true` deeper in and only the subtree the site
+reads has to be opened. This is where the rules should rest:
 
 ```json
-{ "rules": { "luas": { ".read": true, ".write": false } } }
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "luas": { ".read": true, ".write": false }
+  }
+}
 ```
+
+Uploading without a credential needs `"luas": { ".write": true }` for the length of one run, then
+put it back. Setting security rules is the kind of step that gets marked done and turns out to be
+wrong months later, so it is checkable rather than assumed:
+
+```bash
+python scripts/10_push_to_firebase.py --verify
+```
+
+Two unauthenticated requests, which is exactly what a visitor is: the read of `/luas` must
+succeed, or every reader silently falls back to the bundled files; the write must be refused, or
+anyone who views the page source can rewrite the data behind a government portal. If a write does
+get through, the test node is removed again and the failure is reported loudly.
 
 > ⚠️ The licence register still lives in each browser's `localStorage`, so it is **not shared
 > between users**. Moving it to the database would fix that, but it needs authentication first —

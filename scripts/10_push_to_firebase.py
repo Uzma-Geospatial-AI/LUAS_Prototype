@@ -25,7 +25,26 @@ Project settings -> Service accounts -> Database secrets. If the rules have
 instead been opened for a moment, the script runs with no credential at all.
 
     --check   report what access there is and write nothing
+    --verify  check the resting rules are right, unauthenticated
     --node X  push one dataset only, by its node name
+
+    RULES
+
+Rules cascade downward: a `false` at the root does not stop a `true` deeper
+in, so only the subtree the site reads has to be opened. During an upload
+without a credential:
+
+    { "rules": { ".read": false, ".write": false,
+                 "luas": { ".read": true, ".write": true } } }
+
+and afterwards, which is where it should stay:
+
+    { "rules": { ".read": false, ".write": false,
+                 "luas": { ".read": true, ".write": false } } }
+
+`--verify` checks that second state without a credential: the read must
+succeed and the write must be refused. Run it after changing the rules
+rather than assuming they took.
 
     A NOTE ON WHAT THIS IS FOR
 
@@ -79,12 +98,15 @@ DATASETS = [
 
 
 def parse_args(argv):
-    opts = {'auth': os.environ.get('FIREBASE_DB_SECRET', ''), 'check': False, 'node': None}
+    opts = {'auth': os.environ.get('FIREBASE_DB_SECRET', ''), 'check': False,
+            'verify': False, 'node': None}
     i = 0
     while i < len(argv):
         a = argv[i]
         if a == '--check':
             opts['check'] = True
+        elif a == '--verify':
+            opts['verify'] = True
         elif a == '--auth' and i + 1 < len(argv):
             i += 1
             opts['auth'] = argv[i]
@@ -117,11 +139,62 @@ def human(n):
     return '%.1f MB' % (n / 1048576.0) if n >= 1048576 else '%d KB' % (n // 1024)
 
 
+RESTING_RULES = """  {
+    "rules": {
+      ".read": false,
+      ".write": false,
+      "luas": { ".read": true, ".write": false }
+    }
+  }"""
+
+
+def verify():
+    """Two unauthenticated requests, which is exactly what a visitor is.
+
+    Read must work, or the site falls back to its bundled files for every
+    reader. Write must not, or anyone who views the page source can rewrite
+    the data behind a government portal.
+    """
+    print('verifying the rules as an anonymous visitor sees them')
+    ok = True
+
+    status, text = call('GET', '%s/meta' % ROOT_NODE, '')
+    if status == 200 and text.strip() != 'null':
+        print('  ok      read  /%s      200, %d bytes' % (ROOT_NODE, len(text)))
+    elif status == 200:
+        print('  EMPTY   read  /%s      200 but nothing there - run the upload' % ROOT_NODE)
+        ok = False
+    else:
+        print('  FAILED  read  /%s      %d - the site will fall back to its'
+              ' bundled files for every reader' % (ROOT_NODE, status))
+        ok = False
+
+    status, _ = call('PUT', '%s/_ruletest' % ROOT_NODE, '', {'t': int(time.time())})
+    if status == 401:
+        print('  ok      write /%s      401, refused' % ROOT_NODE)
+    elif status == 200:
+        print('  FAILED  write /%s      200 - THE DATABASE IS PUBLICLY WRITABLE.' % ROOT_NODE)
+        print('          Anyone who reads the page source can rewrite this data.')
+        call('DELETE', '%s/_ruletest' % ROOT_NODE, '')
+        print('          (the test node was removed again)')
+        ok = False
+    else:
+        print('  ?       write /%s      %d, unexpected' % (ROOT_NODE, status))
+        ok = False
+
+    print('')
+    print('rules are correct' if ok else 'set the rules to:\n' + RESTING_RULES)
+    return 0 if ok else 1
+
+
 def main():
     opts = parse_args(sys.argv[1:])
     auth = opts['auth']
 
     print('database : %s' % DB)
+    if opts['verify']:
+        return verify()
+
     print('credential: %s' % ('database secret supplied' if auth else 'none - relying on open rules'))
 
     status, text = call('GET', '%s/meta/checked' % ROOT_NODE, auth)
@@ -136,13 +209,14 @@ def main():
         print('')
         print('  or open the rules in the console for the length of one upload:')
         print('')
-        print('      { "rules": { ".read": true, ".write": true } }')
+        print('      { "rules": { ".read": false, ".write": false,')
+        print('                   "%s": { ".read": true, ".write": true } } }' % ROOT_NODE)
         print('')
         print('  An open database is writable by anyone who has the URL, so set the')
         print('  resting rules straight afterwards. The site reads /%s, so that subtree' % ROOT_NODE)
         print('  has to be readable; nothing in the browser writes, so nothing needs write:')
         print('')
-        print('      { "rules": { "%s": { ".read": true, ".write": false } } }' % ROOT_NODE)
+        print(RESTING_RULES)
         print('')
         print('  A database secret bypasses rules altogether, so this script keeps working')
         print('  with ".write": false - which is the point.')
@@ -190,8 +264,9 @@ def main():
     print('read one back with:')
     print('  curl "%s/%s/water_levels.json"' % (DB, ROOT_NODE))
     print('')
-    print('the site reads /%s, so the subtree has to be readable:' % ROOT_NODE)
-    print('  { "rules": { "%s": { ".read": true, ".write": false } } }' % ROOT_NODE)
+    print('now set the rules back, and check them:')
+    print(RESTING_RULES)
+    print('  python scripts/10_push_to_firebase.py --verify')
     return 0
 
 
