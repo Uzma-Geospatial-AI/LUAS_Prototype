@@ -47,6 +47,7 @@ const riverLayers = {};       // river:main | river:trib
 const stationMarkers = new Map();   // station code -> marker
 const sourceIds = new Set();        // every point source id the map draws
 const sourceMarkers = new Map();    // osm id -> marker
+const licenceMarkers = [];          // standalone licence pins, with their position
 let searchIndex = null;
 let traceLayer = null;
 
@@ -103,9 +104,12 @@ export function initMap() {
 
   applyVisibility();
   if (pendingFly) {
-    const [lat, lon, z] = pendingFly;
+    const [lat, lon, z, srcId] = pendingFly;
     pendingFly = null;
     map.setView([lat, lon], z);
+    setTimeout(() => {
+      (sourceMarkers.get(srcId) ?? nearestLicenceMarker(lat, lon))?.openPopup();
+    }, 250);
   } else {
     map.fitBounds(basinLayer.getBounds().pad(0.06));   // open on the catchment
   }
@@ -480,6 +484,7 @@ function repaint() {
 function paintLicences() {
   if (!licenceLayer) return;
   licenceLayer.clearLayers();
+  licenceMarkers.length = 0;
 
   for (const l of store.licences()) {
     if (typeof l.lat !== 'number' || typeof l.lon !== 'number') continue;
@@ -506,11 +511,12 @@ function paintLicences() {
       L.marker([l.lat, l.lon], { zIndexOffset: 420, icon, interactive: false })
         .addTo(licenceLayer);
     } else {
-      L.marker([l.lat, l.lon], { zIndexOffset: 500, icon })
+      const m = L.marker([l.lat, l.lon], { zIndexOffset: 500, icon })
         .bindTooltip(`<b>${esc(l.premises)}</b><br>${esc(l.ref)}`,
           { direction: 'top', offset: [0, -12] })
         .bindPopup(() => licencePopup(l), POPUP)
         .addTo(licenceLayer);
+      licenceMarkers.push({ lat: l.lat, lon: l.lon, marker: m });
     }
   }
   countLicences();
@@ -551,9 +557,42 @@ function licencePopup(l) {
    exists by then; if it does not, the target is held until it does. */
 let pendingFly = null;
 
-export function flyToPoint(lat, lon, zoom = 16) {
-  if (!map) { pendingFly = [lat, lon, zoom]; return; }
+/* Going to a premises means being shown it, not being left near it: the marker
+   there is opened once the map has settled. */
+export function flyToPoint(lat, lon, zoom = 16, srcId = null) {
+  if (!map) { pendingFly = [lat, lon, zoom, srcId]; return; }
+
+  /* A marker on a switched-off layer is not there to open */
+  const src = srcId != null
+    ? sourceSummary().features.find((f) => f.properties.id === srcId) : null;
+  if (src && !visible.has(`src:${src.properties.cat}`)) {
+    visible.add(`src:${src.properties.cat}`);
+    applyVisibility();
+  }
+
   map.flyTo([lat, lon], Math.max(map.getZoom(), zoom), { duration: 0.8 });
+
+  let opened = false;
+  const open = () => {
+    if (opened) return;
+    opened = true;
+    const marker = sourceMarkers.get(srcId) ?? nearestLicenceMarker(lat, lon);
+    marker?.openPopup();
+  };
+  /* flyTo fires moveend when it settles, but not if it had nowhere to go */
+  map.once('moveend', open);
+  setTimeout(open, 1000);
+}
+
+/* A licence entered by coordinate has no id to look up, so it is found by
+   where it is — within about 20 m, which is closer than two premises get. */
+function nearestLicenceMarker(lat, lon) {
+  let best = null, bd = 20;
+  for (const l of licenceMarkers) {
+    const d = map.distance([lat, lon], [l.lat, l.lon]);
+    if (d <= bd) { bd = d; best = l.marker; }
+  }
+  return best;
 }
 
 /* The form offers the map centre as a starting coordinate */

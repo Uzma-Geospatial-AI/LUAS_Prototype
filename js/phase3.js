@@ -205,14 +205,22 @@ function buildSourcePicker() {
   });
 
   for (const b of document.querySelectorAll('[data-prem]')) {
-    b.onclick = () => setPremMode(b.dataset.prem);
+    b.onclick = () => {
+      if (b.dataset.prem === premMode) return;
+      /* The two modes describe different premises. Carrying an edit across
+         would let a new location silently overwrite the licence that was open
+         — the fields change, the record being written does not. */
+      editing = null;
+      setPremMode(b.dataset.prem);
+      clearForm();
+    };
   }
-  const goTo = (lat, lon) => document.dispatchEvent(
-    new CustomEvent('showonmap', { detail: { lat, lon } }));
+  const goTo = (lat, lon, srcId = null) => document.dispatchEvent(
+    new CustomEvent('showonmap', { detail: { lat, lon, srcId } }));
 
   $('lShowPick').onclick = () => {
     const f = su.features.find((x) => String(x.properties.id) === $('lSource').value);
-    if (f) goTo(f.geometry.coordinates[1], f.geometry.coordinates[0]);
+    if (f) goTo(f.geometry.coordinates[1], f.geometry.coordinates[0], f.properties.id);
   };
   $('lShowNew').onclick = () => {
     const lat = num($('lLat').value);
@@ -650,7 +658,9 @@ function readPremises() {
   if (!premises) return null;
   const lat = num($('lLat').value);
   const lon = num($('lLon').value);
-  const out = { premises };
+  /* Written explicitly, never omitted: updateLicence merges, so leaving srcId
+     out would let a previous premises' id survive onto this one. */
+  const out = { premises, srcId: null, lat: null, lon: null };
   if (!Number.isNaN(lat) && !Number.isNaN(lon)) { out.lat = lat; out.lon = lon; }
   return out;
 }

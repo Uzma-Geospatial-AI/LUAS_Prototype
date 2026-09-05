@@ -166,7 +166,7 @@ function buildStationPicker() {
      fly. */
   document.addEventListener('showonmap', (e) => {
     show('map');
-    flyToPoint(e.detail.lat, e.detail.lon);
+    flyToPoint(e.detail.lat, e.detail.lon, 16, e.detail.srcId ?? null);
   });
 
   show(location.hash.slice(1) || 'map');

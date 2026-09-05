@@ -64,6 +64,16 @@ LUAS_Prototype/
 
 ---
 
+## On a phone
+
+Everything a desktop has, read by scrolling rather than by looking round the edges of the map.
+Below 700px the floating cards leave the overlay and stack under the map in the order they are
+needed — class counts, search, basemap, layers, month, legend — and the map keeps a workable
+56vh. The station picker moves to its own line in the app bar rather than being dropped: it
+decides what every phase is written for, so a phone without it would be a different product.
+
+---
+
 ## Local development
 
 JavaScript modules need `http://`, so opening `index.html` from disk will not work.
@@ -281,7 +291,9 @@ Either way the licence carries a position, and anything with a position is drawn
   place would be the map disagreeing with itself.
 - a **new location** gets its own pin, since nothing else draws it.
 
-**Show on map** beside either mode opens the map at that premises. The register marks which rows
+**Show on map** beside either mode opens the map at that premises **and opens its popup** —
+the point is to be shown the place, not left near it. If its layer had been switched off, it is
+switched back on first. The register marks which rows
 are located and which are not, so a register of six against a map of two is not a puzzle.
 
 > ⚠️ The register is not partitioned by receiving water — every licence in it counts against

@@ -526,8 +526,18 @@ select{cursor:pointer}
 }
 @media(max-width:840px){
   .page{padding:16px 13px 30px}
-  .ab-meta{display:none}
   .stn-head{flex-direction:column;align-items:flex-start}
+  /* The picker decides what every phase is written for, so it stays. The
+     clock is the only thing here that can be spared. */
+  .ab-clock{display:none}
+  .appbar{padding:9px 13px;gap:9px}
+  .ab-title h1{font-size:15px}
+  .ab-status{font-size:10px;line-height:1.4}
+  .ab-meta{margin-left:0;width:100%;gap:6px;flex-wrap:wrap}
+  /* The picker gets its own line: sharing one with the pills squeezed it to
+     the width of its own arrow. */
+  .pill.pick{flex:1 1 100%;min-width:0}
+  .pill.pick select{max-width:none;flex:1;font-size:12.5px}
 }
 
 /* ============================================================
@@ -866,5 +876,48 @@ select{cursor:pointer}
   .mk-l{display:block}
 }
 
+/* ============================================================
+   Phones — the same system, read by scrolling
+
+   Floating cards over a 390px map cover the map. Below 700px they leave the
+   overlay and stack under it in normal flow, so everything a desktop has is
+   here too; it is read by scrolling instead of by looking round the edges.
+   ============================================================ */
+@media(max-width:700px){
+  #v-map.active{display:block;flex:none}
+  .map-wrap{display:block;flex:none;min-height:0;background:none}
+  #mainMap{position:relative;inset:auto;height:56vh;min-height:300px}
+
+  .map-card,.map-time,.map-search,.base-pop{
+    position:static;transform:none;width:auto;max-width:none;
+    margin:10px 13px 0;backdrop-filter:none;
+    background:var(--surface);border-color:var(--line);box-shadow:var(--shadow);
+  }
+  .map-kpis{position:static;display:flex;flex-wrap:wrap;gap:8px;margin:10px 13px 0}
+  .mkpi{flex:1;min-width:130px;backdrop-filter:none}
+  .map-tr{position:static;align-items:stretch;gap:0;margin:0}
+  .tr-row{flex-direction:column;gap:10px;margin:10px 13px 0}
+  .map-pill{justify-content:space-between;backdrop-filter:none}
+  .ms-list{position:static;margin-top:8px;max-height:300px}
+  .map-time{display:flex}
+  .map-card .card-body{max-height:none}
+  .map-card.min{width:auto;min-width:0}
+
+  /* Nothing floats now, so nothing needs lifting over Leaflet's controls */
+  .leaflet-top.leaflet-left,.leaflet-top.leaflet-right{margin-top:0}
+
+  .mk-l{display:block}
+  .classcard{flex-wrap:wrap}
 }
 
+/* Narrow phones: the multi-column grids give up on columns */
+@media(max-width:520px){
+  .form-grid,.grid.two,.split-grid,.verdict-grid,.grid.three{grid-template-columns:1fr}
+  .latlon input{min-width:0}
+  .prem-row{flex-wrap:wrap}
+  .btn.locate{width:100%}
+  .tabs{overflow-x:auto}
+  .tab{padding:8px 11px 9px}
+  .written-for{flex-direction:column;align-items:stretch}
+  .written-for select{max-width:none}
+}
