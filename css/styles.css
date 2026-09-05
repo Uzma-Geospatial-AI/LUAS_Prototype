@@ -279,7 +279,29 @@ table.data tfoot .totals td{background:var(--surface-2);border-top:2px solid var
 .empty-row{color:var(--muted);padding:22px 13px !important;text-align:center}
 table.budget th{font-size:9.5px}
 table.register td{padding:8px 11px}
+/* A located row opens the map: it says so on hover, and nowhere else */
+table.register tr.row-go{cursor:pointer;transition:background .12s}
+table.register tr.row-go:hover td{background:var(--surface-2)}
+table.register tr.row-go:hover td:nth-child(2){color:var(--navy);text-decoration:underline;
+  text-decoration-color:var(--line-2);text-underline-offset:3px}
 table.register th{padding:8px 11px;font-size:9.5px}
+/* A header that sorts: it says so on hover, and once sorted, which way */
+table.register th.sortable{cursor:pointer;user-select:none;white-space:nowrap}
+table.register th.sortable:hover{color:var(--navy)}
+table.register th.sortable::after{content:"";display:inline-block;width:0;height:0;margin-left:5px;
+  vertical-align:middle;border-left:3.5px solid transparent;border-right:3.5px solid transparent;
+  border-bottom:4.5px solid currentColor;opacity:0;transition:opacity .12s}
+table.register th.sortable:hover::after{opacity:.35}
+table.register th.sortable.asc::after{opacity:1}
+table.register th.sortable.desc::after{opacity:1;transform:rotate(180deg)}
+/* The search box sits at the end of the register title */
+.reg-search{margin-left:auto;display:inline-flex;align-items:center;gap:7px;min-width:min(320px,100%);
+  padding:0 10px;height:34px;border:1px solid var(--line-2);border-radius:8px;background:var(--surface);
+  color:var(--muted);transition:border-color .14s,box-shadow .14s}
+.reg-search:focus-within{border-color:var(--navy-2);box-shadow:0 0 0 3px rgba(74,58,167,.12)}
+.reg-search svg{width:14px;height:14px;flex:none}
+.reg-search input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;font-size:12.5px;color:var(--text)}
+.reg-search input::placeholder{color:var(--muted-2)}
 
 .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;
   font-size:10.5px;font-weight:700;color:#fff;font-family:var(--fm)}

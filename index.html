@@ -508,6 +508,10 @@
     <div class="section-title">
       <h2>Licence Register</h2>
       <span class="st-sub">Licensed premises and their permitted wasteload</span>
+      <label class="reg-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input type="search" id="p3Search" placeholder="Search licence, premises, category…" aria-label="Search the register" autocomplete="off">
+      </label>
     </div>
 
     <div class="notice info" id="p3RestoreBar" style="display:none">
@@ -520,15 +524,19 @@
       <table class="data register">
         <thead>
           <tr>
-            <th rowspan="2">Licence</th><th rowspan="2">Premises</th><th rowspan="2">Std</th>
-            <th rowspan="2">Flow<br>m³/day</th>
+            <th rowspan="2" class="sortable" data-sort="ref">Licence</th>
+            <th rowspan="2" class="sortable" data-sort="premises">Premises</th>
+            <th rowspan="2" class="sortable" data-sort="standard">Std</th>
+            <th rowspan="2" class="sortable" data-sort="flow">Flow<br>m³/day</th>
             <th colspan="4">Permitted concentration (mg/L)</th>
             <th colspan="4">Wasteload (kg/day)</th>
-            <th rowspan="2">Status</th><th rowspan="2"></th>
+            <th rowspan="2" class="sortable" data-sort="status">Status</th><th rowspan="2"></th>
           </tr>
           <tr>
-            <th>BOD₅</th><th>COD</th><th>SS</th><th>NH₃-N</th>
-            <th>BOD₅</th><th>COD</th><th>SS</th><th>NH₃-N</th>
+            <th class="sortable" data-sort="conc.bod">BOD₅</th><th class="sortable" data-sort="conc.cod">COD</th>
+            <th class="sortable" data-sort="conc.ss">SS</th><th class="sortable" data-sort="conc.an">NH₃-N</th>
+            <th class="sortable" data-sort="load.bod">BOD₅</th><th class="sortable" data-sort="load.cod">COD</th>
+            <th class="sortable" data-sort="load.ss">SS</th><th class="sortable" data-sort="load.an">NH₃-N</th>
           </tr>
         </thead>
         <tbody id="p3Register"></tbody>

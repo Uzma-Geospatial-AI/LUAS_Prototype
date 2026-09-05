@@ -9,7 +9,7 @@ import { store, registerAsJson, registerAsCsv, download } from './store.js';
 import { buildExamples } from './examples.js';
 import { renderPhase1, resizePhase1 } from './phase1.js';
 import { renderPhase2, renderNational, resizePhase2 } from './phase2.js';
-import { renderPhase3, buildLicenceForm, resizePhase3 } from './phase3.js';
+import { renderPhase3, buildLicenceForm, resizePhase3, buildRegisterControls } from './phase3.js';
 import { initMap, resizeMap, refreshMap, pauseMap, flyToPoint } from './mapview.js';
 
 const $ = (id) => document.getElementById(id);
@@ -50,7 +50,8 @@ function show(view) {
     if (!ready.quality) { renderPhase2(); ready.quality = true; } else resizePhase2();
   }
   if (view === 'tmdl') {
-    if (!ready.tmdl) { buildLicenceForm(); ready.tmdl = true; }
+    if (!ready.tmdl) { buildLicenceForm();
+  buildRegisterControls(); ready.tmdl = true; }
     renderPhase3();
     resizePhase3();
   }

@@ -460,8 +460,51 @@ function renderChart(budgets) {
    back to page one — but is clamped when the register shrinks under it. */
 const PAGE = 20;
 let regPage = 1;
+let regSearch = '';                       /* lower-cased, trimmed */
+let regSort = { key: null, dir: 1 };      /* column key and +1 / -1 */
 
-function renderRegister(licences, stdKey, budgets) {
+/* What a column sorts on. Loads are computed, not stored, so they go
+   through licenceLoads like the cells do; status ranks a breach above a
+   pass so "what needs looking at" is one click. */
+function sortValue(l, key, stdKey) {
+  if (key === 'ref') return l.ref ?? '';
+  if (key === 'premises') return l.premises ?? '';
+  if (key === 'standard') return l.standard ?? '';
+  if (key === 'flow') return l.flow ?? 0;
+  if (key.startsWith('conc.')) return l.conc?.[key.slice(5)] ?? 0;
+  if (key.startsWith('load.')) return licenceLoads(l)[key.slice(5)] ?? 0;
+  if (key === 'status') {
+    if (l.active === false) return 0;
+    return licenceCompliance(l, stdKey).pass ? 1 : 2;
+  }
+  return 0;
+}
+
+/* The register as the reader has narrowed and ordered it. The search looks
+   at the reference, the premises and the category — the things a reader
+   would type — and the sort is stable, so ties keep the register's order. */
+function arrangeRegister(licences, stdKey) {
+  let list = licences;
+  if (regSearch) {
+    list = list.filter((l) => [l.ref, l.premises, l.category, l.bulk ? 'estimated' : '',
+      l.example && !l.bulk ? 'example' : '', l.active === false ? 'inactive suspended' : '']
+      .join(' ').toLowerCase().includes(regSearch));
+  }
+  if (regSort.key) {
+    const k = regSort.key;
+    list = list.map((l, i) => [l, i]).sort(([a, ai], [b, bi]) => {
+      const va = sortValue(a, k, stdKey), vb = sortValue(b, k, stdKey);
+      const c = typeof va === 'string'
+        ? va.localeCompare(vb, 'en', { sensitivity: 'base', numeric: true })
+        : va - vb;
+      return (c || ai - bi) * (c ? regSort.dir : 1);
+    }).map(([l]) => l);
+  }
+  return list;
+}
+
+function renderRegister(all, stdKey, budgets) {
+  const licences = arrangeRegister(all, stdKey);
   const active = licences.filter((l) => l.active !== false);
   const totals = {};
   for (const p of LOAD_PARAMS) {
@@ -472,11 +515,22 @@ function renderRegister(licences, stdKey, budgets) {
   regPage = Math.min(Math.max(1, regPage), pages);
   const shown = licences.slice((regPage - 1) * PAGE, regPage * PAGE);
 
+  /* The header shows which column the order is on, and which way */
+  document.querySelectorAll('table.register th.sortable').forEach((th) => {
+    th.classList.toggle('asc', th.dataset.sort === regSort.key && regSort.dir === 1);
+    th.classList.toggle('desc', th.dataset.sort === regSort.key && regSort.dir === -1);
+    th.setAttribute('aria-sort', th.dataset.sort !== regSort.key ? 'none'
+      : regSort.dir === 1 ? 'ascending' : 'descending');
+  });
+
   $('p3Register').innerHTML = licences.length ? shown.map((l) => {
     const loads = licenceLoads(l);
     const comp = licenceCompliance(l, stdKey);
     const inactive = l.active === false;
-    return `<tr class="${inactive ? 'row-off' : ''}">
+    const located = typeof l.lat === 'number' && typeof l.lon === 'number';
+    return `<tr class="${inactive ? 'row-off' : ''}${located ? ' row-go' : ''}"${located
+      ? ` data-lat="${l.lat}" data-lon="${l.lon}"${l.srcId != null ? ` data-src="${l.srcId}"` : ''}
+         title="Open this premises on the map"` : ''}>
       <td>
         <b>${esc(l.ref)}</b>
         <span class="sub">${esc(l.category ?? '—')}${l.bulk ? ' · estimated'
@@ -501,12 +555,14 @@ function renderRegister(licences, stdKey, budgets) {
         <button class="mini danger" data-del="${l.id}">Delete</button>`}
       </td>
     </tr>`;
-  }).join('') : `<tr><td colspan="15" class="empty-row">
-      No licences in the register. Add one below, or restore the worked example.</td></tr>`;
+  }).join('') : `<tr><td colspan="15" class="empty-row">${regSearch
+      ? `Nothing in the register matches “${esc(regSearch)}”.`
+      : 'No licences in the register. Add one below, or restore the worked example.'}</td></tr>`;
 
   $('p3RegTotals').innerHTML = licences.length ? `
     <tr class="totals">
-      <td colspan="3"><b>Total — ${active.length} active licence${active.length === 1 ? '' : 's'}</b></td>
+      <td colspan="3"><b>Total — ${active.length} active licence${active.length === 1 ? '' : 's'}${regSearch
+        ? ` <span class="muted">matching, of ${all.filter((l) => l.active !== false).length}</span>` : ''}</b></td>
       <td class="num"><b>${nf(active.reduce((t, l) => t + (l.flow || 0), 0))}</b></td>
       <td colspan="4" class="num muted">permitted concentration</td>
       ${LOAD_PARAMS.map((p) => `<td class="num strong">${nf(totals[p], 1)}</td>`).join('')}
@@ -514,6 +570,22 @@ function renderRegister(licences, stdKey, budgets) {
     </tr>` : '';
 
   renderPager(licences.length, pages);
+
+  /* A row is the premises: clicking it opens the map there, zoomed in. The
+     buttons at the end of the row keep their own job, so a click on one of
+     them does not also fly off. Rows without a position have nowhere to go
+     and are not made to look as if they do. */
+  $('p3Register').onclick = (e) => {
+    if (e.target.closest('button')) return;
+    const tr = e.target.closest('tr.row-go');
+    if (!tr) return;
+    document.dispatchEvent(new CustomEvent('showonmap', {
+      detail: {
+        lat: Number(tr.dataset.lat), lon: Number(tr.dataset.lon),
+        srcId: tr.dataset.src != null ? Number(tr.dataset.src) : null,
+      },
+    }));
+  };
 
   /* Row actions */
   $('p3Register').querySelectorAll('[data-toggle]').forEach((b) => {
@@ -558,7 +630,7 @@ function renderPager(total, pages) {
     else if (nums.at(-1) !== '…') nums.push('…');
   }
   el.innerHTML = `
-    <span class="pager-info">Showing ${from}–${to} of ${total.toLocaleString('en')}</span>
+    <span class="pager-info">Showing ${from}–${to} of ${total.toLocaleString('en')}${regSearch ? ' matching' : ''}</span>
     <span class="pager-nav">
       <button class="pg" data-page="${regPage - 1}" ${regPage === 1 ? 'disabled' : ''}>‹ Prev</button>
       ${nums.map((n) => n === '…'
@@ -577,6 +649,35 @@ function renderPager(total, pages) {
 }
 
 /* ---------------- Add / edit form ---------------- */
+/* Search box and column headers, wired once. A new search starts from page
+   one; a sort keeps the page, because the reader is looking at the same
+   register in a different order. Clicking the sorted column again flips it,
+   a third click clears it. */
+export function buildRegisterControls() {
+  const box = $('p3Search');
+  let timer = null;
+  box.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      regSearch = box.value.trim().toLowerCase();
+      regPage = 1;
+      renderPhase3();
+    }, 120);
+  });
+  document.querySelectorAll('table.register th.sortable').forEach((th) => {
+    th.tabIndex = 0;
+    const go = () => {
+      const key = th.dataset.sort;
+      if (regSort.key !== key) regSort = { key, dir: 1 };
+      else if (regSort.dir === 1) regSort = { key, dir: -1 };
+      else regSort = { key: null, dir: 1 };
+      renderPhase3();
+    };
+    th.onclick = go;
+    th.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } };
+  });
+}
+
 export function buildLicenceForm() {
   buildTabs();
   buildForPicker();
