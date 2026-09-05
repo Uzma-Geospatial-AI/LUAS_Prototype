@@ -127,6 +127,13 @@ cached; keeping them means an unreachable database degrades to the site working 
 before, rather than to a blank page. One short probe of `/luas/meta` decides for all eight, so a
 closed database costs one round trip rather than eight timeouts.
 
+> ⚠️ **The database does not compress its responses.** Asked for the water body outlines with
+> `Accept-Encoding: gzip` it returns 370,645 bytes; the same file from GitHub Pages arrives
+> gzipped at 75,745 — 4.9× less. Across all eight, throttled to 4 Mbps and a 4× slower CPU, the
+> site takes about **2.2 s** from the database against **0.7 s** from the bundled files. That is
+> the price of a single source of truth, accepted knowingly. Neither figure touches the 2,081 SVG
+> paths the map draws, which is the larger cost on a slow device and is the same either way.
+
 Which source actually answered is shown in the app bar — *served from Firebase · written …*, or
 *served from bundled files · database unavailable (rules closed)*. Where a number came from is not
 something a reader should have to open the network tab to find out.

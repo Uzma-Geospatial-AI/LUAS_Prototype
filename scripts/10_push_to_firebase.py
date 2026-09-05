@@ -46,20 +46,27 @@ and afterwards, which is where it should stay:
 succeed and the write must be refused. Run it after changing the rules
 rather than assuming they took.
 
-    A NOTE ON WHAT THIS IS FOR
+    WHAT IT COSTS, MEASURED
 
-Measured on the deployed site, throttled to 4 Mbps and a 4x slower CPU, the
-eight files are 197 KB over the wire and now arrive in about 0.7 s. Moving
-that same geometry to the Realtime Database does not make it smaller or
-nearer - GitHub Pages serves it gzipped from a CDN, the database serves it
-from one region - and it does nothing at all about the 2,081 SVG paths the
-map draws, which is what actually costs time on a slow device.
+The Realtime Database does not compress its responses. Asked for the water
+body outlines with `Accept-Encoding: gzip` it returns 370,645 bytes; the same
+file from GitHub Pages comes back gzipped at 75,745, which is 4.9x less. Over
+the whole eight, throttled to 4 Mbps and a 4x slower CPU, the deployed site
+takes about 2.2 s to load from the database against 0.7 s from the bundled
+files.
 
-What the database is genuinely good for here is the data that goes stale:
-the JPS water levels, which are a build-time snapshot and could be refreshed
-on a schedule without redeploying the site, and the licence register, which
-today lives in each browser's localStorage and is therefore not shared
-between users at all. Those two are the ones worth reading live.
+That is the price of a single source of truth, and it was accepted knowingly:
+the site reads everything from the database. It is written here so the number
+is on the record rather than rediscovered later as a mystery. Neither figure
+touches the 2,081 SVG paths the map draws, which is the larger cost on a slow
+device and is unaffected by where the data came from.
+
+The database earns it on the data that goes stale: the JPS water levels are a
+build-time snapshot and can now be refreshed by re-running scripts/09 and this
+one, with no redeploy. The licence register still lives in each browser's
+localStorage and is not shared between users; moving it here needs
+authentication first, since a register the public can write to is not a
+register.
 """
 import json
 import os
