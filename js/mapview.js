@@ -596,6 +596,13 @@ function syncControls() {
     box.checked = on > 0;
     box.indeterminate = on > 0 && on < ids.length;
   }
+  /* The legend group masters read back from their rows the same way */
+  document.querySelectorAll('.ml-master').forEach((box) => {
+    const rows = [...document.querySelectorAll(`#${box.dataset.group} [data-vis]`)];
+    const on = rows.filter((r) => visible.has(r.dataset.vis)).length;
+    box.checked = on > 0;
+    box.indeterminate = on > 0 && on < rows.length;
+  });
 }
 
 /* ---------------- Everything that depends on the month ---------------- */
@@ -1007,6 +1014,19 @@ function buildLegend() {
 
   document.querySelectorAll('[data-vis]').forEach((b) => {
     b.onclick = () => toggle(b.dataset.vis);
+  });
+
+  /* Each group heading is a master for the rows under it: everything on, or
+     everything off. It works off the rows actually rendered in the group, so
+     Boundaries — which spans four of the layer-card masters — needs no map of
+     its own, and a group that gains a row gains it here too. */
+  document.querySelectorAll('.ml-master').forEach((box) => {
+    box.onchange = () => {
+      for (const r of document.querySelectorAll(`#${box.dataset.group} [data-vis]`)) {
+        if (box.checked) visible.add(r.dataset.vis); else visible.delete(r.dataset.vis);
+      }
+      applyVisibility();
+    };
   });
 
   /* The legend is the tallest thing on the map; let it fold out of the way */

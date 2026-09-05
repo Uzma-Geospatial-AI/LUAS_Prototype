@@ -204,8 +204,11 @@ The map fills the window and every corner says what it is counting.
 **The legend is the filter.** Every row is a switch: turn off *Slightly Polluted* and those
 stations leave the map, turn off *Ponds* and the ponds go. Twenty-three rows across six groups. The
 layer masters command a group of rows — switching one off clears the group, and it reads back as
-on, off or part-on from its members, so the two panels cannot disagree. The legend folds to a
-single pill when it is in the way.
+on, off or part-on from its members, so the two panels cannot disagree. Each legend group heading
+carries the same master switch for the rows under it, working off the rows actually rendered
+there rather than a list of its own — so *Boundaries*, which spans four of the layer-card
+masters, needs no special case, and a group that gains a row gains it in the switch too. The
+legend folds to a single pill when it is in the way.
 
 **The class counts** across the top: the station total in one box, then how many stations sit in
 each WQI class this month in another. They carry the same colour and roman numeral as the markers

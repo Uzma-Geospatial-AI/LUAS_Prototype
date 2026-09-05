@@ -616,6 +616,15 @@ select{cursor:pointer}
 .map-card h5{font-size:9.5px;text-transform:uppercase;letter-spacing:.1em;
   font-weight:700;color:var(--muted);margin:0 0 7px}
 .map-card h5.sep{margin-top:11px;padding-top:9px;border-top:1px solid var(--line)}
+/* A legend heading carries the master switch for its rows. The box sits where
+   the row ticks sit — 4px in from the right, 13px square — so the column of
+   switches reads as one column. */
+.map-card h5.ml-head{display:flex;align-items:center;gap:6px}
+.ml-ht{flex:1;min-width:0}
+.ml-master{
+  flex:none;margin:0 4px 0 auto;width:13px;height:13px;
+  accent-color:var(--navy-2);cursor:pointer;
+}
 .map-bl{left:14px;bottom:14px;width:214px}
 .map-br{right:14px;bottom:14px;width:216px}
 

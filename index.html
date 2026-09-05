@@ -194,18 +194,24 @@
       <button class="card-min" id="legendMin" aria-expanded="true"
         title="Minimise the legend"><span>Legend</span></button>
       <div class="card-body">
-        <h5>WQI class · station colour</h5>
+        <h5 class="ml-head"><span class="ml-ht">WQI class · station colour</span>
+          <input type="checkbox" class="ml-master" data-group="mapLegendWqi" aria-label="All WQI classes"></h5>
         <div id="mapLegendWqi"></div>
-        <h5 class="sep">River water level · JPS
-          <span class="ml-when" id="mapLegendWhen"></span></h5>
+        <h5 class="sep ml-head"><span class="ml-ht">River water level · JPS
+          <span class="ml-when" id="mapLegendWhen"></span></span>
+          <input type="checkbox" class="ml-master" data-group="mapLegendLevels" aria-label="All river water level stations"></h5>
         <div id="mapLegendLevels"></div>
-        <h5 class="sep">Point source</h5>
+        <h5 class="sep ml-head"><span class="ml-ht">Point source</span>
+          <input type="checkbox" class="ml-master" data-group="mapLegendSources" aria-label="All point sources"></h5>
         <div id="mapLegendSources"></div>
-        <h5 class="sep">Licences</h5>
+        <h5 class="sep ml-head"><span class="ml-ht">Licences</span>
+          <input type="checkbox" class="ml-master" data-group="mapLegendLic" aria-label="All licences"></h5>
         <div id="mapLegendLic"></div>
-        <h5 class="sep">Water body type</h5>
+        <h5 class="sep ml-head"><span class="ml-ht">Water body type</span>
+          <input type="checkbox" class="ml-master" data-group="mapLegendWater" aria-label="All water body types"></h5>
         <div id="mapLegendWater"></div>
-        <h5 class="sep">Boundaries</h5>
+        <h5 class="sep ml-head"><span class="ml-ht">Boundaries</span>
+          <input type="checkbox" class="ml-master" data-group="mapLegendBounds" aria-label="All boundaries and channels"></h5>
         <div id="mapLegendBounds"></div>
       </div>
     </div>
