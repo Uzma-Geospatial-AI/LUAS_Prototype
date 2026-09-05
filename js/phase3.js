@@ -393,7 +393,7 @@ function renderHeadline(budgets, head, cond, reading) {
       <div class="k-lab">Receiving environment</div>
       <div class="k-val" style="font-size:25px">${(w.total / 1e6).toFixed(1)}<span class="k-unit">km²</span></div>
       <div class="k-sub">${w.groups.treatment.n} treatment &amp; oxidation basins</div>
-      <div class="k-note">Across the catchment ${tipmark('Lakes, ponds, wetlands and treatment '
+      <div class="k-note">Across the catchment ${tipmark('Lakes, ponds and treatment '
         + 'basins across the catchment. They receive and hold discharge before it reaches the '
         + 'channel, so they are the environment this budget discharges into.')}</div>
     </div>

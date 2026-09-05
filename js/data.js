@@ -194,6 +194,12 @@ export const fmtMonth = (m) => `${MONTHS_EN[+m.split('-')[1] - 1]} ${m.split('-'
    Source: Digital Earth malaysia_water_bodies.geojson, clipped by
    scripts/02_build_waterbodies.py.
    ============================================================ */
+/* No wetland group. The source classification covers seasonally inundated and
+   converted land, so on this catchment it resolved to twelve unnamed polygons
+   — two of them 374 and 111 ha — lying over what the imagery shows as planted
+   estate. Drawing that as a water body claims a receiving water where there is
+   no open water, and at the zoom the map is read at it covered the features
+   that are real. scripts/02 drops it too, so a rebuild agrees. */
 export const WATER_GROUPS = {
   treatment: { label: 'Treatment & oxidation basins', color: '#4a3aa7',
     note: 'Wastewater ponds and settling basins \u2014 assets that sit between a discharge and the river.' },
@@ -201,8 +207,6 @@ export const WATER_GROUPS = {
     note: 'Standing water that stores and slowly releases whatever load reaches it.' },
   pond:      { label: 'Ponds', color: '#45bfe0',
     note: 'Mostly ex-mining and detention ponds across the Langat floodplain.' },
-  wetland:   { label: 'Wetlands', color: '#17a04a',
-    note: 'Natural polishing capacity \u2014 wetlands strip nutrients and suspended solids.' },
   channel:   { label: 'Mapped channel surface', color: '#3c8fb5',
     note: 'The river and stream surface itself within the reach.' },
   other:     { label: 'Other open water', color: '#8b93a8',

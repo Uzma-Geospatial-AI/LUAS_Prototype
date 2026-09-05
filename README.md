@@ -7,7 +7,7 @@ reaches the river. Built by Geospatial AI Sdn Bhd, an Uzma Group company.
 Live: https://uzma-geospatial-ai.github.io/LUAS_Prototype/
 
 1. **Map** — satellite imagery, the catchment and its rivers, 16 stations, 21 JPS water level
-   gauges, 1,101 water bodies and 651 point sources, all filterable and steppable through 56
+   gauges, 1,089 water bodies and 651 point sources, all filterable and steppable through 56
    months.
 2. **Phase 1 · Station Assessment** — six DOE parameters → WQI → does the reach hold Class II?
 3. **Phase 2 · Quality Monitoring** — how often each parameter breaches, and how it trends.
@@ -60,7 +60,7 @@ LUAS_Prototype/
 ├── data/
 │   ├── langat_basin.geojson       the catchment
 │   ├── langat_rivers.geojson      489 river reaches
-│   ├── waterbodies_langat.geojson 1,101 water body outlines
+│   ├── waterbodies_langat.geojson 1,089 water body outlines
 │   ├── pollution_sources.geojson  651 sites in the riparian zone
 │   ├── selangor_boundary.geojson  state boundary
 │   ├── water_levels.json          21 JPS river water level stations
@@ -111,7 +111,7 @@ without coming back to this repository to find out what is in it.
 | `basin_pollution` | national basin pollution, data.gov.my |
 | `catchment` | the Sungai Langat catchment |
 | `rivers` | 489 river reaches |
-| `waterbodies` | 1,101 water body outlines |
+| `waterbodies` | 1,089 water body outlines |
 | `sources` | 651 point sources |
 | `selangor` | the state boundary |
 
@@ -201,7 +201,7 @@ The map fills the window and every corner says what it is counting.
 | Bottom right | The legend, which is also the filter |
 
 **The legend is the filter.** Every row is a switch: turn off *Slightly Polluted* and those
-stations leave the map, turn off *Ponds* and the ponds go. Twenty-four rows across six groups. The
+stations leave the map, turn off *Ponds* and the ponds go. Twenty-three rows across six groups. The
 layer masters command a group of rows — switching one off clears the group, and it reads back as
 on, off or part-on from its members, so the two panels cannot disagree. The legend folds to a
 single pill when it is in the way.
@@ -256,12 +256,21 @@ counts move with it, which is the quickest read of whether the basin is improvin
 |---|---|
 | Monitoring stations | 16 stations, drawn as their WQI and coloured by DOE class |
 | River water level | 21 JPS gauges, drawn as a staff gauge and coloured by JPS status |
-| Water bodies | 1,101 Digital Earth outlines, coloured by type |
+| Water bodies | 1,089 Digital Earth outlines, coloured by type |
 | Point sources | 651 sites that can put a load into the river, one shape per category |
 | Sungai Langat & tributaries | 682 km of mapped channel, drawn at a width scaled by what it carries |
 | Flow direction | the same channels, dashed and animated downstream |
 | Langat catchment | 2,140 km², the clip for everything else |
 | Selangor boundary | the state LUAS is responsible for, Federal Territories excluded |
+
+> ⚠️ **The wetland class is not carried.** The Digital Earth classification covers seasonally
+> inundated and converted land, so on this catchment it resolved to twelve unnamed polygons — two
+> of them 374 ha and 111 ha — lying over what the imagery plainly shows as planted estate. Drawing
+> 554 ha of that as a water body claims a receiving water where there is no open water, and at the
+> zoom the map is read at it covered the features that are real. Dropped from `scripts/02`, from
+> the built file, and from the app, so the three cannot drift. Eleven point sources had a wetland
+> as their nearest water; `scripts/08` was re-run, so their distances and screening scores now
+> measure to water that exists.
 
 ### Basemaps
 
@@ -498,7 +507,7 @@ and every figure recomputes from them.
 | Dataset | Source | Status |
 |---|---|---|
 | National river basin pollution, 198 records 2000–2021 | [`data.gov.my` · `water_pollution_basin`](https://api.data.gov.my/data-catalogue?id=water_pollution_basin) | **Real** |
-| Water bodies, 1,101 outlines | [Digital Earth · `malaysia_water_bodies.geojson`](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/malaysia_water_bodies.geojson) | **Real** |
+| Water bodies, 1,089 outlines | [Digital Earth · `malaysia_water_bodies.geojson`](https://digitalearthgeojson.s3.ap-southeast-5.amazonaws.com/malaysia_water_bodies.geojson) | **Real** |
 | Sungai Langat catchment, 2,140 km² | [HydroSHEDS · HydroBASINS Asia level 8](https://www.hydrosheds.org/products/hydrobasins) | **Real** |
 | River network, 489 reaches, 682 km | [OpenStreetMap](https://www.openstreetmap.org) via Overpass | **Real** |
 | Point sources, 651 sites | [OpenStreetMap](https://www.openstreetmap.org) via Overpass | **Real** (risk score ⚠️ derived) |

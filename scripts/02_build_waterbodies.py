@@ -257,6 +257,14 @@ with open(SRC, encoding='utf-8') as f:
 print('source features:', len(feats_in))
 
 # ---------------- Clip and reduce ----------------
+# Wetland polygons are not carried. The source classification covers
+# seasonally inundated and converted land, so on this catchment they resolve to
+# twelve unnamed shapes - two of them 374 and 111 ha - over what the imagery
+# shows as planted estate. A water quality map that draws them is claiming a
+# receiving water where there is no open water, and they cover the features
+# that are real at the zoom the map is read at.
+DROP_KINDS = {'wetland', 'marsh', 'swamp', 'bog', 'fen'}
+
 KIND_GROUPS = {
     'wastewater': 'treatment',
     'basin': 'treatment',
@@ -265,7 +273,6 @@ KIND_GROUPS = {
     'pond': 'pond',
     'stream_pool': 'pond',
     'water': 'other',
-    'wetland': 'wetland',
     'river': 'channel',
     'stream': 'channel',
     'canal': 'channel',
@@ -286,6 +293,8 @@ for ft in feats_in:
     if not in_basin((lon, lat), BPOLYS):
         continue
     kind = p.get('kind') or p.get('water') or p.get('natural') or 'water'
+    if kind in DROP_KINDS:
+        continue
     area = geom_area_m2(g, lat)          # measured at full resolution
     if area < 400 and not p.get('name'):
         continue                         # drop slivers with no identity

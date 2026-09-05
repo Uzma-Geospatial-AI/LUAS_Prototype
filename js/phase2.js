@@ -77,7 +77,7 @@ function renderExceedance(s, target, rec) {
 function renderWaterBodies() {
   const w = waterSummary();
   const km2 = (m2) => (m2 / 1e6).toFixed(2);
-  const order = ['treatment', 'storage', 'pond', 'wetland', 'channel', 'other']
+  const order = ['treatment', 'storage', 'pond', 'channel', 'other']
     .filter((k) => w.groups[k].n);
 
   $('p2Water').innerHTML = order.map((k) => {
