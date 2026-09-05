@@ -261,11 +261,12 @@ counts move with it, which is the quickest read of whether the basin is improvin
 |---|---|
 | Monitoring stations | 16 stations, drawn as their WQI and coloured by DOE class |
 | River water level | 21 JPS gauges, drawn as a staff gauge and coloured by JPS status |
-| Water bodies | 1,089 Digital Earth outlines, coloured by type |
+| Water bodies | 1,089 Digital Earth outlines, coloured by type. Each carries a `flow` read off the mapped rivers: *thru*, *out*, *in* or *still* |
 | Point sources | 651 sites that can put a load into the river, one shape per category; the fill is **green** with a discharge licence and **red** without. Where the register has an entry the colour follows it; everywhere else the status is an **estimate** (`js/licenceStatus.js`), because no licence register is published as open data |
 | Licence register pins | the ring or pin drawn on each premises that has an entry in the SESAMS register |
 | Sungai Langat & tributaries | 682 km of mapped channel, drawn at a width scaled by what it carries |
 | Flow direction | the same channels, dashed and animated downstream |
+| Water body flow | a body a river passes through carries the river's own flow; one that drains to a channel shows an animated run out to it; standing water that no mapped river touches gets a dashed ring that turns in place, from zoom 13. No direction is invented: 1,071 of the 1,089 bodies are *still* in the data |
 | Langat catchment | 2,140 km², the clip for everything else |
 | Selangor boundary | the state LUAS is responsible for, Federal Territories excluded |
 

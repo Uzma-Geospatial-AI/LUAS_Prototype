@@ -838,7 +838,21 @@ select{cursor:pointer}
   background:repeating-linear-gradient(90deg,#fff 0 6px,transparent 6px 10px);
   outline:1px solid rgba(0,0,0,.18);
 }
-@media(prefers-reduced-motion:reduce){.flow-anim{animation:none}}
+/* Standing water: no mapped river enters or leaves it, so the ring turns in
+   place instead of pointing anywhere. Slow, so a floodplain of ponds does
+   not shimmer. The key is the same ring, turning, on a disc of pond colour
+   so its white dashes show on the card. */
+.still-anim{animation:flowDash 6s linear infinite;pointer-events:none}
+@keyframes stillTurn{to{transform:rotate(360deg)}}
+.ml-ring.stillkey{
+  width:14px;height:14px;flex:none;border-radius:50%;border:2px dashed #fff;
+  background:#45bfe0;outline:1px solid rgba(0,0,0,.18);box-sizing:border-box;
+  animation:stillTurn 6s linear infinite;
+}
+.ml-row.off .ml-ring{filter:grayscale(1);animation:none}
+@media(prefers-reduced-motion:reduce){
+  .flow-anim,.still-anim,.ml-ring.stillkey{animation:none}
+}
 
 /* The water a source reaches, flashed so it can be picked out of the map */
 @keyframes flashWater{

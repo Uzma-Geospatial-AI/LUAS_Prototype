@@ -42,6 +42,8 @@ let stationLayer = null, basinLayer = null, stateLayer = null;
 const waterLayers = {};       // water:<group>
 let flowLayer = null;         // the animated direction overlay
 let licenceLayer = null;      // premises with a discharge licence
+let waterFlowLayer = null;    // water that drains out to a mapped channel
+let stillLayer = null;        // standing water, ringed; drawn from zoom 13
 const sourceLayers = {};      // src:<category>
 const levelLayers = {};       // wl:<status> — JPS river water level
 const riverLayers = {};       // river:main | river:trib
@@ -118,7 +120,7 @@ export function initMap() {
 
   /* A 1 ha pond is sub-pixel across the whole basin, so the outline has to
      carry the colour itself until the zoom makes the shape readable. */
-  map.on('zoomend', () => { restyleWater(); restyleRivers(); });
+  map.on('zoomend', () => { restyleWater(); restyleRivers(); syncStill(); });
 
   applyVisibility();
   if (pendingFly) {
@@ -224,7 +226,8 @@ function buildRivers() {
      takes a click away from them. */
   flowLayer = L.geoJSON(DATA.rivers, { style: flowStyle });
   visible.add('flow:anim');
-  MASTERS.flow = ['flow:anim'];
+  visible.add('flow:water');
+  MASTERS.flow = ['flow:anim', 'flow:water'];
 }
 
 /* The moving dashes ride on top of the channel, at about half its width, so a
@@ -246,6 +249,11 @@ function flowStyle(f) {
 /* ---------------- Water bodies ---------------- */
 function buildWaterBodies() {
   const ids = [];
+  /* Its own pane, above the fills: a ring drawn in the overlay pane would
+     end up under whichever water layer was toggled on last. */
+  map.createPane('waterflow').style.zIndex = 450;
+  waterFlowLayer = L.layerGroup();
+  stillLayer = L.layerGroup();
   for (const key of Object.keys(WATER_GROUPS)) {
     const list = DATA.water.geo.features.filter((f) => f.properties.group === key);
     if (!list.length) continue;
@@ -257,8 +265,10 @@ function buildWaterBodies() {
         l.bindTooltip(
           `<b>${b.name ? esc(b.name) : 'Unnamed water body'}</b><br>`
           + `${esc(g.label)} · ${esc(b.kind)}<br>`
-          + `${(b.area_m2 / 1e4).toFixed(2)} ha · ${b.km.toFixed(1)} km from the nearest river`,
+          + `${(b.area_m2 / 1e4).toFixed(2)} ha · ${b.km.toFixed(1)} km from the nearest river`
+          + (b.flow ? `<br><i>${flowNote(b)}</i>` : ''),   /* older data has no flow */
           { sticky: true });
+        drawWaterFlow(f, b);
         l.on({
           mouseover: (e) => e.target.setStyle({ weight: 1.8, fillOpacity: 0.8 }),
           mouseout: (e) => layer.resetStyle(e.target),
@@ -271,6 +281,65 @@ function buildWaterBodies() {
     ids.push(`water:${key}`);
   }
   MASTERS.water = ids;
+}
+
+/* What the data says about the water moving. `flow` is read off the mapped
+   rivers by scripts/02: a reach that crosses the body, begins in it, ends in
+   it, or none at all. Most bodies here are the last — ex-mining pits and
+   detention ponds no mapped river touches — and the note says exactly that
+   rather than pretending to know which way their water goes. */
+function flowNote(b) {
+  const via = b.via ? esc(b.via) : 'a mapped river';
+  switch (b.flow) {
+    case 'thru': return `Through-flow: ${via} passes through it`;
+    case 'out':  return `Drains out to ${via}`;
+    case 'in':   return `Fed by ${via}; where it drains is not mapped`;
+    default:
+      return b.group === 'channel'
+        ? 'Channel surface: flows with the river'
+        : 'Standing water: no mapped inflow or outflow';
+  }
+}
+
+/* The moving picture of that.
+     thru  — the river's own flow animation already crosses the body, so
+             nothing is added: one flow, drawn once.
+     out   — a dashed run from the body's centre to where the outlet reach
+             begins, animated the same way as the channels, so the eye can
+             follow the water out of the pond and down the river.
+     still — a dashed ring that turns in place. It is not a direction, because
+             the data has none to give; it says "water, not moving through".
+             Drawn from zoom 13 only: below that a pond is smaller than the
+             ring would be, and a floodplain of them would just shimmer.
+   A channel-surface polygon is the river itself, so it gets neither. */
+function drawWaterFlow(f, b) {
+  const opts = { pane: 'waterflow', interactive: false, color: '#ffffff' };
+  if (b.flow === 'out' && b.outlet) {
+    L.polyline([[b.lat, b.lon], [b.outlet[1], b.outlet[0]]], {
+      ...opts, weight: 2, opacity: 0.9, dashArray: '5 15', className: 'flow-anim',
+    }).addTo(waterFlowLayer);
+  } else if (b.flow === 'still' && b.group !== 'channel') {
+    /* Every ring turns the same way, so the winding of the source polygon
+       is normalised: clockwise on the screen. */
+    const ring = f.geometry.coordinates[0];
+    let a = 0;
+    for (let i = 0; i < ring.length - 1; i++) {
+      a += (ring[i + 1][0] - ring[i][0]) * (ring[i + 1][1] + ring[i][1]);
+    }
+    const cw = a > 0 ? ring : ring.slice().reverse();
+    L.polygon(cw.map(([lon, lat]) => [lat, lon]), {
+      ...opts, weight: 1.3, opacity: 0.75, fill: false,
+      dashArray: '3 7', className: 'still-anim',
+    }).addTo(stillLayer);
+  }
+}
+
+/* The rings are worth drawing only once a pond is bigger than its ring */
+function syncStill() {
+  if (!stillLayer || !map) return;
+  const on = visible.has('flow:water') && map.getZoom() >= 13;
+  if (on) { if (!map.hasLayer(stillLayer)) stillLayer.addTo(map); }
+  else if (map.hasLayer(stillLayer)) map.removeLayer(stillLayer);
 }
 
 function waterStyle(f) {
@@ -582,6 +651,8 @@ function applyVisibility() {
   set(stateLayer, visible.has('bound:selangor'));
   for (const [k, l] of Object.entries(riverLayers)) set(l, visible.has(`river:${k}`));
   set(flowLayer, visible.has('flow:anim'));
+  set(waterFlowLayer, visible.has('flow:water'));
+  syncStill();
   set(licenceLayer, visible.has('licence:all'));
   riverLayers.main?.bringToFront();
   flowLayer?.bringToFront();
@@ -1052,7 +1123,13 @@ function buildLegend() {
     + row('river:trib', line('#45bfe0', true), 'Tributaries',
       `${riverLayers.trib?.getLayers().length ?? 0} reaches`)
     + row('flow:anim', '<span class="ml-line flowkey"></span>', 'Flow direction',
-      'downstream');
+      'downstream')
+    + row('flow:water', '<span class="ml-ring stillkey"></span>', 'Water body flow',
+      'still water turns in place',
+      'Read off the mapped rivers. A body a river passes through carries the river\'s own '
+      + 'flow; one that drains to a channel shows the run out to it; a turning ring marks '
+      + 'standing water that no mapped river enters or leaves, so nothing in the data says '
+      + 'its water moves. Rings are drawn from zoom 13.');
 
   countLicences();
 

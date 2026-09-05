@@ -17,6 +17,15 @@ sit between a licensed discharge and the river, and their surface area is a
 first-order proxy for retention capacity. Each body also carries its distance to
 the nearest mapped river, which says how directly it drains to a channel.
 
+Whether water moves THROUGH a body is read off the same river network. OSM
+draws a waterway downstream, so a river whose last vertex lies inside a
+polygon flows into it, one whose first vertex lies inside flows out of it, and
+one with vertices inside at neither end crosses it. A body no mapped river
+touches is recorded as `still`: standing water with no mapped inflow or
+outflow. That is what the data can support — most ponds here are ex-mining
+pits and detention basins, and nothing in either source says which way, if
+at all, their water moves.
+
 Run in order:
     01_fetch_waterbodies.py     the national source file
     06_fetch_langat_basin.py    the catchment, used here as the clip
@@ -235,6 +244,78 @@ for ft in rivers['features']:
 print('river segments for distance: %d over %s km'
       % (len(SEGMENTS), rivers['meta']['total_km']))
 
+# Each reach once more, whole, with its bounding box: the flow test below
+# looks at where a reach starts and ends relative to a polygon, which the
+# segment list above has already thrown away.
+REACHES = []
+for ft in rivers['features']:
+    c = ft['geometry']['coordinates']
+    xs = [q[0] for q in c]
+    ys = [q[1] for q in c]
+    REACHES.append(((min(xs), min(ys), max(xs), max(ys)), c,
+                    ft['properties'].get('name'), ft['properties'].get('id')))
+
+
+def outer_rings(geom):
+    if geom['type'] == 'Polygon':
+        return [geom['coordinates'][0]]
+    if geom['type'] == 'MultiPolygon':
+        return [poly[0] for poly in geom['coordinates']]
+    return []
+
+
+def flow_relation(geom):
+    """How the mapped rivers relate to one water body.
+
+    thru  - a reach crosses it, or lies wholly inside it: water passes through
+    out   - a reach begins inside it: it drains to a mapped channel
+    in    - a reach ends inside it and none leaves: it is fed, but where the
+            water goes next is not mapped
+    still - no mapped river touches it
+    """
+    rings = outer_rings(geom)
+    if not rings:
+        return {'flow': 'still'}
+    xs = [q[0] for r in rings for q in r]
+    ys = [q[1] for r in rings for q in r]
+    bx0, by0, bx1, by1 = min(xs), min(ys), max(xs), max(ys)
+
+    def inside(q):
+        return (bx0 <= q[0] <= bx1 and by0 <= q[1] <= by1
+                and any(in_ring(q, r) for r in rings))
+
+    thru, inlets, outlets = [], [], []
+    for (rx0, ry0, rx1, ry1), c, name, rid in REACHES:
+        if rx1 < bx0 or rx0 > bx1 or ry1 < by0 or ry0 > by1:
+            continue
+        first, last = inside(c[0]), inside(c[-1])
+        if last and not first:
+            inlets.append((c[-1], name, rid))
+        elif first and not last:
+            outlets.append((c[0], name, rid))
+        elif first and last:
+            thru.append((name, rid))
+        elif any(inside(q) for q in c[1:-1]):
+            thru.append((name, rid))
+
+    def named(items):
+        for it in items:
+            if it[-2]:
+                return it[-2]
+        return None
+
+    if thru:
+        return {'flow': 'thru', 'via': named(thru)}
+    if outlets:
+        (lon, lat), name, rid = outlets[0]
+        return {'flow': 'out', 'via': name,
+                'outlet': [round(lon, 5), round(lat, 5)]}
+    if inlets:
+        (lon, lat), name, rid = inlets[0]
+        return {'flow': 'in', 'via': name,
+                'inlet': [round(lon, 5), round(lat, 5)]}
+    return {'flow': 'still'}
+
 # ---------------- Read ----------------
 # Accepts either the raw national file (one Feature per line) or an already
 # clipped FeatureCollection.
@@ -316,6 +397,7 @@ for ft in feats_in:
     }
     if p.get('name'):
         props['name'] = p['name']
+    props.update(flow_relation(g))       # measured at full resolution, like the area
     feats_out.append({
         'type': 'Feature',
         'properties': {k: v for k, v in props.items() if v is not None},
@@ -330,6 +412,7 @@ total_area = sum(ft['properties']['area_m2'] for ft in feats_out)
 print('inside the Langat catchment:', len(feats_out))
 print('by group :', Counter(ft['properties']['group'] for ft in feats_out).most_common())
 print('by kind  :', Counter(ft['properties']['kind'] for ft in feats_out).most_common(10))
+print('by flow  :', Counter(ft['properties']['flow'] for ft in feats_out).most_common())
 print('total surface area: %.2f km2' % (total_area / 1e6))
 print('treatment ponds   : %.2f km2' %
       (sum(ft['properties']['area_m2'] for ft in feats_out
@@ -349,7 +432,11 @@ payload = {
                  'catchment. Outlines are kept and simplified to about %d m, so the map '
                  'draws the water surface itself. Surface areas are computed from the '
                  'full-resolution geometry, before simplification. "km" is the distance '
-                 'to the nearest mapped river, not to any station.'
+                 'to the nearest mapped river, not to any station. "flow" is read off '
+                 'the mapped rivers: thru - a reach crosses the body; out - a reach '
+                 'begins inside it (its start is "outlet"); in - a reach ends inside it '
+                 'and none leaves; still - no mapped river touches it, so nothing in the '
+                 'data says its water moves at all.'
                  % round(SIMPLIFY_DEG * MPD)),
     },
     'features': feats_out,
