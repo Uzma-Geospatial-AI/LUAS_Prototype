@@ -261,7 +261,8 @@ counts move with it, which is the quickest read of whether the basin is improvin
 | Monitoring stations | 16 stations, drawn as their WQI and coloured by DOE class |
 | River water level | 21 JPS gauges, drawn as a staff gauge and coloured by JPS status |
 | Water bodies | 1,089 Digital Earth outlines, coloured by type |
-| Point sources | 651 sites that can put a load into the river, one shape per category |
+| Point sources | 651 sites that can put a load into the river, one shape per category; the outline is **green** with an active licence in the register and **red** without |
+| Licence status | two switches — *Licensed* and *Not in register* — that hide sources by status across every category |
 | Sungai Langat & tributaries | 682 km of mapped channel, drawn at a width scaled by what it carries |
 | Flow direction | the same channels, dashed and animated downstream |
 | Langat catchment | 2,140 km², the clip for everything else |

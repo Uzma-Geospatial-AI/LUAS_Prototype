@@ -50,7 +50,9 @@ const FALLBACK = { outline: '<circle cx="12" cy="12" r="9"/>', glyph: '' };
    dropped — it turns to mud at that size and the shape still carries it. */
 export function sourceSvg(shape, color, size = 20, withGlyph = true) {
   const d = SHAPES[shape] ?? FALLBACK;
-  const body = d.outline.replace('/>', ` fill="${color}" stroke="#fff" stroke-width="1.9"/>`);
+  /* The outline is a class, not just an attribute, so a marker on the map can
+     recolour it by licence status while the legend swatch keeps it white. */
+  const body = d.outline.replace('/>', ` class="sb" fill="${color}" stroke="#fff" stroke-width="2.2"/>`);
   return `<svg viewBox="0 0 24 24" width="${size}" height="${size}"
     style="display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))">`
     + `${body}${withGlyph && size >= 15 ? d.glyph : ''}</svg>`;

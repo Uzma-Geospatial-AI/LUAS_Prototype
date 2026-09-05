@@ -95,7 +95,8 @@ export function initMap() {
   buildLevels();
   licenceLayer = L.layerGroup();
   visible.add('licence:all');
-  MASTERS.licences = ['licence:all'];
+  visible.add('lic:none');
+  MASTERS.licences = ['licence:all', 'lic:none'];
   stationLayer = L.layerGroup().addTo(map);
 
   /* Delegated: paintKpis replaces the chips on every month step, so a
@@ -558,6 +559,12 @@ function applyVisibility() {
   for (const [k, l] of Object.entries(riverLayers)) set(l, visible.has(`river:${k}`));
   set(flowLayer, visible.has('flow:anim'));
   set(licenceLayer, visible.has('licence:all'));
+  /* Licence status cuts across the category layers, so it is a class on the
+     map rather than a layer of its own: 651 symbols show or hide by status
+     without any of them being redrawn. */
+  const box = map.getContainer().classList;
+  box.toggle('hide-lic', !visible.has('licence:all'));
+  box.toggle('hide-nolic', !visible.has('lic:none'));
   riverLayers.main?.bringToFront();
   flowLayer?.bringToFront();
   for (const [k, l] of Object.entries(waterLayers)) set(l, visible.has(`water:${k}`));
@@ -653,6 +660,25 @@ function paintLicences() {
       licenceMarkers.push({ lat: l.lat, lon: l.lon, marker: m });
     }
   }
+
+  /* Every point source says whether it holds a licence: the symbol's outline
+     goes green when an active licence in the register sits on it, red when
+     none does. Red means "not in this register" and nothing more — the
+     register is the only thing this system can see, and a suspended licence
+     counts as none. A class on the marker carries it, so all 651 recolour
+     without one of them being redrawn. */
+  const licensed = new Set(store.licences()
+    .filter((l) => l.active !== false && l.srcId != null).map((l) => l.srcId));
+  let none = 0;
+  for (const [sid, m] of sourceMarkers) {
+    const on = licensed.has(sid);
+    if (!on) none += 1;
+    m.options.icon.options.className = on ? 'src-sym lic' : 'src-sym';  /* for its next add */
+    const el = m.getElement();
+    if (el) el.classList.toggle('lic', on);
+  }
+  const c = $('legNoLicN');
+  if (c) c.textContent = none.toLocaleString('en');
   countLicences();
 }
 
@@ -1008,8 +1034,14 @@ function buildLegend() {
       'downstream');
 
   $('mapLegendLic').innerHTML = row('licence:all',
-    '<span class="lic-key">L</span>', 'Licensed premises',
-    '<span id="legLicN">0</span> located');
+    '<span class="lic-key">L</span>', 'Licensed',
+    '<span id="legLicN">0</span> located',
+    'Holds an active licence in this register. Drawn with a green outline and ringed.')
+    + row('lic:none',
+      '<span class="lic-key none"></span>', 'Not in register',
+      '<span id="legNoLicN">0</span> sites',
+      'No licence in this register — drawn with a red outline. It says nothing about '
+      + 'whether the premises holds one elsewhere; the register is all this system can see.');
   countLicences();
 
   document.querySelectorAll('[data-vis]').forEach((b) => {
