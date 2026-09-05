@@ -290,7 +290,7 @@ table.register th{padding:8px 11px;font-size:9.5px}
 .st-pass{background:#e6f6ec;color:#0d7a3f}
 .st-fail{background:#fdeceb;color:#b42318}
 .st-off{background:var(--surface-2);color:var(--muted)}
-.tag-example{display:inline-block;background:#fff3d6;color:#8a5a00;font-size:9px;
+.tag-example-unused{display:inline-block;background:#fff3d6;color:#8a5a00;font-size:9px;
   font-weight:700;letter-spacing:.07em;padding:1px 5px;border-radius:4px;
   margin-left:6px;font-family:var(--fm)}
 .tag-focus{display:inline-block;background:var(--navy);color:#fff;font-size:9px;
@@ -1019,3 +1019,20 @@ select{cursor:pointer}
   .written-for{flex-direction:column;align-items:stretch}
   .written-for select{max-width:none}
 }
+
+/* ---------------- Register pager ---------------- */
+.pager{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  flex-wrap:wrap;margin-top:10px;font-size:11.5px;color:var(--muted)}
+.pager:empty{display:none}
+.pager-info{font-family:var(--fm)}
+.pager-nav{display:flex;align-items:center;gap:4px}
+.pg{
+  min-width:30px;height:30px;padding:0 9px;border-radius:6px;border:1px solid var(--line-2);
+  background:var(--surface);color:var(--text);font-size:11.5px;cursor:pointer;
+  font-family:inherit;transition:.12s;
+}
+.pg.num{font-family:var(--fm)}
+.pg:hover:not(:disabled){border-color:var(--navy-2);color:var(--navy)}
+.pg.on{background:var(--navy);border-color:var(--navy);color:#fff;cursor:default}
+.pg:disabled{opacity:.4;cursor:default}
+.pg-gap{padding:0 4px;color:var(--muted-2)}

@@ -306,8 +306,9 @@ function flowNote(b) {
      out   — a dashed run from the body's centre to where the outlet reach
              begins, animated the same way as the channels, so the eye can
              follow the water out of the pond and down the river.
-     still — a dashed ring that turns in place. It is not a direction, because
-             the data has none to give; it says "water, not moving through".
+     still — dashed rings that turn in place, the outline and two shrunk
+             copies of it towards the centre. Not a direction, because the
+             data has none to give; it says "water, not moving through".
              Drawn from zoom 13 only: below that a pond is smaller than the
              ring would be, and a floodplain of them would just shimmer.
    A channel-surface polygon is the river itself, so it gets neither. */
@@ -326,10 +327,17 @@ function drawWaterFlow(f, b) {
       a += (ring[i + 1][0] - ring[i][0]) * (ring[i + 1][1] + ring[i][1]);
     }
     const cw = a > 0 ? ring : ring.slice().reverse();
-    L.polygon(cw.map(([lon, lat]) => [lat, lon]), {
-      ...opts, weight: 1.3, opacity: 0.75, fill: false,
-      dashArray: '3 7', className: 'still-anim',
-    }).addTo(stillLayer);
+    /* The outline, then the same shape shrunk towards the centre so the
+       turning reads across the surface and not only at the bank. Only where
+       there is a surface to speak of: under half a hectare the inner rings
+       would sit on top of each other. */
+    const scales = b.area_m2 >= 5000 ? [1, 0.66, 0.33] : [1];
+    for (const k of scales) {
+      L.polygon(cw.map(([lon, lat]) => [b.lat + (lat - b.lat) * k, b.lon + (lon - b.lon) * k]), {
+        ...opts, weight: k === 1 ? 1.3 : 1, opacity: k === 1 ? 0.75 : 0.5, fill: false,
+        dashArray: '3 7', className: 'still-anim',
+      }).addTo(stillLayer);
+    }
   }
 }
 

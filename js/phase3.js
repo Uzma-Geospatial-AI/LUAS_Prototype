@@ -455,6 +455,12 @@ function renderChart(budgets) {
 /* ============================================================
    SESAMS licence register
    ============================================================ */
+/* The register runs to a few hundred rows, so it is read a page at a time.
+   The page survives a re-render — suspending a row must not throw the reader
+   back to page one — but is clamped when the register shrinks under it. */
+const PAGE = 20;
+let regPage = 1;
+
 function renderRegister(licences, stdKey, budgets) {
   const active = licences.filter((l) => l.active !== false);
   const totals = {};
@@ -462,16 +468,19 @@ function renderRegister(licences, stdKey, budgets) {
     totals[p] = active.reduce((t, l) => t + licenceLoads(l)[p], 0);
   }
 
-  $('p3Register').innerHTML = licences.length ? licences.map((l) => {
+  const pages = Math.max(1, Math.ceil(licences.length / PAGE));
+  regPage = Math.min(Math.max(1, regPage), pages);
+  const shown = licences.slice((regPage - 1) * PAGE, regPage * PAGE);
+
+  $('p3Register').innerHTML = licences.length ? shown.map((l) => {
     const loads = licenceLoads(l);
     const comp = licenceCompliance(l, stdKey);
     const inactive = l.active === false;
     return `<tr class="${inactive ? 'row-off' : ''}">
       <td>
         <b>${esc(l.ref)}</b>
-        ${l.example ? `<span class="tag-example">${l.bulk ? 'ESTIMATED' : 'EXAMPLE'}</span>` : ''}
-        <span class="sub">${esc(l.category ?? '—')}</span>
-        ${l.estimated ? '<span class="badge soft est" title="Figures were prefilled from the category and never edited">EST</span>' : ''}
+        <span class="sub">${esc(l.category ?? '—')}${l.bulk ? ' · estimated'
+          : l.example ? ' · worked example' : l.estimated ? ' · prefilled' : ''}</span>
       </td>
       <td>${esc(l.premises)}${typeof l.lat === 'number'
         ? '<span class="loc-pin" title="Located — drawn on the map">◉</span>'
@@ -504,6 +513,8 @@ function renderRegister(licences, stdKey, budgets) {
       <td colspan="2"></td>
     </tr>` : '';
 
+  renderPager(licences.length, pages);
+
   /* Row actions */
   $('p3Register').querySelectorAll('[data-toggle]').forEach((b) => {
     b.onclick = () => {
@@ -527,18 +538,42 @@ function renderRegister(licences, stdKey, budgets) {
   });
 
   /* Counted, not written: an example superseded by a real licence leaves
-     the register, and the banner has to say how many are actually left. */
-  const ex = store.licences().filter((l) => l.example);
-  const nEx = ex.length;
-  const nBulk = ex.filter((l) => l.bulk).length;
-  const nCur = nEx - nBulk;
-  const cur = nCur === 1 ? 'One worked example' : `${nCur} worked examples`;
-  $('p3ExampleNote').textContent = nBulk
-    ? `${cur} and ${nBulk} estimated licences on mapped premises — not real licences. `
-      + 'No LUAS register is published; the estimate is what colours the map.'
-    : `${cur} on mapped premises — not real licence${nCur === 1 ? '' : 's'}.`;
-  $('p3ExampleBar').style.display = store.hasExamples() && nEx ? 'flex' : 'none';
+     the register, and the button is only worth showing while any remain. */
+  const nEx = store.licences().filter((l) => l.example).length;
+  $('p3ClearExamples').style.display = store.hasExamples() && nEx ? '' : 'none';
   $('p3RestoreBar').style.display = store.hasExamples() ? 'none' : 'flex';
+}
+
+/* Previous, the page numbers, next. With many pages the numbers thin out to
+   the first, the last and a window around the current one. */
+function renderPager(total, pages) {
+  const el = $('p3Pager');
+  if (total <= PAGE) { el.innerHTML = ''; return; }
+  const from = (regPage - 1) * PAGE + 1;
+  const to = Math.min(total, regPage * PAGE);
+
+  const nums = [];
+  for (let i = 1; i <= pages; i++) {
+    if (i === 1 || i === pages || Math.abs(i - regPage) <= 2) nums.push(i);
+    else if (nums.at(-1) !== '…') nums.push('…');
+  }
+  el.innerHTML = `
+    <span class="pager-info">Showing ${from}–${to} of ${total.toLocaleString('en')}</span>
+    <span class="pager-nav">
+      <button class="pg" data-page="${regPage - 1}" ${regPage === 1 ? 'disabled' : ''}>‹ Prev</button>
+      ${nums.map((n) => n === '…'
+        ? '<span class="pg-gap">…</span>'
+        : `<button class="pg num${n === regPage ? ' on' : ''}" data-page="${n}"
+             ${n === regPage ? 'aria-current="page"' : ''}>${n}</button>`).join('')}
+      <button class="pg" data-page="${regPage + 1}" ${regPage === pages ? 'disabled' : ''}>Next ›</button>
+    </span>`;
+  el.querySelectorAll('[data-page]').forEach((b) => {
+    b.onclick = () => {
+      regPage = Number(b.dataset.page);
+      renderPhase3();
+      el.scrollIntoView({ block: 'end', behavior: 'smooth' });
+    };
+  });
 }
 
 /* ---------------- Add / edit form ---------------- */
