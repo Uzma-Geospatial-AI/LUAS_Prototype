@@ -843,6 +843,7 @@ function licencePopup(l) {
    the eye can go back to it after a pan. */
 let selectedWater = null;
 let pendingWater = null;
+let selectSeq = 0;
 export function selectWaterBody(id) {
   if (!map) { pendingWater = id; return; }
   const t = receiving.get(`water:${id}`);
@@ -857,7 +858,13 @@ export function selectWaterBody(id) {
 
   map.fitBounds(t.layer.getBounds().pad(0.6), { maxZoom: 17, animate: true, duration: 0.8 });
 
+  /* A fitBounds on a map that has just been shown may not move at all, and
+     then its moveend never comes — until a later pick moves the map and the
+     stale listener marks the old body over the new one. The token lets only
+     the latest pick mark. */
+  const token = ++selectSeq;
   const mark = () => {
+    if (token !== selectSeq) return;
     const el = t.layer.getElement?.();
     if (!el) return;
     el.classList.add('water-selected');

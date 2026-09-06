@@ -1191,5 +1191,7 @@ body.gl-open{overflow:hidden}
   border:1px solid var(--line-2);border-radius:3px;padding:0 4px;margin-left:5px;vertical-align:1px;white-space:nowrap}
 
 /* The water body picked from another page: outlined so it is the one */
-.water-selected{stroke:#ffd400 !important;stroke-width:3px !important;stroke-opacity:1 !important;
-  filter:drop-shadow(0 0 4px rgba(0,0,0,.6))}
+/* Plain declarations, not !important: a stylesheet already beats the SVG
+   attributes Leaflet writes, and the flash keyframes would lose to
+   !important and never play over the pick. */
+.water-selected{stroke:#ffd400;stroke-width:3px;stroke-opacity:1;filter:drop-shadow(0 0 4px rgba(0,0,0,.6))}
