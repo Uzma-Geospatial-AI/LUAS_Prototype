@@ -1189,3 +1189,7 @@ body.gl-open{overflow:hidden}
 /* A given name: what it is and where it is, not a recorded name */
 .given{display:inline-block;font-size:8.5px;font-weight:600;letter-spacing:.04em;color:var(--muted-2);
   border:1px solid var(--line-2);border-radius:3px;padding:0 4px;margin-left:5px;vertical-align:1px;white-space:nowrap}
+
+/* The water body picked from another page: outlined so it is the one */
+.water-selected{stroke:#ffd400 !important;stroke-width:3px !important;stroke-opacity:1 !important;
+  filter:drop-shadow(0 0 4px rgba(0,0,0,.6))}

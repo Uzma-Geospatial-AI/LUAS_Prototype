@@ -127,6 +127,7 @@ export function initMap() {
 
   applyVisibility();
   if (pendingWq) { setWq(pendingWq); pendingWq = null; }
+  if (pendingWater) { const id = pendingWater; pendingWater = null; setTimeout(() => selectWaterBody(id), 300); }
   if (pendingFly) {
     const [lat, lon, z, srcId] = pendingFly;
     pendingFly = null;
@@ -834,6 +835,40 @@ function licencePopup(l) {
           ${l.active === false ? 'Inactive' : 'Active licence'}</div>
       </div>
     </div>`;
+}
+
+/* Take the map to a water body and make it the one thing on the screen:
+   the view fits its outline, the outline is picked out and flashed, and
+   its name opens on it. The pick stays until another body is picked, so
+   the eye can go back to it after a pan. */
+let selectedWater = null;
+let pendingWater = null;
+export function selectWaterBody(id) {
+  if (!map) { pendingWater = id; return; }
+  const t = receiving.get(`water:${id}`);
+  if (!t) return;
+  if (!visible.has(t.vis)) { visible.add(t.vis); applyVisibility(); }
+
+  if (selectedWater && selectedWater !== t.layer) {
+    selectedWater.getElement?.()?.classList.remove('water-selected');
+    selectedWater.closeTooltip();
+  }
+  selectedWater = t.layer;
+
+  map.fitBounds(t.layer.getBounds().pad(0.6), { maxZoom: 17, animate: true, duration: 0.8 });
+
+  const mark = () => {
+    const el = t.layer.getElement?.();
+    if (!el) return;
+    el.classList.add('water-selected');
+    el.classList.remove('flash-water');
+    void el.getBoundingClientRect();
+    el.classList.add('flash-water');
+    setTimeout(() => el.classList.remove('flash-water'), 3200);
+    t.layer.openTooltip(t.layer.getBounds().getCenter());
+  };
+  map.once('moveend', mark);
+  setTimeout(mark, 1000);
 }
 
 /* Take the map to a premises. Called after the view has switched, so the map

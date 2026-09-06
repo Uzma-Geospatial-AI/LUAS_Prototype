@@ -12,7 +12,7 @@ import { renderSesams, resizeSesams } from './sesams.js';
 import { renderPhase1, resizePhase1 } from './phase1.js';
 import { renderPhase2, renderNational, resizePhase2 } from './phase2.js';
 import { renderPhase3, buildLicenceForm, resizePhase3, buildRegisterControls } from './phase3.js';
-import { initMap, resizeMap, refreshMap, pauseMap, flyToPoint, showWqProduct } from './mapview.js';
+import { initMap, resizeMap, refreshMap, pauseMap, flyToPoint, showWqProduct, selectWaterBody } from './mapview.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -207,7 +207,10 @@ function buildStationPicker() {
      fly. */
   document.addEventListener('showonmap', (e) => {
     show('map');
-    if (typeof e.detail.lat === 'number') {
+    if (e.detail.waterId != null) {
+      /* A water body is shown as itself: fitted, picked out and named */
+      selectWaterBody(e.detail.waterId);
+    } else if (typeof e.detail.lat === 'number') {
       flyToPoint(e.detail.lat, e.detail.lon, 16, e.detail.srcId ?? null);
     }
     /* A satellite product asked for along with the place, or on its own */

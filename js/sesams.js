@@ -260,7 +260,8 @@ function renderPressure(list) {
   const top = [...by.values()].sort((x, y) => y.n - x.n || y.reserve - x.reserve).slice(0, 8);
   $('ssPressure').innerHTML = top.map((e) => `
     <button class="ss-press" data-lat="${e.a.lat}" data-lon="${e.a.lon}" data-src="${e.a.id}"
-      title="Open the map at the closest activity">
+      ${e.key.startsWith('water') ? `data-water="${e.id}"` : ''}
+      title="${e.key.startsWith('water') ? 'Show this water body on the map' : 'Open the map at the closest activity'}">
       <div class="ss-press-h"><b>${esc(e.water)}</b>
         <span class="ml-rng">${e.key.startsWith('river') ? 'river' : 'water body'}${/^(Pond|Lake or reservoir|Open water|Channel|Treatment pond)$/.test(e.water) ? ` · #${e.id}` : ''}</span></div>
       <div class="ss-press-n"><b>${e.n}</b> ${e.n === 1 ? 'activity' : 'activities'} within 250 m
@@ -269,7 +270,9 @@ function renderPressure(list) {
     </button>`).join('') || '<div class="empty-row">Nothing within 250 m of any water.</div>';
   $('ssPressure').querySelectorAll('.ss-press').forEach((b) => {
     b.onclick = () => document.dispatchEvent(new CustomEvent('showonmap', {
-      detail: { lat: Number(b.dataset.lat), lon: Number(b.dataset.lon), srcId: Number(b.dataset.src) },
+      detail: b.dataset.water
+        ? { waterId: Number(b.dataset.water) }
+        : { lat: Number(b.dataset.lat), lon: Number(b.dataset.lon), srcId: Number(b.dataset.src) },
     }));
   });
 }
@@ -331,7 +334,7 @@ function buildScan() {
     const b = e.target.closest('[data-show]');
     if (!b) return;
     document.dispatchEvent(new CustomEvent('showonmap', {
-      detail: { lat: Number(b.dataset.lat), lon: Number(b.dataset.lon),
+      detail: { waterId: Number(b.dataset.id), lat: Number(b.dataset.lat), lon: Number(b.dataset.lon),
         wq: $('scanProduct').value, quarter: $('scanTo').value },
     }));
   };
@@ -568,8 +571,8 @@ function renderScan() {
       <td class="num">${fl(r.land[0])}% → ${fl(r.land[1])}% &nbsp;${dl(r.dLand, FLAG_LAND)}</td>
       <td class="num">${fl(r.water[0])} → ${fl(r.water[1])} &nbsp;${dl(r.dWater)}</td>
       <td><span class="pill-status ${v.c}">${v.t}</span></td>
-      <td class="act"><button class="mini" data-show data-lat="${r.lat}" data-lon="${r.lon}"
-        title="Open the map here with ${d.label} ${toL} on">Map</button></td>
+      <td class="act"><button class="mini" data-show data-id="${r.id}" data-lat="${r.lat}" data-lon="${r.lon}"
+        title="Show this water body on the map with ${d.label} ${toL} on">Map</button></td>
     </tr>`;
   }).join('') || '<tr><td colspan="7" class="empty-row">Nothing could be compared: no tiles on both dates.</td></tr>';
 
