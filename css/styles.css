@@ -751,6 +751,28 @@ select{cursor:pointer}
 }
 .mc-btn:hover{border-color:var(--cyan);color:var(--text)}
 .mc-btn.active{border-color:var(--navy-2);background:#eef0fb;color:var(--navy);font-weight:650}
+.mc-btn.sm{padding:3px 8px;font-size:10.5px}
+.mc-btn:disabled{opacity:.45;cursor:default}
+.mc-note{font-weight:500;letter-spacing:0;text-transform:none;color:var(--muted-2);margin-left:5px}
+/* The satellite water-quality picker */
+.wq-group{margin-top:10px;padding-top:9px;border-top:1px solid var(--line)}
+.wq-row{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;align-items:center}
+.wq-opts{justify-content:space-between;gap:10px;font-size:11px;color:var(--muted)}
+.wq-opacity{display:inline-flex;align-items:center;gap:6px}
+.wq-opacity input{width:86px;accent-color:var(--navy-2)}
+.wq-check{display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+.wq-check input{accent-color:var(--navy-2);margin:0}
+.wq-src{font-size:10px;color:var(--muted-2);line-height:1.4;margin-top:6px}
+.idx-bands{font-family:var(--fm);font-size:10px;color:var(--muted-2);margin-left:6px}
+.idx-caveat{display:inline-block;margin-top:6px;font-size:10px;font-weight:650;color:#8a1e22;
+  background:#fdeeee;border:1px solid #f3c3c5;border-radius:4px;padding:1px 6px}
+.idx-go{margin-top:7px}
+.idx-go.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+/* The ramp in the legend */
+.ml-wq{padding:4px 4px 2px}
+.ml-wq-t{font-size:11px}
+.ml-wq .idx-ramp{margin:6px 0 3px}
+.ml-wq-n{font-size:10px;color:var(--muted-2);line-height:1.4;margin-top:3px}
 .mp-date{display:none;align-items:center;gap:7px;margin-top:10px}
 .mp-date label{font-size:10px;text-transform:uppercase;letter-spacing:.07em;
   font-weight:650;color:var(--muted)}

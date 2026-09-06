@@ -136,6 +136,7 @@
           <input type="date" id="mapDate">
         </div>
         <div id="mapBaseInfo"></div>
+        <div class="mc-group wq-group" id="mapWq"></div>
         <details class="mp-fold">
           <summary>Spectral indices</summary>
           <div class="mp-sub">How imagery maps onto the parameters in the load budget</div>
@@ -204,6 +205,8 @@
         <h5 class="sep ml-head"><span class="ml-ht">Point source</span>
           <input type="checkbox" class="ml-master" data-group="mapLegendSources" aria-label="All point sources"></h5>
         <div id="mapLegendSources"></div>
+        <h5 class="sep ml-head" id="mapLegendWqHead" hidden><span class="ml-ht">Satellite water quality</span></h5>
+        <div id="mapLegendWq" hidden></div>
         <h5 class="sep ml-head"><span class="ml-ht">Water body type</span>
           <input type="checkbox" class="ml-master" data-group="mapLegendWater" aria-label="All water body types"></h5>
         <div id="mapLegendWater"></div>
@@ -585,6 +588,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pmtiles@4.5.0/dist/pmtiles.js"></script>
 <script type="module" src="js/app.js"></script>
 </body>
 </html>

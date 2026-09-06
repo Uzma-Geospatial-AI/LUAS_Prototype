@@ -55,21 +55,89 @@ export const IMAGERY = {
   },
 };
 
-/* Spectral indices that relate imagery to the WQI parameters */
+/* ============================================================
+   Satellite water quality — quarterly Sentinel-2 products
+
+   Three rasters over Selangor, computed in Google Earth Engine and served as
+   PMTiles (PNG, zoom 8–14) from the Digital Earth bucket. The whole scene is
+   painted — land sits at the low end of the ramp — so the map clips them to
+   the mapped rivers and water bodies unless asked not to.
+
+   The colour ramps below were read back off the tiles: the two indices use
+   the RdYlGn scheme reversed (green low, red high) and SS is greyscale. The
+   numeric range each ramp spans was not supplied with the files, so the
+   legend reads low → high rather than quoting values.
+   ============================================================ */
+export const WQ_BASE = 'https://digitalearthbasemap.s3.ap-southeast-1.amazonaws.com/gee-waterquality/';
+
+export const WQ_QUARTERS = [
+  { id: 'Q1_2026', label: 'Q1 2026', span: 'Jan – Mar 2026' },
+  { id: 'Q2_2026', label: 'Q2 2026', span: 'Apr – Jun 2026' },
+  { id: 'Q3_2026', label: 'Q3 2026', span: 'Jul – Sep 2026' },
+];
+
+const RDYLGN = ['#006837', '#1a9850', '#66bd63', '#a6d96a', '#d9ef8b', '#ffffbf',
+  '#fee08b', '#fdae61', '#f46d43', '#d73027', '#a50026'];
+const ramp = (cols) => `linear-gradient(90deg,${cols.join(',')})`;
+
+export const WQ_PRODUCTS = {
+  ndti: {
+    label: 'NDTI', long: 'Turbidity index', file: 'NDTI',
+    ramp: ramp(RDYLGN), lo: 'Clear', hi: 'Turbid',
+    note: 'Suspended sediment: plumes after rain, construction and dredging run-off, bank erosion.',
+  },
+  ndci: {
+    label: 'NDCI', long: 'Chlorophyll-a index', file: 'NDCI',
+    ramp: ramp(RDYLGN), lo: 'Low chlorophyll', hi: 'Bloom',
+    note: 'Algal biomass building in reservoirs and slow reaches — an early sign of a bloom.',
+  },
+  ss: {
+    label: 'SS', long: 'Suspended solids, estimated', file: 'SS_mgL', unit: 'mg/L',
+    ramp: ramp(['#000000', '#ffffff']), lo: 'Low', hi: 'High',
+    note: 'A regression on the Red/Green ratio, not yet fitted to these rivers: relative pattern only.',
+    caveat: true,
+  },
+};
+
+export const wqUrl = (product, quarter) =>
+  `${WQ_BASE}selangor_${WQ_PRODUCTS[product].file}_${quarter}.pmtiles`;
+
+/* Spectral indices that relate imagery to the WQI parameters. The three
+   with a `product` are on the map as quarterly layers. */
 export const WATER_INDICES = [
   { name: 'NDWI — Normalised Difference Water Index', formula: '(Green − NIR) / (Green + NIR)',
+    bands: 'Sentinel-2 B3, B8',
     ramp: 'linear-gradient(90deg,#8a6d3b,#e8e3d2,#45bfe0,#0a4a8a)', lo: 'Land (−1)', hi: 'Water (+1)',
     body: 'Delineates open water. Tracks how pond and reservoir area changes between the dry '
         + 'season and the monsoon — the storage that buffers load.' },
   { name: 'NDTI — Normalised Difference Turbidity Index', formula: '(Red − Green) / (Red + Green)',
-    ramp: 'linear-gradient(90deg,#0a4a8a,#45bfe0,#e8e3d2,#c98a3a,#7a4a12)', lo: 'Clear', hi: 'Very turbid',
-    body: 'A proxy for suspended solids. SS is one of the four pollutants in the Phase 3 budget, '
-        + 'and it is the one imagery estimates best.' },
-  { name: 'NDCI — Chlorophyll-a Index', formula: '(Red-Edge − Red) / (Red-Edge + Red)',
-    ramp: 'linear-gradient(90deg,#1a3a6a,#2f8a4f,#b8d13a,#e8b81a,#d92d20)', lo: 'Low', hi: 'Algal bloom',
-    body: 'Algal biomass from nutrient enrichment. Tied directly to the NH₃-N load, which is the '
-        + 'binding pollutant at this station.' },
+    bands: 'Sentinel-2 B4, B3', product: 'ndti',
+    ramp: WQ_PRODUCTS.ndti.ramp, lo: 'Clear (≤ 0)', hi: 'Turbid (+)',
+    body: 'Clear water absorbs red and reflects green, so it sits at or below zero. Suspended '
+        + 'sediment scatters light broadly, but red climbs faster than green as it thickens, and '
+        + 'the ratio swings positive. Rising values flag sediment plumes after rain, construction '
+        + 'and dredging run-off, and bank erosion — the monsoon turbidity spikes on these rivers. '
+        + 'A proxy for the SS row of the load budget.' },
+  { name: 'NDCI — Normalised Difference Chlorophyll Index', formula: '(Red-Edge − Red) / (Red-Edge + Red)',
+    bands: 'Sentinel-2 B5, B4', product: 'ndci',
+    ramp: WQ_PRODUCTS.ndci.ramp, lo: 'Low chlorophyll (≤ 0)', hi: 'Bloom (+)',
+    body: 'Chlorophyll-a absorbs red at 665 nm for photosynthesis and reflects sharply just past '
+        + 'it at the 705 nm red edge — a bump only Sentinel-2 resolves, since Landsat has no '
+        + 'red-edge band. More algae, deeper red absorption, higher red-edge reflectance, larger '
+        + 'NDCI. An early warning for blooms in reservoirs and slow-moving reaches, before the '
+        + 'colour change is visible, and a trace of the nutrient load behind them.' },
+  { name: 'SS — Suspended solids, estimated', formula: 'SS (mg/L) = a × (Red ÷ Green) + b',
+    bands: 'Sentinel-2 B4 ÷ B3', product: 'ss',
+    ramp: WQ_PRODUCTS.ss.ramp, lo: 'Low', hi: 'High mg/L',
+    body: 'Not an index but a concentration: no physical constant links a reflectance ratio to '
+        + 'mg/L, because it depends on the sediment, its grain size and the water depth, so the '
+        + 'Red/Green ratio is fitted by least squares to paired field samples. The slope and '
+        + 'intercept behind this layer are literature placeholders, not fitted to these rivers, '
+        + 'so it shows relative pattern only. It becomes a quantitative product once station '
+        + 'samples are used to refit.',
+    caveat: 'Uncalibrated — qualitative only' },
   { name: 'LST — Land Surface Temperature', formula: 'Thermal sensing (TIR bands)',
+    bands: 'Landsat 8/9 B10',
     ramp: 'linear-gradient(90deg,#2a78d6,#45bfe0,#f5e01c,#ef7d1a,#d92d20)', lo: 'Cool', hi: 'Hot',
     body: 'Thermal discharge and the urban heat island both lower dissolved oxygen solubility, '
         + 'which feeds straight back into the index.' },

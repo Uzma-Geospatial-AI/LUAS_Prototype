@@ -18,7 +18,7 @@ import { DATA, readingAt, latestIdx, fmtMonth, waterSummary, sourceSummary,
          WATER_GROUPS } from './data.js';
 import { wqiClass, WQI_CLASSES, classCompliance, PARAM_META } from './wqi.js';
 import { store } from './store.js';
-import { IMAGERY, gibsLayer, REFERENCE_MAPS, WATER_INDICES } from './satellite.js';
+import { IMAGERY, gibsLayer, REFERENCE_MAPS, WATER_INDICES, WQ_PRODUCTS, WQ_QUARTERS, wqUrl } from './satellite.js';
 import { sourceIcon, sourceSwatch } from './symbols.js';
 import { licenceStatus } from './licenceStatus.js';
 
@@ -42,6 +42,10 @@ let stationLayer = null, basinLayer = null, stateLayer = null;
 const waterLayers = {};       // water:<group>
 let flowLayer = null;         // the animated direction overlay
 let licenceLayer = null;      // premises with a discharge licence
+/* Satellite water quality: one product, one quarter, on its own pane */
+const wq = { product: null, quarter: WQ_QUARTERS.at(-1).id, opacity: 0.85, waterOnly: true };
+let wqLayer = null;
+let wqClipPath = null;        // the <path> inside the clipPath that keeps it to water
 let waterFlowLayer = null;    // water that drains out to a mapped channel
 let stillLayer = null;        // standing water, ringed; drawn from zoom 13
 const sourceLayers = {};      // src:<category>
@@ -173,6 +177,11 @@ function riverWeight(up) {
 
 function riverStyle(f) {
   const r = f.properties;
+  /* Under a satellite product the channel is the product's to colour: the
+     line thins to an edge so the pixels inside it can be seen. */
+  if (wq.product) {
+    return { color: '#ffffff', weight: 1, opacity: 0.55, lineCap: 'round', lineJoin: 'round' };
+  }
   return {
     color: r.main ? '#0aa3d9' : '#45bfe0',
     weight: riverWeight(r.up),
@@ -235,8 +244,8 @@ function flowStyle(f) {
   const w = riverWeight(f.properties.up);
   return {
     color: '#ffffff',
-    weight: Math.max(1, w * 0.5),
-    opacity: 0.9,
+    weight: wq.product ? 1 : Math.max(1, w * 0.5),
+    opacity: wq.product ? 0.5 : 0.9,
     /* Both patterns repeat every 20px, so one keyframe distance animates
        every reach seamlessly. */
     dashArray: f.properties.main ? '6 14' : '4 16',
@@ -364,6 +373,8 @@ function syncStill() {
 function waterStyle(f) {
   const g = WATER_GROUPS[f.properties.group] ?? WATER_GROUPS.other;
   const wide = (map?.getZoom() ?? 11) < 13;
+  /* Under a satellite product the surface is the product's to colour */
+  if (wq.product) return { fillOpacity: 0, color: '#ffffff', weight: 0.9, opacity: 0.7 };
   return {
     fillColor: g.color, fillOpacity: wide ? 0.85 : 0.6,
     color: wide ? g.color : '#ffffff',
@@ -997,11 +1008,17 @@ function buildBasemaps() {
   $('mapIndices').innerHTML = WATER_INDICES.map((x) => `
     <div class="idx-item">
       <div class="idx-h">${x.name}</div>
-      <code>${x.formula}</code>
+      <code>${x.formula}</code>${x.bands ? `<span class="idx-bands">${esc(x.bands)}</span>` : ''}
       <div class="idx-ramp" style="background:${x.ramp}"></div>
       <div class="idx-lab"><span>${x.lo}</span><span>${x.hi}</span></div>
       <div class="idx-b">${x.body}</div>
+      ${x.caveat ? `<div class="idx-caveat">${esc(x.caveat)}</div>` : ''}
+      ${x.product ? `<button class="mini idx-go" data-wq="${x.product}">Show on the map</button>` : ''}
     </div>`).join('');
+  document.querySelectorAll('[data-wq]').forEach((b) => {
+    b.onclick = () => setWq({ product: b.dataset.wq });
+  });
+  buildWqControls();
 
   const btn = $('baseToggle');
   const pop = $('basePop');
@@ -1063,6 +1080,163 @@ function setBase(key) {
   $('mapBaseInfo').innerHTML = `
     <div class="mbi-t">${d.label} <span class="badge soft">${d.res}</span></div>
     <div class="mbi-s">${esc(d.src)}</div>`;
+}
+
+/* ---------------- Satellite water quality ----------------
+   The product picker sits with the imagery, because that is what it is; the
+   ramp sits in the legend, because that is where a colour is explained. */
+function buildWqControls() {
+  const box = $('mapWq');
+  const have = typeof pmtiles !== 'undefined';
+  box.innerHTML = `
+    <h5>Satellite water quality <span class="mc-note">Sentinel-2 · quarterly</span></h5>
+    <div class="mc-btns" id="wqProducts">
+      <button class="mc-btn active" data-wqp="">Off</button>
+      ${Object.entries(WQ_PRODUCTS).map(([k, d]) =>
+        `<button class="mc-btn" data-wqp="${k}" title="${esc(d.long)}. ${esc(d.note)}">${d.label}</button>`).join('')}
+    </div>
+    <div class="wq-row" id="wqQuarters">
+      ${WQ_QUARTERS.map((q) => `<button class="mc-btn sm" data-wqq="${q.id}" title="${q.span}">${q.label}</button>`).join('')}
+    </div>
+    <div class="wq-row wq-opts">
+      <label class="wq-opacity">Opacity
+        <input type="range" id="wqOpacity" min="20" max="100" value="${Math.round(wq.opacity * 100)}" aria-label="Overlay opacity"></label>
+      <label class="wq-check"><input type="checkbox" id="wqWater" ${wq.waterOnly ? 'checked' : ''}>
+        Water only</label>
+    </div>
+    <div class="wq-src">${have
+      ? 'Google Earth Engine · Digital Earth. The scene is clipped to the mapped rivers and water bodies; untick to see it whole.'
+      : 'The tile reader did not load, so these layers are unavailable.'}</div>`;
+  box.querySelectorAll('[data-wqp]').forEach((b) => {
+    b.onclick = () => setWq({ product: b.dataset.wqp || null });
+    b.disabled = !have && !!b.dataset.wqp;
+  });
+  box.querySelectorAll('[data-wqq]').forEach((b) => {
+    b.onclick = () => setWq({ quarter: b.dataset.wqq });
+  });
+  $('wqOpacity').oninput = (e) => setWq({ opacity: Number(e.target.value) / 100 });
+  $('wqWater').onchange = (e) => setWq({ waterOnly: e.target.checked });
+  L.DomEvent.disableClickPropagation(box);
+  syncWqControls();
+}
+
+function syncWqControls() {
+  document.querySelectorAll('[data-wqp]').forEach((b) =>
+    b.classList.toggle('active', (b.dataset.wqp || null) === wq.product));
+  document.querySelectorAll('[data-wqq]').forEach((b) =>
+    b.classList.toggle('active', b.dataset.wqq === wq.quarter));
+  document.querySelectorAll('[data-wq]').forEach((b) =>
+    b.classList.toggle('active', b.dataset.wq === wq.product));
+
+  const d = wq.product ? WQ_PRODUCTS[wq.product] : null;
+  const q = WQ_QUARTERS.find((x) => x.id === wq.quarter);
+  $('mapLegendWqHead').hidden = !d;
+  $('mapLegendWq').hidden = !d;
+  $('mapLegendWq').innerHTML = d ? `
+    <div class="ml-wq">
+      <div class="ml-wq-t"><b>${d.label}</b> · ${esc(d.long)} <span class="ml-rng">${q.label}</span></div>
+      <div class="idx-ramp" style="background:${d.ramp}"></div>
+      <div class="idx-lab"><span>${esc(d.lo)}</span><span>${esc(d.hi)}${d.unit ? ` ${d.unit}` : ''}</span></div>
+      <div class="ml-wq-n">${d.caveat ? '<b>Uncalibrated</b> — relative pattern only. ' : ''}Sentinel-2, ${q.span}. Range not supplied; low → high.</div>
+    </div>` : '';
+}
+
+/* Swap the overlay for the product and quarter asked for. One layer at a
+   time: the products are alternatives, not a stack. */
+function setWq(patch) {
+  Object.assign(wq, patch);
+  if (wqLayer) { map.removeLayer(wqLayer); wqLayer = null; }
+
+  if (!map.getPane('wq')) {
+    /* Between the basemap and the overlays: the water outlines, rivers and
+       markers keep drawing over the product. */
+    map.createPane('wq').style.zIndex = 250;
+    map.on('moveend', () => { if (wq.product && wq.waterOnly) buildWqClip(); });
+  }
+  const pane = map.getPane('wq');
+
+  if (wq.product && typeof pmtiles !== 'undefined') {
+    const d = WQ_PRODUCTS[wq.product];
+    const src = new pmtiles.PMTiles(wqUrl(wq.product, wq.quarter));
+    wqLayer = pmtiles.leafletRasterLayer(src, {
+      pane: 'wq', opacity: wq.opacity,
+      minZoom: 8, maxNativeZoom: 14, maxZoom: 19,
+      bounds: [[2.60, 100.81], [3.87, 101.97]],
+      attribution: `${d.label} ${wq.quarter.replace('_', ' ')} · Sentinel-2 · Digital Earth (GEE)`,
+    }).addTo(map);
+  }
+
+  if (wq.product && wq.waterOnly) {
+    buildWqClip();
+    pane.style.clipPath = 'url(#wqClip)';
+  } else {
+    pane.style.clipPath = '';
+  }
+
+  /* The lines and fills give way to the product, and come back without it */
+  restyleWater();
+  restyleRivers();
+  syncWqControls();
+}
+
+/* The scene is clipped to water: every mapped water body as its outline,
+   every river reach as a ribbon a little wider than the line it is drawn
+   with. Built in layer pixels, which hold through a pan and change on a
+   zoom, so it is rebuilt on moveend. Every subpath is wound the same way —
+   a quad wound against a circle it overlaps would cancel to a hole under
+   the nonzero rule. */
+function buildWqClip() {
+  const NS = 'http://www.w3.org/2000/svg';
+  if (!wqClipPath) {
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('width', '0'); svg.setAttribute('height', '0');
+    svg.style.position = 'absolute';
+    const defs = document.createElementNS(NS, 'defs');
+    const cp = document.createElementNS(NS, 'clipPath');
+    cp.id = 'wqClip';
+    cp.setAttribute('clipPathUnits', 'userSpaceOnUse');
+    wqClipPath = document.createElementNS(NS, 'path');
+    cp.appendChild(wqClipPath); defs.appendChild(cp); svg.appendChild(defs);
+    map.getContainer().appendChild(svg);
+  }
+  const box = map.getBounds().pad(0.6);
+  const P = ([lon, lat]) => map.latLngToLayerPoint([lat, lon]);
+  const f1 = (n) => n.toFixed(1);
+  const parts = [];
+
+  const cw = (pts) => {
+    let a = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i], n = pts[(i + 1) % pts.length];
+      a += p.x * n.y - n.x * p.y;
+    }
+    return a < 0 ? pts.slice().reverse() : pts;
+  };
+  const poly = (pts) => 'M' + cw(pts).map((p) => `${f1(p.x)} ${f1(p.y)}`).join('L') + 'Z';
+
+  for (const f of DATA.water.geo.features) {
+    const ring = f.geometry.coordinates[0];
+    if (!ring.some(([lon, lat]) => box.contains([lat, lon]))) continue;
+    parts.push(poly(ring.map(P)));
+  }
+  for (const f of DATA.rivers.features) {
+    const c = f.geometry.coordinates;
+    if (!c.some(([lon, lat]) => box.contains([lat, lon]))) continue;
+    const hw = Math.max(2.5, riverWeight(f.properties.up) * 0.8);
+    const pts = c.map(P);
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1];
+      const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
+      const nx = -dy / len * hw, ny = dx / len * hw;
+      parts.push(poly([{ x: a.x + nx, y: a.y + ny }, { x: b.x + nx, y: b.y + ny },
+        { x: b.x - nx, y: b.y - ny }, { x: a.x - nx, y: a.y - ny }]));
+    }
+    for (const p of pts) {
+      parts.push(`M${f1(p.x - hw)} ${f1(p.y)}a${f1(hw)} ${f1(hw)} 0 1 1 ${f1(2 * hw)} 0`
+        + `a${f1(hw)} ${f1(hw)} 0 1 1 ${f1(-2 * hw)} 0Z`);
+    }
+  }
+  wqClipPath.setAttribute('d', parts.join('') || 'M0 0Z');
 }
 
 /* ---------------- Bottom left: the group masters ---------------- */
