@@ -51,7 +51,7 @@ LUAS_Prototype/
 │   ├── examples.js            worked-example licences built from mapped premises
 │   ├── wqi.js                 DOE WQI formula + INWQS class standards
 │   ├── loads.js               load, TMDL, headroom and effluent-standard maths
-│   ├── store.js               localStorage: readings, SESAMS register, conditions
+│   ├── store.js               localStorage: readings, licence register, conditions
 │   ├── mapview.js             the map, its four corners and the legend filter
 │   ├── symbols.js             one shape per point source category
 │   ├── satellite.js           imagery catalogue + spectral index reference
@@ -263,7 +263,7 @@ counts move with it, which is the quickest read of whether the basin is improvin
 | River water level | 21 JPS gauges, drawn as a staff gauge and coloured by JPS status |
 | Water bodies | 1,089 Digital Earth outlines, coloured by type. Each carries a `flow` read off the mapped rivers: *thru*, *out*, *in* or *still* |
 | Point sources | 651 sites that can put a load into the river, one shape per category; the fill is **green** with a discharge licence and **red** without. Where the register has an entry the colour follows it; everywhere else the status is an **estimate** (`js/licenceStatus.js`), because no licence register is published as open data |
-| Licence register pins | the ring or pin drawn on each premises that has an entry in the SESAMS register |
+| Licence register pins | the ring or pin drawn on each premises that has an entry in the licence register |
 | Sungai Langat & tributaries | 682 km of mapped channel, drawn at a width scaled by what it carries |
 | Flow direction | the same channels, dashed and animated downstream |
 | Satellite water quality | quarterly Sentinel-2 NDTI, NDCI and estimated SS over Selangor, as PMTiles from the Digital Earth bucket (`js/satellite.js` · `WQ_PRODUCTS`). One product and one quarter at a time, clipped to the mapped rivers and water bodies unless "Water only" is unticked; the ramp is in the legend. The SS layer is uncalibrated and marked so |
@@ -427,7 +427,26 @@ sub-index, and a pass/fail — parameter by parameter.
 ---
 
 
-## Phase 3 — LEDS · TMDL · SESAMS
+## SESAMS — Earth surface activity
+
+**Selangor Earth Surface Activity Monitoring System**, the application MYSA (Agensi Angkasa Malaysia)
+built for LUAS to monitor land-use activity, above all on and around water bodies and wherever it
+could put a load into the state's water. The page (`js/sesams.js`) runs that function on the Langat
+catchment from what the portal already holds: every mapped land-use site with its distance to the
+nearest water (`scripts/08`), whether it holds a licence, and the quarterly Sentinel-2 products.
+
+| Block | What it shows |
+|---|---|
+| KPIs | sites monitored, sites inside the 50 m river-reserve screen, riparian sites with no licence, waters with activity within 250 m |
+| Activity by zone | stacked bar of each activity type by zone: reserve ≤ 50 m, riparian ≤ 250 m, buffer ≤ 1.5 km |
+| Watch list | every site, closest to water first; sortable, searchable, filtered by zone; a row opens the map there, the NDTI button opens it with the turbidity layer on |
+| Water under pressure | the rivers and water bodies with the most activity within 250 m |
+| Satellite check | the three products, opening on the map |
+
+> ⚠️ The zones are a screening rule, not the Enactment. River reserves under the Selangor Waters
+> Management Enactment 1999 vary with river width; 50 m is used as one width for every reach.
+
+## Phase 3 — LEDS · TMDL · licence register
 
 ```
 TMDL = ΣWLA + ΣLA + MOS
@@ -438,7 +457,7 @@ Two tabs, because they are two jobs:
 | Tab | What it does |
 |---|---|
 | **Loading capacity** | What this water can carry, and how much of it is left |
-| **Licences** | What is permitted to discharge into it — the SESAMS register |
+| **Licences** | What is permitted to discharge into it — the licence register |
 
 The capacity tab opens by naming the water it is **written for**, and lets it be changed there
 rather than only from the app bar. A loading capacity with no stated subject invites being read
@@ -484,7 +503,7 @@ are located and which are not, so a register of six against a map of two is not 
 | Term | Meaning | Where it comes from |
 |---|---|---|
 | **TMDL** | Loading capacity of the reach | standard × design flow × 86.4 |
-| **WLA** | Wasteload allocation | the SESAMS licence register |
+| **WLA** | Wasteload allocation | the licence register |
 | **LA** | Load allocation | background and non-point, inferred as the balance |
 | **MOS** | Margin of safety | a set percentage of capacity |
 

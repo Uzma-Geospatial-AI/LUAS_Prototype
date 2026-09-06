@@ -3,7 +3,7 @@
 
    TMDL = ΣWLA + ΣLA + MOS
      TMDL  Total Maximum Daily Load — the loading capacity of the reach
-     WLA   Wasteload allocation — licensed point-source discharges (SESAMS)
+     WLA   Wasteload allocation — licensed point-source discharges
      LA    Load allocation — background and non-point sources
      MOS   Margin of safety
 

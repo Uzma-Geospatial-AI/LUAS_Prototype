@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>LUAS System — WQI · Monitoring · TMDL | Sungai Langat, Dengkil</title>
-<meta name="description" content="Lembaga Urus Air Selangor system for Sungai Langat: Class II assessment at Dengkil, quality monitoring, and LEDS/TMDL load accounting with the SESAMS discharge licence register.">
+<meta name="description" content="Lembaga Urus Air Selangor system for Sungai Langat: Class II assessment at Dengkil, quality monitoring, LEDS/TMDL load accounting with the effluent discharge licence register, and SESAMS earth surface activity monitoring.">
 
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -64,6 +64,8 @@
       <span><b>Quality Monitoring</b><i>Phase 2</i></span></button>
     <button data-view="tmdl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 7h14"/><path d="m5 7-2 6a3 3 0 0 0 6 0z"/><path d="m19 7 2 6a3 3 0 0 1-6 0z"/></svg>
       <span><b>Load accounting</b><i>Phase 3 · TMDL</i></span></button>
+    <button data-view="sesams"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><path d="M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>
+      <span><b>Earth surface activity</b><i>SESAMS</i></span></button>
 
     <div class="sb-sec">Tools</div>
     <button class="sb-tool" id="sbExportJson"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 11l4 4 4-4"/><path d="M4 19h16"/></svg>
@@ -407,7 +409,7 @@
           <tr>
             <th>Standard</th><th>In river</th>
             <th>TMDL <button type="button" class="tipmark" tabindex="0" data-tip="Total Maximum Daily Load: the mass this reach can receive per day and still hold its class. Standard concentration x design flow x 86.4." aria-label="Total Maximum Daily Load: the mass this reach can receive per day and still hold its class. Standard concentration x design flow x 86.4.">i</button></th><th>MOS <button type="button" class="tipmark" tabindex="0" data-tip="Margin of safety, held back from the capacity before anything is allocated." aria-label="Margin of safety, held back from the capacity before anything is allocated.">i</button></th><th>Allocable <button type="button" class="tipmark" tabindex="0" data-tip="TMDL minus the margin of safety: what is actually available to allocate between licensed and diffuse sources." aria-label="TMDL minus the margin of safety: what is actually available to allocate between licensed and diffuse sources.">i</button></th>
-            <th>Total <button type="button" class="tipmark" tabindex="0" data-tip="What the river actually carries: the 12-month median concentration at the selected station x design flow x 86.4." aria-label="What the river actually carries: the 12-month median concentration at the selected station x design flow x 86.4.">i</button></th><th>Licensed <button type="button" class="tipmark" tabindex="0" data-tip="The sum of the wasteloads permitted by the licences in the SESAMS register." aria-label="The sum of the wasteloads permitted by the licences in the SESAMS register.">i</button></th><th>Diffuse <button type="button" class="tipmark" tabindex="0" data-tip="Total load minus licensed load: background, run-off and unlicensed discharge that no permit accounts for." aria-label="Total load minus licensed load: background, run-off and unlicensed discharge that no permit accounts for.">i</button></th>
+            <th>Total <button type="button" class="tipmark" tabindex="0" data-tip="What the river actually carries: the 12-month median concentration at the selected station x design flow x 86.4." aria-label="What the river actually carries: the 12-month median concentration at the selected station x design flow x 86.4.">i</button></th><th>Licensed <button type="button" class="tipmark" tabindex="0" data-tip="The sum of the wasteloads permitted by the licences in the register." aria-label="The sum of the wasteloads permitted by the licences in the register.">i</button></th><th>Diffuse <button type="button" class="tipmark" tabindex="0" data-tip="Total load minus licensed load: background, run-off and unlicensed discharge that no permit accounts for." aria-label="Total load minus licensed load: background, run-off and unlicensed discharge that no permit accounts for.">i</button></th>
           </tr>
         </thead>
         <tbody id="p3Budget"></tbody>
@@ -507,7 +509,7 @@
     </div>
 
 
-    <!-- SESAMS register -->
+    <!-- Licence register -->
     <div class="section-title">
       <h2>Licence Register</h2>
       <span class="st-sub">Licensed premises and their permitted wasteload</span>
@@ -564,6 +566,83 @@
         Import JSON<input type="file" id="p3Import" accept=".json" hidden></label>
       <button class="btn btn-ghost" id="p3ClearExamples" style="margin-left:auto">Clear examples</button>
     </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SESAMS · EARTH SURFACE ACTIVITY ================= -->
+<section class="view" id="v-sesams">
+  <div class="page">
+
+    <div class="page-head">
+      <h2>Earth surface activity <span class="badge soft" style="vertical-align:3px">SESAMS</span></h2>
+      <p>Selangor Earth Surface Activity Monitoring System — the application MYSA (Agensi Angkasa Malaysia)
+        built for LUAS to monitor land-use activity, above all on and around water bodies and wherever it could
+        put a load into the state's water. Here it runs on the Langat catchment: every mapped land-use site,
+        how close it sits to water, whether it holds a licence, and the quarterly satellite view of the water beside it.</p>
+    </div>
+
+    <div class="grid three" id="ssKpis"></div>
+
+    <div class="section-title">
+      <h2>Activity by zone</h2>
+      <span class="st-sub">How close each kind of activity sits to water <button type="button" class="tipmark" tabindex="0" data-tip="Zones are a screening rule: within 50 m of mapped water counts as the river reserve, within 250 m as riparian, and the rest of the 1.5 km buffer the sites were clipped to. River reserves under the Selangor Waters Management Enactment 1999 vary with river width; 50 m is used as one width for every reach." aria-label="Zone rule">i</button></span>
+    </div>
+    <div class="card"><div class="chart-box"><canvas id="ssZoneChart"></canvas></div></div>
+
+    <div class="section-title">
+      <h2>Activity watch list</h2>
+      <span class="st-sub">Closest to water first · click a row to open it on the map</span>
+      <select id="ssZone" style="margin-left:auto">
+        <option value="all">All zones</option>
+        <option value="reserve">River reserve · ≤ 50 m</option>
+        <option value="riparian">Riparian · 50 – 250 m</option>
+        <option value="buffer">Buffer · 250 m – 1.5 km</option>
+      </select>
+      <label class="reg-search" style="margin-left:0">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input type="search" id="ssSearch" placeholder="Search site, activity, water…" aria-label="Search activities" autocomplete="off">
+      </label>
+    </div>
+    <div class="card pad0 tbl-scroll">
+      <table class="data register" id="ssTable">
+        <colgroup>
+          <col style="width:26%"><col style="width:16%"><col style="width:17%"><col style="width:80px">
+          <col style="width:110px"><col style="width:100px"><col style="width:70px"><col style="width:120px">
+        </colgroup>
+        <thead><tr>
+          <th class="sortable" data-sort="name">Site</th>
+          <th class="sortable" data-sort="cat">Activity</th>
+          <th class="sortable" data-sort="water">Nearest water</th>
+          <th class="sortable num" data-sort="dist">Distance</th>
+          <th>Zone</th>
+          <th class="sortable" data-sort="lic">Licence</th>
+          <th class="sortable num" data-sort="risk">Risk</th>
+          <th></th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="pager" id="ssPager"></div>
+
+    <div class="grid two" style="margin-top:26px">
+      <div>
+        <div class="section-title" style="margin-top:0">
+          <h2>Water under pressure</h2>
+          <span class="st-sub">Most activity within 250 m</span>
+        </div>
+        <div class="ss-press-list" id="ssPressure"></div>
+      </div>
+      <div>
+        <div class="section-title" style="margin-top:0">
+          <h2>Satellite check</h2>
+          <span class="st-sub">Sentinel-2, quarterly · opens on the map</span>
+        </div>
+        <div class="ss-sat-list" id="ssSat"></div>
+        <p class="ss-foot">An activity that clears land or opens ground shows up in the water beside it first:
+          turbidity rises with the run-off, chlorophyll with the nutrients. Compare quarters to see whether it is
+          getting worse.</p>
+      </div>
     </div>
   </div>
 </section>

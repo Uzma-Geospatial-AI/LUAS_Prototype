@@ -8,17 +8,18 @@ import { sourceLabel } from './firebase.js';
 import { store, registerAsJson, registerAsCsv, download } from './store.js';
 import { buildExamples } from './examples.js';
 import { buildGlossary } from './glossary.js';
+import { renderSesams, resizeSesams } from './sesams.js';
 import { renderPhase1, resizePhase1 } from './phase1.js';
 import { renderPhase2, renderNational, resizePhase2 } from './phase2.js';
 import { renderPhase3, buildLicenceForm, resizePhase3, buildRegisterControls } from './phase3.js';
-import { initMap, resizeMap, refreshMap, pauseMap, flyToPoint } from './mapview.js';
+import { initMap, resizeMap, refreshMap, pauseMap, flyToPoint, showWqProduct } from './mapview.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-const VIEWS = ['map', 'station', 'quality', 'tmdl'];
-const ready = { map: false, quality: false, tmdl: false };
+const VIEWS = ['map', 'station', 'quality', 'tmdl', 'sesams'];
+const ready = { map: false, quality: false, tmdl: false, sesams: false };
 
 /* ---------------- Clock ---------------- */
 function tick() {
@@ -56,6 +57,7 @@ function show(view) {
     renderPhase3();
     resizePhase3();
   }
+  if (view === 'sesams') { renderSesams(); ready.sesams = true; resizeSesams(); }
 }
 
 /* ---------------- App bar ---------------- */
@@ -142,6 +144,7 @@ function buildStationPicker() {
     if (ready.map) refreshMap();
     if (ready.quality) renderPhase2();
     if (ready.tmdl) renderPhase3();
+    if (ready.sesams) renderSesams();
     renderPhase1();
   });
 
@@ -190,7 +193,7 @@ function buildStationPicker() {
   });
 
   window.addEventListener('resize', () => {
-    resizeMap(); resizePhase1(); resizePhase2(); resizePhase3();
+    resizeMap(); resizePhase1(); resizePhase2(); resizePhase3(); resizeSesams();
   });
 
   /* The Dengkil popup on the map jumps straight into the assessment */
@@ -204,7 +207,11 @@ function buildStationPicker() {
      fly. */
   document.addEventListener('showonmap', (e) => {
     show('map');
-    flyToPoint(e.detail.lat, e.detail.lon, 16, e.detail.srcId ?? null);
+    if (typeof e.detail.lat === 'number') {
+      flyToPoint(e.detail.lat, e.detail.lon, 16, e.detail.srcId ?? null);
+    }
+    /* A satellite product asked for along with the place, or on its own */
+    if (e.detail.wq) showWqProduct(e.detail.wq);
   });
 
   buildGlossary();

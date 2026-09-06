@@ -1147,3 +1147,28 @@ body.gl-open{overflow:hidden}
   .gl-table td.gl-t{padding-top:10px}
   .gl-table tr{display:block;border-bottom:1px solid #f0f2f7}
 }
+
+/* ---------------- SESAMS ---------------- */
+.ss-cat{display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--c);margin-right:6px;vertical-align:-1px}
+.ss-zone{display:inline-block;padding:2px 8px;border-radius:5px;font-size:10.5px;font-weight:650;
+  color:#fff;background:var(--c)}
+.ss-press-list{display:flex;flex-direction:column;gap:8px}
+.ss-press{
+  text-align:left;width:100%;padding:10px 13px;border:1px solid var(--line);border-radius:var(--r);
+  background:var(--surface);cursor:pointer;transition:.14s;font:inherit;color:inherit;
+}
+.ss-press:hover{border-color:var(--navy-2);background:#f7f9fd}
+.ss-press-h{display:flex;align-items:baseline;gap:8px;font-size:13px}
+.ss-press-n{font-size:11.5px;color:var(--muted);margin-top:3px}
+.ss-press-c{font-size:10.5px;color:var(--muted-2);margin-top:3px}
+.ss-sat-list{display:flex;flex-direction:column;gap:8px}
+.ss-sat{
+  text-align:left;width:100%;padding:10px 13px;border:1px solid var(--line);border-radius:var(--r);
+  background:var(--surface);cursor:pointer;transition:.14s;font:inherit;color:inherit;
+}
+.ss-sat:hover{border-color:var(--navy-2);background:#f7f9fd}
+.ss-sat-h{font-size:12.5px}
+.ss-sat .idx-ramp{margin:6px 0 3px}
+.ss-sat-n{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.45}
+.ss-foot{font-size:11.5px;color:var(--muted);line-height:1.55;margin-top:10px}
+#ssTable{min-width:980px}

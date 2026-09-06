@@ -3,7 +3,7 @@
 
    Holds two things the portal lets a user edit:
      · readings  — six-parameter sampling records entered in Phase 1
-     · licences  — the SESAMS effluent discharge register used in Phase 3
+     · licences  — the effluent discharge licence register used in Phase 3
      · cond      — the TMDL design conditions
 
    There is no backend, so everything lives in localStorage and belongs to
@@ -65,7 +65,7 @@ export const store = {
     write();
   },
 
-  /* ---------------- Licence register (SESAMS) ---------------- */
+  /* ---------------- Licence register ---------------- */
   /* The worked examples are premises taken off the map, so they arrive once
      the point sources have loaded rather than being written in here. */
   setExamples,
@@ -155,7 +155,7 @@ export function registerAsJson() {
   return {
     meta: {
       generated: new Date().toISOString().slice(0, 10),
-      system: 'LUAS · LEDS effluent discharge licence register (SESAMS)',
+      system: 'LUAS · LEDS effluent discharge licence register',
       note: 'Rows marked example:true are the shipped worked example, not real licences.',
       conditions: store.conditions(),
     },

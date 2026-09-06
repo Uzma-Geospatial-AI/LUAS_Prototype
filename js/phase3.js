@@ -1,5 +1,5 @@
 /* ============================================================
-   phase3.js — Phase 3: LEDS · TMDL · SESAMS
+   phase3.js — Phase 3: LEDS · TMDL · licence register
 
    How much load may this reach carry, how much is it carrying now, and how
    much is left to licence.
@@ -453,7 +453,7 @@ function renderChart(budgets) {
 }
 
 /* ============================================================
-   SESAMS licence register
+   Licence register
    ============================================================ */
 /* The register runs to a few hundred rows, so it is read a page at a time.
    The page survives a re-render — suspending a row must not throw the reader

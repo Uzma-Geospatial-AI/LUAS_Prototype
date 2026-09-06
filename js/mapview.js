@@ -126,6 +126,7 @@ export function initMap() {
   map.on('zoomend', () => { restyleWater(); restyleRivers(); restyleWaterFlow(); syncStill(); });
 
   applyVisibility();
+  if (pendingWq) { setWq({ product: pendingWq }); pendingWq = null; }
   if (pendingFly) {
     const [lat, lon, z, srcId] = pendingFly;
     pendingFly = null;
@@ -1140,6 +1141,13 @@ function syncWqControls() {
       <div class="ml-wq-n">${d.caveat ? '<b>Uncalibrated</b> — relative pattern only. ' : ''}Sentinel-2, ${q.span}. Range not supplied; low → high.</div>
     </div>` : '';
 }
+
+/* Another page asking for a product on the map — SESAMS, the index guide */
+export function showWqProduct(product) {
+  if (!map) { pendingWq = product; return; }
+  setWq({ product });
+}
+let pendingWq = null;
 
 /* Swap the overlay for the product and quarter asked for. One layer at a
    time: the products are alternatives, not a stack. */

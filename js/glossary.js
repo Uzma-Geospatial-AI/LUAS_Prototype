@@ -99,6 +99,12 @@ export const GLOSSARY = [
   {
     group: 'Licences',
     terms: [
+      ['SESAMS', 'Selangor Earth Surface Activity Monitoring System: the application MYSA (Agensi Angkasa Malaysia) built for LUAS to monitor land-use activity, above all on and around water bodies and where it could pollute the state’s water.',
+        'The Earth surface activity page: every land-use site by its distance to water, its zone and licence, the waters under most pressure, and the satellite check.'],
+      ['River reserve (screen)', 'Within 50 m of mapped water. The Selangor Waters Management Enactment 1999 sets reserves by river width; 50 m is used here for every reach.',
+        'The red zone on the SESAMS page: activity close enough to need a look.'],
+      ['Riparian zone (250 m)', 'Within 250 m of mapped water.',
+        'Run-off reaches the water in one rain event; the orange zone.'],
       ['Licence register', 'The list of premises permitted to discharge, with their reference, flow and permitted concentrations.',
         'The source of the WLA, and of the green symbols on the map. Kept in this browser unless exported.'],
       ['Licence', 'A permit to discharge effluent: reference, premises, category, standard, permitted flow and four permitted concentrations.',
