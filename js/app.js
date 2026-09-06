@@ -7,6 +7,7 @@ import { wqiClass } from './wqi.js';
 import { sourceLabel } from './firebase.js';
 import { store, registerAsJson, registerAsCsv, download } from './store.js';
 import { buildExamples } from './examples.js';
+import { buildGlossary } from './glossary.js';
 import { renderPhase1, resizePhase1 } from './phase1.js';
 import { renderPhase2, renderNational, resizePhase2 } from './phase2.js';
 import { renderPhase3, buildLicenceForm, resizePhase3, buildRegisterControls } from './phase3.js';
@@ -205,6 +206,8 @@ function buildStationPicker() {
     show('map');
     flyToPoint(e.detail.lat, e.detail.lon, 16, e.detail.srcId ?? null);
   });
+
+  buildGlossary();
 
   show(location.hash.slice(1) || 'map');
 
