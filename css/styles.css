@@ -1172,3 +1172,16 @@ body.gl-open{overflow:hidden}
 .ss-sat-n{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.45}
 .ss-foot{font-size:11.5px;color:var(--muted);line-height:1.55;margin-top:10px}
 #ssTable{min-width:980px}
+
+/* The satellite change scan */
+.ss-scan{padding:14px 16px}
+.ss-scan-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.ss-scan-row label{display:inline-flex;align-items:center;gap:6px;font-size:11px;text-transform:uppercase;
+  letter-spacing:.07em;font-weight:650;color:var(--muted)}
+.ss-scan-row select{text-transform:none;letter-spacing:0;font-weight:500}
+.ss-scan-note{font-size:11.5px;color:var(--muted);flex:1;min-width:200px}
+.ss-scan-prog{display:flex;align-items:center;gap:10px;margin-top:12px;font-size:11.5px;color:var(--muted)}
+.ss-scan-prog .bar{flex:1;height:7px;border-radius:4px;background:var(--surface-2);overflow:hidden}
+.ss-scan-prog .bar i{display:block;height:100%;width:0;background:var(--navy-2);transition:width .2s}
+#scanTable{min-width:900px}
+.st-warn{background:#fff3e2;color:#9a4b00}

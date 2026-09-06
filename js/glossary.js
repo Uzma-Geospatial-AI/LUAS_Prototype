@@ -101,6 +101,8 @@ export const GLOSSARY = [
     terms: [
       ['SESAMS', 'Selangor Earth Surface Activity Monitoring System: the application MYSA (Agensi Angkasa Malaysia) built for LUAS to monitor land-use activity, above all on and around water bodies and where it could pollute the state’s water.',
         'The Earth surface activity page: every land-use site by its distance to water, its zone and licence, the waters under most pressure, and the satellite check.'],
+      ['Earth surface change scan', 'Two quarters of a satellite product compared over every water body of 0.5 ha or more: the mean inside the water, and the share of bare ground on a 250 m ring of land around it.',
+        'The SESAMS function proper. Bare ground up 10+ points: ground newly exposed. The water up 8+ points: the activity reaching it. The map button shows the later quarter there.'],
       ['River reserve (screen)', 'Within 50 m of mapped water. The Selangor Waters Management Enactment 1999 sets reserves by river width; 50 m is used here for every reach.',
         'The red zone on the SESAMS page: activity close enough to need a look.'],
       ['Riparian zone (250 m)', 'Within 250 m of mapped water.',

@@ -126,7 +126,7 @@ export function initMap() {
   map.on('zoomend', () => { restyleWater(); restyleRivers(); restyleWaterFlow(); syncStill(); });
 
   applyVisibility();
-  if (pendingWq) { setWq({ product: pendingWq }); pendingWq = null; }
+  if (pendingWq) { setWq(pendingWq); pendingWq = null; }
   if (pendingFly) {
     const [lat, lon, z, srcId] = pendingFly;
     pendingFly = null;
@@ -1143,9 +1143,10 @@ function syncWqControls() {
 }
 
 /* Another page asking for a product on the map — SESAMS, the index guide */
-export function showWqProduct(product) {
-  if (!map) { pendingWq = product; return; }
-  setWq({ product });
+export function showWqProduct(product, quarter = null) {
+  const patch = quarter ? { product, quarter } : { product };
+  if (!map) { pendingWq = patch; return; }
+  setWq(patch);
 }
 let pendingWq = null;
 

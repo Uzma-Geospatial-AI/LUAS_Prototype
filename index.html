@@ -585,6 +585,39 @@
     <div class="grid three" id="ssKpis"></div>
 
     <div class="section-title">
+      <h2>Earth surface change</h2>
+      <span class="st-sub">Sentinel-2, one quarter against another — what SESAMS watches for <button type="button" class="tipmark" tabindex="0" data-tip="Reads the two quarters' tiles at zoom 13 (about 19 m per pixel) and compares every water body of half a hectare or more: the water itself, and the 250 m ring of land around it. More bare ground in the land ring means ground newly exposed — clearing, earthworks, mining; rising in the water means the activity is reaching it. Values are the product's colour ramp read back as 0–100, so a change is in points of that scale, not in physical units." aria-label="How the scan works">i</button></span>
+    </div>
+    <div class="card ss-scan">
+      <div class="ss-scan-row">
+        <label>Product <select id="scanProduct"></select></label>
+        <label>From <select id="scanFrom"></select></label>
+        <label>To <select id="scanTo"></select></label>
+        <button class="btn btn-primary" id="scanRun">Scan the catchment</button>
+        <span class="ss-scan-note" id="scanNote">Two quarters of tiles, about 5 MB, read once and kept.</span>
+      </div>
+      <div class="ss-scan-prog" id="scanProg" hidden><div class="bar"><i></i></div><span></span></div>
+      <div id="scanOut" hidden>
+        <div class="grid three" id="scanKpis"></div>
+        <div class="tbl-scroll" style="margin-top:12px">
+          <table class="data register" id="scanTable">
+            <colgroup>
+              <col style="width:26%"><col style="width:13%"><col style="width:70px">
+              <col style="width:17%"><col style="width:17%"><col style="width:18%"><col style="width:70px">
+            </colgroup>
+            <thead><tr>
+              <th>Water body</th><th>Type</th><th class="num">Area</th>
+              <th>Bare ground around it <span class="sub-inline">250 m ring</span></th>
+              <th>The water</th><th>What changed</th><th></th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="ss-foot" id="scanFoot"></div>
+      </div>
+    </div>
+
+    <div class="section-title">
       <h2>Activity by zone</h2>
       <span class="st-sub">How close each kind of activity sits to water <button type="button" class="tipmark" tabindex="0" data-tip="Zones are a screening rule: within 50 m of mapped water counts as the river reserve, within 250 m as riparian, and the rest of the 1.5 km buffer the sites were clipped to. River reserves under the Selangor Waters Management Enactment 1999 vary with river width; 50 m is used as one width for every reach." aria-label="Zone rule">i</button></span>
     </div>

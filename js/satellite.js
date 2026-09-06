@@ -82,18 +82,18 @@ const ramp = (cols) => `linear-gradient(90deg,${cols.join(',')})`;
 
 export const WQ_PRODUCTS = {
   ndti: {
-    label: 'NDTI', long: 'Turbidity index', file: 'NDTI',
-    ramp: ramp(RDYLGN), lo: 'Clear', hi: 'Turbid',
+    label: 'NDTI', long: 'Turbidity index', file: 'NDTI', quantity: 'turbidity',
+    stops: RDYLGN, ramp: ramp(RDYLGN), lo: 'Clear', hi: 'Turbid',
     note: 'Suspended sediment: plumes after rain, construction and dredging run-off, bank erosion.',
   },
   ndci: {
-    label: 'NDCI', long: 'Chlorophyll-a index', file: 'NDCI',
-    ramp: ramp(RDYLGN), lo: 'Low chlorophyll', hi: 'Bloom',
+    label: 'NDCI', long: 'Chlorophyll-a index', file: 'NDCI', quantity: 'chlorophyll',
+    stops: RDYLGN, ramp: ramp(RDYLGN), lo: 'Low chlorophyll', hi: 'Bloom',
     note: 'Algal biomass building in reservoirs and slow reaches — an early sign of a bloom.',
   },
   ss: {
-    label: 'SS', long: 'Suspended solids, estimated', file: 'SS_mgL', unit: 'mg/L',
-    ramp: ramp(['#000000', '#ffffff']), lo: 'Low', hi: 'High',
+    label: 'SS', long: 'Suspended solids, estimated', file: 'SS_mgL', unit: 'mg/L', quantity: 'sediment',
+    stops: ['#000000', '#ffffff'], ramp: ramp(['#000000', '#ffffff']), lo: 'Low', hi: 'High',
     note: 'A regression on the Red/Green ratio, not yet fitted to these rivers: relative pattern only.',
     caveat: true,
   },

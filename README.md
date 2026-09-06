@@ -438,6 +438,7 @@ nearest water (`scripts/08`), whether it holds a licence, and the quarterly Sent
 | Block | What it shows |
 |---|---|
 | KPIs | sites monitored, sites inside the 50 m river-reserve screen, riparian sites with no licence, waters with activity within 250 m |
+| Earth surface change | the satellite scan: two quarters of a product read at zoom 13 (19 m/px) and turned back into 0–100 through the ramp; for every water body of 0.5 ha or more, the mean in the water and the share of bare ground on a 250 m ring around it, on both dates. Bare ground up 10+ points flags newly exposed ground; the water up 8+ points flags the activity reaching it. About 2 MB of tiles, read once and kept; the map button opens the later quarter's layer at the body |
 | Activity by zone | stacked bar of each activity type by zone: reserve ≤ 50 m, riparian ≤ 250 m, buffer ≤ 1.5 km |
 | Watch list | every site, closest to water first; sortable, searchable, filtered by zone; a row opens the map there, the NDTI button opens it with the turbidity layer on |
 | Water under pressure | the rivers and water bodies with the most activity within 250 m |

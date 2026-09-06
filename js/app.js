@@ -211,7 +211,7 @@ function buildStationPicker() {
       flyToPoint(e.detail.lat, e.detail.lon, 16, e.detail.srcId ?? null);
     }
     /* A satellite product asked for along with the place, or on its own */
-    if (e.detail.wq) showWqProduct(e.detail.wq);
+    if (e.detail.wq) showWqProduct(e.detail.wq, e.detail.quarter ?? null);
   });
 
   buildGlossary();
