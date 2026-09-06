@@ -427,6 +427,23 @@ sub-index, and a pass/fail — parameter by parameter.
 ---
 
 
+## Names
+
+Most of the catchment's ponds, a third of its premises and a few river reaches carry no name in
+the source data. `scripts/11_name_features.py` names them, in order of how real the name is: the
+feature's own OSM name or an alternative name tag; for a water body, a named OSM water area whose
+centre lies inside the outline; and otherwise a **given** name from what the feature is and the
+nearest OSM locality — *Kolam Bandar Baru Bangi 2*, *Kilang Semenyih 4*, *Anak Sungai Langat*.
+A given name is a label, not a record; every feature carries `name_src` (`osm` or `given`) and the
+portal badges given names *nama diberi* wherever it shows one. The five worked-example licences are
+drawn from recorded names only.
+
+| | OSM name | Given |
+|---|---|---|
+| Water bodies | 51 | 1,038 |
+| Point sources | 238 | 413 |
+| River reaches | 472 | 17 |
+
 ## SESAMS — Earth surface activity
 
 **Selangor Earth Surface Activity Monitoring System**, the application MYSA (Agensi Angkasa Malaysia)

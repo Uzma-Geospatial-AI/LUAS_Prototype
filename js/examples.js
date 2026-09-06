@@ -77,8 +77,10 @@ function curatedIds() {
 function curatedPicks(feats) {
   const out = [];
   for (const [cat, n] of Object.entries(TAKE)) {
+    /* A recorded name only: a given one is a label, not a premises anyone
+       would recognise in a register. */
     out.push(...feats
-      .filter((f) => f.properties.cat === cat && f.properties.name)
+      .filter((f) => f.properties.cat === cat && f.properties.name && f.properties.name_src !== 'given')
       .sort((a, b) => b.properties.risk - a.properties.risk
         || String(a.properties.id).localeCompare(String(b.properties.id)))
       .slice(0, n));

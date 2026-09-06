@@ -215,7 +215,7 @@ function buildRivers() {
       onEachFeature: (f, layer) => {
         const r = f.properties;
         layer.bindTooltip(
-          `<b>${r.name ? esc(r.name) : 'Unnamed river'}</b><br>`
+          `<b>${r.name ? esc(r.name) : 'Unnamed river'}</b>${given(r)}<br>`
           + `${(r.m / 1000).toFixed(1)} km of mapped channel`
           + (r.main ? '<br>Main channel' : '') + '<br><i>Click to trace downstream</i>',
           { sticky: true });
@@ -272,7 +272,7 @@ function buildWaterBodies() {
         const b = f.properties;
         const g = WATER_GROUPS[b.group] ?? WATER_GROUPS.other;
         l.bindTooltip(
-          `<b>${b.name ? esc(b.name) : 'Unnamed water body'}</b><br>`
+          `<b>${b.name ? esc(b.name) : 'Unnamed water body'}</b>${given(b)}<br>`
           + `${esc(g.label)} · ${esc(b.kind)}<br>`
           + `${(b.area_m2 / 1e4).toFixed(2)} ha · ${b.km.toFixed(1)} km from the nearest river`
           + (b.flow ? `<br><i>${flowNote(b)}</i>` : ''),   /* older data has no flow */
@@ -408,7 +408,7 @@ function buildSources() {
       sourceIds.add(p.id);
       return marker
         .bindTooltip(
-          `<b>${p.name ? esc(p.name) : esc(c.label)}</b><br>`
+          `<b>${p.name ? esc(p.name) : esc(c.label)}</b>${given(p)}<br>`
           + `${esc(c.label)}<br>${metres(p.dist)} from ${esc(overallNearest(p)?.n ?? 'water')}`,
           { direction: 'top', offset: [0, -size / 2 - 2] })
         /* A function, not a string: it is re-run on open and on every layer
@@ -556,6 +556,11 @@ function anyWaterVisible() {
 
 const metres = (m) => `${Math.round(m).toLocaleString('en')} m`;
 
+/* A name the ETL gave a feature that had none — what it is and where it
+   is, from the nearest locality. Said so wherever it is shown. */
+const given = (p) => (p?.name_src === 'given'
+  ? ' <span class="given" title="A given name: what this is and where it is, from the nearest locality. Not a recorded name.">nama diberi</span>' : '');
+
 const PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"'
   + ' stroke-linecap="round" stroke-linejoin="round">'
   + '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/>'
@@ -585,7 +590,7 @@ function sourcePopup(p, c) {
     <div class="map-pop">
       <div class="pop-head" style="background:${c.color}">
         <div class="pop-code">${esc(c.label)}</div>
-        <div class="pop-name">${p.name ? esc(p.name) : 'Unnamed site'}</div>
+        <div class="pop-name">${p.name ? esc(p.name) : 'Unnamed site'}${given(p)}</div>
       </div>
       <div class="pop-body">
         <table class="pop-tbl">

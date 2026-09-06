@@ -65,7 +65,7 @@ function activities() {
     const st = licenceStatus(p.id);
     const cat = su.cats[p.cat] ?? {};
     return {
-      id: p.id, name: p.name ?? null, cat: p.cat, catLabel: cat.label ?? p.cat,
+      id: p.id, name: p.name ?? null, given: p.name_src === 'given', cat: p.cat, catLabel: cat.label ?? p.cat,
       color: cat.color, act: ACTIVITY[p.cat] ?? { label: p.cat, en: p.cat },
       dist: p.dist, risk: p.risk, zone: zoneOf(p.dist),
       water: near?.n ?? 'water', waterId: near?.id ?? null, waterKey: near ? Object.keys(p.near)[0] : null,
@@ -208,7 +208,7 @@ function renderWatchList(all) {
 
   $('ssTable').querySelector('tbody').innerHTML = shown.length ? shown.map((a) => `
     <tr data-id="${a.id}" class="row-go" title="Open this site on the map">
-      <td><b>${a.name ? esc(a.name) : `Unnamed ${esc(a.catLabel.toLowerCase())} site`}</b>
+      <td><b>${a.name ? esc(a.name) : `Unnamed ${esc(a.catLabel.toLowerCase())} site`}</b>${a.given ? ' <span class="given">nama diberi</span>' : ''}
         <span class="sub">${esc(a.act.label)}</span></td>
       <td><span class="ss-cat" style="--c:${a.color}"></span>${esc(a.act.en)}</td>
       <td>${esc(a.water)}<span class="sub">${a.waterKey?.startsWith('river') ? 'river' : 'water body'}</span></td>
@@ -497,7 +497,7 @@ async function runScan() {
       if (Number.isNaN(wA) && Number.isNaN(lA)) continue;
       const p = f.properties;
       rows.push({
-        id: p.id, name: p.name ?? null, group: p.group, kind: p.kind, area: p.area_m2, lat: p.lat, lon: p.lon,
+        id: p.id, name: p.name ?? null, given: p.name_src === 'given', group: p.group, kind: p.kind, area: p.area_m2, lat: p.lat, lon: p.lon,
         water: [wA * 100, wB * 100], land: [lA * 100, lB * 100],
         dWater: (wB - wA) * 100, dLand: (lB - lA) * 100,
       });
@@ -562,7 +562,7 @@ function renderScan() {
   $('scanTable').querySelector('tbody').innerHTML = show.map((r) => {
     const v = verdict(r, q);
     return `<tr>
-      <td><b>${r.name ? esc(r.name) : `Unnamed ${esc(r.kind)}`}</b><span class="sub">${r.name ? esc(r.kind) : `#${r.id}`}</span></td>
+      <td><b>${r.name ? esc(r.name) : `Unnamed ${esc(r.kind)}`}</b>${r.given ? ' <span class="given">nama diberi</span>' : ''}<span class="sub">${r.name ? esc(r.kind) : `#${r.id}`}</span></td>
       <td>${esc(r.group)}</td>
       <td class="num">${(r.area / 1e4).toFixed(1)} ha</td>
       <td class="num">${fl(r.land[0])}% → ${fl(r.land[1])}% &nbsp;${dl(r.dLand, FLAG_LAND)}</td>
