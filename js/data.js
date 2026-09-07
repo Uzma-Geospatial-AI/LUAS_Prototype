@@ -288,6 +288,52 @@ export function flowBasis(st) {
       + `(${(st.drained / 1000).toFixed(0)} km). An estimate, to be replaced with the DID gauged record.`;
 }
 
+/* ---- What each reach carries ----
+   The design flow on a TMDL is set for one station. A reach is not a
+   station, so its flow is read across from the nearest one: that station's
+   flow per kilometre of channel draining to it, applied to the channel
+   draining to the reach. Both are the same accumulation the map already
+   scales line width by, so a confluence adds up the way the picture does.
+
+   It follows whatever is on record. Change the design flow on a TMDL, or
+   pick a different one, and the reaches around that station follow.
+
+   An estimate carried across an estimate: it says how fast the water is
+   moving relative to the rest of the catchment, not what a gauge would
+   read at that spot. */
+export function reachFlows() {
+  const feats = DATA.rivers?.features ?? [];
+  if (!feats.length) return { byId: new Map(), lo: 0, hi: 0 };
+
+  /* Flow per metre of drained channel, at each station that has one */
+  const refs = [];
+  for (const s of DATA.stations) {
+    const t = store.activeTmdl(s.code);
+    const q = Number(t?.designFlow) || s.flowEst;
+    if (!q || !s.drained) continue;
+    refs.push({ lat: s.lat, lon: s.lon, per: q / s.drained });
+  }
+  if (!refs.length) return { byId: new Map(), lo: 0, hi: 0 };
+
+  const byId = new Map();
+  let lo = Infinity, hi = 0;
+  for (const f of feats) {
+    const c = f.geometry.coordinates;
+    const mid = c[Math.floor(c.length / 2)];
+    const k = Math.cos((mid[1] * Math.PI) / 180);
+    let best = refs[0], bd = Infinity;
+    for (const r of refs) {
+      const d = (r.lat - mid[1]) ** 2 + ((r.lon - mid[0]) * k) ** 2;
+      if (d < bd) { bd = d; best = r; }
+    }
+    const q = Math.max(1, best.per * (f.properties.up ?? 0));
+    byId.set(f.properties.id, q);
+    if (q < lo) lo = q;
+    if (q > hi) hi = q;
+  }
+  return { byId, lo, hi };
+}
+
 /* ---- Which station a licence counts at ----
    A licence discharges to one place, and the budget it belongs in is the
    one written for the nearest monitoring station to it — unless the

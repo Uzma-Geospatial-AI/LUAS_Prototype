@@ -860,7 +860,9 @@ select{cursor:pointer}
    reads at any zoom. Both dash patterns repeat every 20px so one keyframe
    distance suits both. */
 @keyframes flowDash{to{stroke-dashoffset:-40}}
-.flow-anim{animation:flowDash 1.7s linear infinite;pointer-events:none}
+/* The duration is set per reach from the design flow on record; the value
+   here is only what an unplaced reach falls back to. */
+.flow-anim{animation:flowDash var(--flow-dur,1.7s) linear infinite;pointer-events:none}
 .ml-line.flowkey{
   border-top:0;height:3px;width:22px;border-radius:2px;
   background:repeating-linear-gradient(90deg,#fff 0 6px,transparent 6px 10px);

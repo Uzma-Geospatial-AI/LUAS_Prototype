@@ -14,7 +14,7 @@
    on, off or part-on from its members. One state, two ways into it, so the
    two panels can never disagree.
    ============================================================ */
-import { DATA, readingAt, latestIdx, fmtMonth, waterSummary, sourceSummary,
+import { DATA, readingAt, latestIdx, fmtMonth, waterSummary, sourceSummary, reachFlows,
          WATER_GROUPS } from './data.js';
 import { wqiClass, WQI_CLASSES, classCompliance, PARAM_META } from './wqi.js';
 import { store } from './store.js';
@@ -127,6 +127,7 @@ export function initMap() {
   map.on('zoomend', () => { restyleWater(); restyleRivers(); });
 
   applyVisibility();
+  applyFlowSpeed();
   if (pendingWq) { setWq(pendingWq); pendingWq = null; }
   if (pendingWater) { const id = pendingWater; pendingWater = null; setTimeout(() => selectWaterBody(id), 300); }
   if (pendingStation) { const c = pendingStation; pendingStation = null; setTimeout(() => showStation(c), 300); }
@@ -220,7 +221,9 @@ function buildRivers() {
         layer.bindTooltip(
           `<b>${r.name ? esc(r.name) : 'Unnamed river'}</b>${given(r)}<br>`
           + `${(r.m / 1000).toFixed(1)} km of mapped channel`
-          + (r.main ? '<br>Main channel' : '') + '<br><i>Click to trace downstream</i>',
+          + (r.main ? '<br>Main channel' : '')
+          + (() => { const q = reachFlow(r.id); return q ? `<br>Carries about <b>${Math.round(q).toLocaleString('en')} m³/h</b>` : ''; })()
+          + '<br><i>Click to trace downstream</i>',
           { sticky: true });
         layer.bindPopup(() => riverPopup(r), POPUP);
         layer.on('click', () => drawTrace(r.id));
@@ -239,6 +242,37 @@ function buildRivers() {
   flowLayer = L.geoJSON(DATA.rivers, { style: flowStyle });
   visible.add('flow:anim');
   MASTERS.flow = ['flow:anim'];
+}
+
+/* How fast the dashes run on each reach. The pattern repeats every 20 px and
+   the keyframe covers 40 px, so the duration is the time to cross two
+   patterns: a shorter duration is faster water. Mapped on the log of the
+   flow, because a catchment spans three orders of magnitude between a
+   headwater and the trunk and a linear scale would leave everything but the
+   main channel looking still. */
+const FLOW_FAST = 0.6, FLOW_SLOW = 4.2;      /* seconds */
+let flows = { byId: new Map(), lo: 0, hi: 0 };
+
+function flowDuration(id) {
+  const q = flows.byId.get(id);
+  if (!q || !(flows.hi > flows.lo)) return 1.7;
+  const t = (Math.log(q) - Math.log(flows.lo)) / (Math.log(flows.hi) - Math.log(flows.lo));
+  return FLOW_SLOW + (FLOW_FAST - FLOW_SLOW) * Math.max(0, Math.min(1, t));
+}
+
+/* Read the flows off the TMDLs on record and set each reach's dash speed.
+   Called when the map is built and again whenever a record changes. */
+function applyFlowSpeed() {
+  flows = reachFlows();
+  flowLayer?.eachLayer((l) => {
+    const el = l.getElement?.();
+    if (el) el.style.setProperty('--flow-dur', `${flowDuration(l.feature?.properties?.id).toFixed(2)}s`);
+  });
+}
+
+/* What one reach carries, for its tooltip and popup */
+export function reachFlow(id) {
+  return flows.byId.get(id) ?? null;
 }
 
 /* The moving dashes ride on top of the channel, at about half its width, so a
@@ -673,6 +707,8 @@ function syncControls() {
 
 /* ---------------- Everything that depends on the month ---------------- */
 function repaint() {
+  /* A design flow that has been changed moves the water on the map */
+  applyFlowSpeed();
   paintStations();
   paintLicences();
   paintKpis();
@@ -1332,8 +1368,12 @@ function buildLegend() {
     + row('river:main', line('#0aa3d9', true), 'Sungai Langat', 'main channel')
     + row('river:trib', line('#45bfe0', true), 'Tributaries',
       `${riverLayers.trib?.getLayers().length ?? 0} reaches`)
-    + row('flow:anim', '<span class="ml-line flowkey"></span>', 'Flow direction',
-      'downstream');
+    + row('flow:anim', '<span class="ml-line flowkey"></span>', 'Flow direction &amp; rate',
+      'dashes run downstream',
+      'The dashes run at the rate the design flow on the TMDL for the nearest station implies, '
+      + 'carried across by the channel length draining to each reach: quick on the trunk, slow on '
+      + 'a headwater. Change a design flow and the water changes with it. Hover a reach to see what '
+      + 'it carries.');
 
   countLicences();
 
