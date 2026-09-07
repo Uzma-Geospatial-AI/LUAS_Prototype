@@ -24,6 +24,7 @@ import {
 import { store, download } from './store.js';
 import { licenceStatus } from './licenceStatus.js';
 import { kindLabel } from './locations.js';
+import { IMAGERY, REFERENCE_MAPS, gibsLayer } from './satellite.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -35,18 +36,25 @@ const today = () => new Date().toISOString().slice(0, 10);
 /* ============================================================
    The map, drawn
    ============================================================ */
-const BASES = {
-  imagery: {
-    label: 'Satellite imagery',
-    url: (z, x, y) => `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`,
-    credit: 'Imagery: Esri, Maxar, Earthstar Geographics',
-  },
-  street: {
-    label: 'Street map',
-    url: (z, x, y) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`,
-    credit: '© OpenStreetMap contributors',
-  },
-};
+/* Every basemap the map offers, read off the map's own definitions so the
+   two never disagree. The Leaflet layer is built only to read its URL
+   template and options back; it is never added to a map. */
+export const ALL_BASES = { ...IMAGERY, ...REFERENCE_MAPS };
+export const yesterday = () => new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+function tileSource(key, date) {
+  const d = ALL_BASES[key] ?? IMAGERY.esri;
+  const layer = d.daily ? gibsLayer(d, date) : d.make();
+  const tpl = layer._url;
+  const subs = layer.options.subdomains ?? 'abc';
+  const maxZ = layer.options.maxNativeZoom ?? layer.options.maxZoom ?? 19;
+  const credit = String(layer.options.attribution ?? '').replace(/&copy;/g, '©').replace(/<[^>]+>/g, '');
+  return {
+    label: d.label + (d.daily ? ` · ${date}` : ''),
+    credit, maxZ,
+    url: (z, x, y) => tpl.replace('{z}', z).replace('{x}', x).replace('{y}', y)
+      .replace('{s}', subs[(x + y) % subs.length]),
+  };
+}
 
 function loadImage(src) {
   return new Promise((res, rej) => {
@@ -60,8 +68,8 @@ function loadImage(src) {
 
 /* Web Mercator at one zoom, in pixels; the box is centred on the station */
 export async function captureMap(st, opts = {}) {
-  const { base = 'imagery', zoom = 14, w = 1000, h = 600 } = opts;
-  const B = BASES[base] ?? BASES.imagery;
+  const { base = 'esri', zoom = 14, w = 1000, h = 600, date = yesterday() } = opts;
+  const B = tileSource(base, date);
   const z = zoom;
   const n = 2 ** z * 256;
   const proj = (lat, lon) => {
@@ -87,14 +95,19 @@ export async function captureMap(st, opts = {}) {
   ctx.fillStyle = '#dfe6ee';
   ctx.fillRect(0, 0, w, h);
 
-  /* Tiles first, all of them, before anything is drawn over them */
+  /* Tiles first, all of them, before anything is drawn over them. A basemap
+     that stops short of the zoom asked for is fetched at its deepest level
+     and drawn larger, so the extent stays the same and the picture softens
+     rather than going blank. */
+  const tz = Math.min(z, B.maxZ);
+  const size = 256 * 2 ** (z - tz);
   const jobs = [];
-  for (let tx = Math.floor(left / 256); tx <= Math.floor((left + w) / 256); tx++) {
-    for (let ty = Math.floor(top / 256); ty <= Math.floor((top + h) / 256); ty++) {
-      if (ty < 0 || ty >= 2 ** z) continue;
-      const wrap = ((tx % 2 ** z) + 2 ** z) % 2 ** z;
-      jobs.push(loadImage(B.url(z, wrap, ty))
-        .then((img) => ctx.drawImage(img, tx * 256 - left, ty * 256 - top))
+  for (let tx = Math.floor(left / size); tx <= Math.floor((left + w) / size); tx++) {
+    for (let ty = Math.floor(top / size); ty <= Math.floor((top + h) / size); ty++) {
+      if (ty < 0 || ty >= 2 ** tz) continue;
+      const wrap = ((tx % 2 ** tz) + 2 ** tz) % 2 ** tz;
+      jobs.push(loadImage(B.url(tz, wrap, ty))
+        .then((img) => ctx.drawImage(img, tx * size - left, ty * size - top, size, size))
         .catch(() => {}));
     }
   }
@@ -206,7 +219,7 @@ export async function captureMap(st, opts = {}) {
 
   let url;
   try { url = cv.toDataURL('image/png'); } catch { return null; }   /* a tainted canvas cannot be read */
-  return { url, credit: B.credit, base: B.label, zoom: z, w, h, scale: `${len >= 1000 ? `${len / 1000} km` : `${len} m`}` };
+  return { url, credit: B.credit, base: B.label, zoom: z, tileZoom: tz, w, h, scale: `${len >= 1000 ? `${len / 1000} km` : `${len} m`}` };
 }
 
 function label(ctx, text, x, y, font) {
@@ -397,7 +410,7 @@ export function buildReport(g, sec, cap) {
     ${st.user ? `<span>${esc(kindLabel(st.kind))} · added from the app bar</span>` : ''}
     <span>${st.lat.toFixed(5)}, ${st.lon.toFixed(5)}</span><span>Generated <b>${esc(when)}</b></span></div>
   ${sec.map && cap ? `<figure><img src="${cap.url}" width="${cap.w}" height="${cap.h}" alt="Map around ${esc(st.name)}">
-    <figcaption>${esc(cap.base)} at zoom ${cap.zoom}, scale bar ${esc(cap.scale)}. Rivers in blue, the catchment edge dashed yellow, water bodies by type, premises green with a licence and red without, stations by their latest WQI class. ${esc(cap.credit)}.</figcaption></figure>` : sec.map ? '<div class="note">The map could not be captured: the basemap tiles did not load.</div>' : ''}
+    <figcaption>${esc(cap.base)} at zoom ${cap.zoom}${cap.tileZoom < cap.zoom ? ` (tiles at ${cap.tileZoom}, enlarged)` : ''}, scale bar ${esc(cap.scale)}. Rivers in blue, the catchment edge dashed yellow, water bodies by type, premises green with a licence and red without, stations by their latest WQI class. ${esc(cap.credit)}.</figcaption></figure>` : sec.map ? '<div class="note">The map could not be captured: the basemap tiles did not load.</div>' : ''}
   ${sec.station ? sectionStation(g) : ''}
   ${sec.quality ? sectionQuality(g) : ''}
   ${sec.tmdl ? sectionTmdl(g) : ''}
@@ -438,6 +451,17 @@ export function buildReportDialog() {
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('rptDialog').hidden) closeReport(); });
   $('rptGo').onclick = generate;
   $('rptStation').onchange = () => { $('rptResult').hidden = true; };
+  /* The list of basemaps is the map's, in the map's groups */
+  const group = (keys, title) => `<optgroup label="${title}">${keys.map((k) =>
+    `<option value="${k}">${esc(ALL_BASES[k].label)}${ALL_BASES[k].res ? ` · ${esc(ALL_BASES[k].res)}` : ''}</option>`).join('')}</optgroup>`;
+  $('rptBase').innerHTML = group(Object.keys(IMAGERY).filter((k) => !IMAGERY[k].daily), 'Satellite imagery')
+    + group(Object.keys(IMAGERY).filter((k) => IMAGERY[k].daily), 'Daily imagery')
+    + group(Object.keys(REFERENCE_MAPS), 'Reference maps');
+  $('rptDate').value = yesterday();
+  $('rptDate').max = yesterday();
+  const daily = () => { $('rptDateRow').hidden = !ALL_BASES[$('rptBase').value]?.daily; $('rptResult').hidden = true; };
+  $('rptBase').onchange = daily;
+  daily();
 }
 
 export function openReportDialog() {
@@ -472,7 +496,8 @@ async function generate() {
     let cap = null;
     if (sec.map) {
       $('rptHint').textContent = 'Capturing the map around the station…';
-      cap = await captureMap(st, { base: $('rptBase').value, zoom: Number($('rptZoom').value) });
+      cap = await captureMap(st, { base: $('rptBase').value, zoom: Number($('rptZoom').value),
+        date: $('rptDate').value || yesterday() });
     }
     $('rptHint').textContent = 'Writing the report…';
     const g = gather(st);
