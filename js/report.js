@@ -266,30 +266,79 @@ function gather(st) {
    The report
    ============================================================ */
 const CSS = `
-  body{font:13px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1c2030;margin:0;background:#f4f6fa}
-  .page{max-width:1040px;margin:0 auto;padding:28px 32px 48px;background:#fff}
-  h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:28px 0 8px;padding-bottom:6px;border-bottom:2px solid #e2e6ef}
-  h3{font-size:13px;margin:16px 0 6px}
-  .sub{color:#5f6880;font-size:12.5px}.meta{display:flex;gap:18px;flex-wrap:wrap;margin:10px 0 0;font-size:12px;color:#5f6880}
-  .meta b{color:#1c2030}
-  table{width:100%;border-collapse:collapse;font-size:12px;margin:6px 0 10px}
-  th,td{padding:6px 9px;border:1px solid #e2e6ef;text-align:left;vertical-align:top}
-  th{background:#f4f6fa;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:#5f6880}
+  :root{--navy:#16173f;--navy2:#22235f;--ink:#1c2030;--mut:#5f6880;--mut2:#8b93a8;--line:#e2e6ef;--cyan:#00b4d8}
+  *{box-sizing:border-box}
+  body{font:12.5px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);margin:0;background:#eef1f6}
+  .doc{width:100%;border-collapse:collapse}
+  .doc>thead>tr>td,.doc>tfoot>tr>td,.doc>tbody>tr>td{padding:0;border:0}
+  .sheet{max-width:1000px;margin:0 auto;background:#fff}
+  .page{padding:0 34px 28px}
+  /* Letterhead */
+  .lh{display:flex;align-items:center;gap:16px;padding:22px 34px 14px;border-bottom:3px solid var(--navy2)}
+  .lh svg{width:46px;height:64px;flex:none}
+  .lh .org b{display:block;font-size:15.5px;letter-spacing:.04em;color:var(--navy);text-transform:uppercase}
+  .lh .org span{display:block;font-size:11.5px;color:var(--mut)}
+  .lh .org i{display:block;font-style:normal;font-size:11px;color:var(--mut2);margin-top:3px}
+  .lh .ctl{margin-left:auto;font-size:11px;border:1px solid var(--line);border-radius:6px;overflow:hidden;min-width:250px}
+  .lh .ctl div{display:flex;justify-content:space-between;gap:14px;padding:4px 10px;border-bottom:1px solid var(--line)}
+  .lh .ctl div:last-child{border-bottom:0}
+  .lh .ctl span{color:var(--mut)}.lh .ctl b{font-family:ui-monospace,Menlo,monospace;font-weight:600}
+  .lh-mini{display:none}
+  .pf{display:none}
+  /* Title block */
+  .title{padding:22px 0 14px;border-bottom:1px solid var(--line);margin-bottom:6px}
+  .title .kicker{font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--cyan);font-weight:700}
+  h1{font-size:24px;margin:2px 0 4px;letter-spacing:-.01em}
+  h1 span{font-weight:500;color:var(--mut)}
+  .meta{display:flex;gap:18px;flex-wrap:wrap;margin:8px 0 0;font-size:12px;color:var(--mut)}
+  .meta b{color:var(--ink)}
+  /* Sections, numbered */
+  .page{counter-reset:sec}
+  h2{counter-increment:sec;font-size:15.5px;margin:26px 0 8px;padding:8px 0 6px;border-bottom:2px solid var(--line);color:var(--navy)}
+  h2::before{content:counter(sec) ".  ";color:var(--cyan);font-family:ui-monospace,Menlo,monospace;font-weight:700}
+  h3{font-size:12.5px;margin:16px 0 6px;color:var(--ink)}
+  .sub{color:var(--mut);font-size:12px}
+  table{width:100%;border-collapse:collapse;font-size:11.5px;margin:6px 0 10px}
+  th,td{padding:5px 8px;border:1px solid var(--line);text-align:left;vertical-align:top}
+  th{background:#f4f6fa;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}
   td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
-  .ok{color:#0d7a3f;font-weight:600}.bad{color:#b42318;font-weight:600}.warn{color:#b54708;font-weight:600}.mut{color:#8b93a8}
-  .verdict{padding:12px 14px;border-left:4px solid;border-radius:6px;margin:8px 0 12px;background:#fafbfd}
+  .ok{color:#0d7a3f;font-weight:600}.bad{color:#b42318;font-weight:600}.warn{color:#b54708;font-weight:600}.mut{color:var(--mut2)}
+  .verdict{padding:11px 14px;border-left:4px solid;border-radius:6px;margin:8px 0 12px;background:#fafbfd}
   .verdict.ok{border-color:#17a04a}.verdict.bad{border-color:#d92d20}.verdict.warn{border-color:#ef7d1a}
-  .verdict b{font-size:15px;display:block;margin-bottom:2px}
-  figure{margin:10px 0 0}figure img{width:100%;height:auto;border:1px solid #e2e6ef;border-radius:6px}
-  figcaption{font-size:11px;color:#5f6880;margin-top:5px}
-  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:8px 0 6px}
-  .kpi{border:1px solid #e2e6ef;border-radius:8px;padding:10px 12px}.kpi .l{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#5f6880}
-  .kpi .v{font-size:22px;font-weight:700;margin:2px 0}.kpi .s{font-size:11.5px;color:#5f6880}
-  .note{font-size:11.5px;color:#5f6880;background:#fff8e8;border:1px solid #f6e0a8;border-radius:6px;padding:9px 12px;margin:12px 0}
-  .foot{margin-top:28px;padding-top:12px;border-top:1px solid #e2e6ef;font-size:11px;color:#8b93a8}
-  .bar{position:sticky;top:0;background:#16173f;color:#fff;padding:10px 32px;display:flex;gap:12px;align-items:center;font-size:12.5px}
-  .bar button{margin-left:auto;background:#00b4d8;color:#fff;border:0;border-radius:6px;padding:7px 14px;font:600 12.5px system-ui,sans-serif;cursor:pointer}
-  @media print{.bar{display:none}.page{padding:0;max-width:none}h2{break-after:avoid}table,figure,.verdict,.kpis{break-inside:avoid}}
+  .verdict b{font-size:14.5px;display:block;margin-bottom:2px}
+  figure{margin:10px 0 0}figure img{width:100%;height:auto;border:1px solid var(--line);border-radius:6px}
+  figcaption{font-size:10.5px;color:var(--mut);margin-top:5px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:8px 0 6px}
+  .kpi{border:1px solid var(--line);border-radius:8px;padding:9px 12px}.kpi .l{font-size:9.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut)}
+  .kpi .v{font-size:21px;font-weight:700;margin:2px 0}.kpi .s{font-size:11px;color:var(--mut)}
+  .note{font-size:11px;color:var(--mut);background:#fff8e8;border:1px solid #f6e0a8;border-radius:6px;padding:8px 12px;margin:12px 0}
+  /* Summary */
+  .sum{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:10px 0 4px}
+  .sum div{padding:8px 12px;border-bottom:1px solid var(--line);font-size:12px;display:flex;justify-content:space-between;gap:12px}
+  .sum div:nth-child(odd){border-right:1px solid var(--line)}
+  .sum div:nth-last-child(-n+2){border-bottom:0}
+  .sum span{color:var(--mut)}.sum b{text-align:right}
+  /* Signatures */
+  .sig{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin:34px 0 10px}
+  .sig div{border-top:1px solid var(--ink);padding-top:6px;font-size:11px;color:var(--mut)}
+  .sig div b{display:block;color:var(--ink);font-size:11.5px}
+  .sig div i{display:block;font-style:normal;margin-top:16px}
+  .foot{margin-top:24px;padding-top:10px;border-top:1px solid var(--line);font-size:10.5px;color:var(--mut2)}
+  .bar{position:sticky;top:0;z-index:2;background:var(--navy);color:#fff;padding:10px 32px;display:flex;gap:12px;align-items:center;font-size:12.5px}
+  .bar button{margin-left:auto;background:var(--cyan);color:#fff;border:0;border-radius:6px;padding:7px 14px;font:600 12.5px system-ui,sans-serif;cursor:pointer}
+  .bar small{opacity:.75}
+  @page{size:A4;margin:12mm 11mm 12mm}
+  @media print{
+    body{background:#fff}
+    .bar{display:none}.sheet{max-width:none}.page{padding:0 2mm}
+    .lh{display:none}
+    .lh-mini{display:flex;align-items:center;gap:10px;padding:0 2mm 6px;border-bottom:2px solid var(--navy2);margin-bottom:8px;font-size:10px;color:var(--mut)}
+    .lh-mini svg{width:16px;height:22px}.lh-mini b{color:var(--navy);letter-spacing:.04em}
+    .lh-mini span{margin-left:auto;font-family:ui-monospace,Menlo,monospace}
+    .pf{display:flex;justify-content:space-between;padding:6px 2mm 0;border-top:1px solid var(--line);font-size:9.5px;color:var(--mut2);margin-top:8px}
+    h2{break-after:avoid}table,figure,.verdict,.kpis,.sum,.sig{break-inside:avoid}
+    tr{break-inside:avoid}
+  }
 `;
 
 const fmtVal = (p, v) => (v == null ? '—' : p === 'an' ? v.toFixed(3) : p === 'ph' || p === 'do' || p === 'bod' ? v.toFixed(2) : v.toFixed(1));
@@ -396,26 +445,78 @@ function sectionLicences(g) {
       <tr><th colspan="9">Total · ${active.length} active</th>${['bod', 'cod', 'ss', 'an'].map((p) => `<th class="num">${nf(tot[p], 1)}</th>`).join('')}<th></th></tr></tbody></table>` : ''}`;
 }
 
+const MARK = `<svg viewBox="0 0 100 140" aria-hidden="true"><rect x="4" y="4" width="92" height="132" rx="46" fill="#22235f"/><path d="M50 12c-21 0-38 15-38 34v46c0 19 17 34 38 34s38-15 38-34V46c0-19-17-34-38-34z" fill="#157f3a"/><path d="M50 26 79 96a30 30 0 0 1-58 0z" fill="#f5e01c"/><g stroke="#45bfe0" stroke-width="6" stroke-linecap="round" fill="none"><path d="M24 74q7-7 13 0t13 0 13 0 13 0"/><path d="M26 88q7-7 13 0t13 0 13 0 11 0"/><path d="M30 102q6-7 12 0t12 0 12 0 8 0"/></g><path d="M20 106a30 30 0 0 0 60 0 46 46 0 0 1-60 0z" fill="#f5e01c"/></svg>`;
+
+/* The figures a reader wants first, in one box */
+function summary(g) {
+  const { st, target, latest, rec, tmdl, budgets, head, here } = g;
+  const cls = latest ? wqiClass(latest.wqi) : null;
+  const comp = latest ? classCompliance(latest.raw, target) : null;
+  const list = Object.values(budgets);
+  const over = list.filter((b) => b.overCapacity).length;
+  const notFit = list.filter((b) => !b.fits).length;
+  const tmdlLine = !tmdl ? 'No TMDL on record'
+    : notFit ? `${tmdl.ref} · does not fit the capacity`
+      : over ? `${tmdl.ref} · over-committed`
+        : `${tmdl.ref} · ${fmtVol(Math.max(0, head.volume))} left to licence (Std A)`;
+  const rows = [
+    ['Latest reading', latest ? `${fmtMonth(latest.t)}` : 'none yet'],
+    ['Water Quality Index', latest ? `${latest.wqi.toFixed(1)} · Class ${cls.id} · ${cls.status}` : '—'],
+    [`Class ${target} compliance`, comp ? (comp.pass ? 'Meets' : `Fails on ${comp.failed} of 6`) : '—'],
+    ['Months meeting the target', rec.total ? `${rec.passing} of ${rec.total} (${(rec.rate * 100).toFixed(0)}%)` : '—'],
+    ['TMDL', tmdlLine],
+    ['Licences counting here', `${here.filter((l) => l.active !== false).length} active of ${here.length}`],
+  ];
+  return `<div class="sum">${rows.map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}</div>`;
+}
+
 export function buildReport(g, sec, cap) {
   const { st } = g;
   const gen = new Date();
   const when = gen.toLocaleString('en-MY', { dateStyle: 'long', timeStyle: 'short' });
+  const stamp = gen.toISOString().slice(0, 10);
+  const ref = `LUAS/WQ/${st.code}/${stamp.replace(/-/g, '')}`;
+  const lhMini = `<div class="lh-mini">${MARK}<b>LEMBAGA URUS AIR SELANGOR</b> · Sungai Langat · Location report · ${esc(st.code)}<span>${esc(ref)}</span></div>`;
+  const pf = `<div class="pf"><span>Lembaga Urus Air Selangor · Sungai Langat catchment · ${esc(st.name)}</span><span>${esc(ref)} · generated ${esc(stamp)} · internal · prototype data</span></div>`;
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LUAS · ${esc(st.code)} · ${esc(st.name)} · location report</title><style>${CSS}</style></head><body>
-<div class="bar"><span><b>LUAS System</b> · Sungai Langat · location report</span><button onclick="window.print()">Print / save as PDF</button></div>
+<title>LUAS · ${esc(ref)} · ${esc(st.name)}</title><style>${CSS}</style></head><body>
+<div class="bar"><span><b>LUAS System</b> · Sungai Langat · location report · ${esc(ref)}</span><small>In the print dialog, turn off the browser's own headers and footers.</small><button onclick="window.print()">Print / save as PDF</button></div>
+<div class="sheet">
+<div class="lh">${MARK}
+  <div class="org"><b>Lembaga Urus Air Selangor</b><span>Selangor Water Management Authority</span><i>Sungai Langat catchment · water quality and load accounting</i></div>
+  <div class="ctl">
+    <div><span>Report ref.</span><b>${esc(ref)}</b></div>
+    <div><span>Location</span><b>${esc(st.code)}</b></div>
+    <div><span>Generated</span><b>${esc(stamp)}</b></div>
+    <div><span>Classification</span><b>Internal · prototype</b></div>
+  </div>
+</div>
+<table class="doc"><thead><tr><td>${lhMini}</td></tr></thead><tfoot><tr><td>${pf}</td></tr></tfoot><tbody><tr><td>
 <div class="page">
-  <div class="sub">Lembaga Urus Air Selangor · Sungai Langat catchment</div>
-  <h1>${esc(st.name)} <span class="mut" style="font-weight:500">· ${esc(st.code)}</span></h1>
-  <div class="meta"><span>${esc(st.river)}</span><span>${esc(st.district)} district</span><span>${esc(st.segment ?? '')} reach</span>
-    ${st.user ? `<span>${esc(kindLabel(st.kind))} · added from the app bar</span>` : ''}
-    <span>${st.lat.toFixed(5)}, ${st.lon.toFixed(5)}</span><span>Generated <b>${esc(when)}</b></span></div>
-  ${sec.map && cap ? `<figure><img src="${cap.url}" width="${cap.w}" height="${cap.h}" alt="Map around ${esc(st.name)}">
-    <figcaption>${esc(cap.base)} at zoom ${cap.zoom}${cap.tileZoom < cap.zoom ? ` (tiles at ${cap.tileZoom}, enlarged)` : ''}, scale bar ${esc(cap.scale)}. Rivers in blue, the catchment edge dashed yellow, water bodies by type, premises green with a licence and red without, stations by their latest WQI class. ${esc(cap.credit)}.</figcaption></figure>` : sec.map ? '<div class="note">The map could not be captured: the basemap tiles did not load.</div>' : ''}
+  <div class="title">
+    <div class="kicker">Location report</div>
+    <h1>${esc(st.name)} <span>· ${esc(st.code)}</span></h1>
+    <div class="meta"><span>${esc(st.river)}</span><span>${esc(st.district)} district</span><span>${esc(st.segment ?? '')} reach</span>
+      ${st.user ? `<span>${esc(kindLabel(st.kind))} · added from the app bar</span>` : ''}
+      <span>${st.lat.toFixed(5)}, ${st.lon.toFixed(5)}</span><span>Generated <b>${esc(when)}</b></span></div>
+  </div>
+  <h3 style="margin-top:14px">Summary</h3>
+  ${summary(g)}
+  ${sec.map && cap ? `<h2>Location map</h2><figure><img src="${cap.url}" width="${cap.w}" height="${cap.h}" alt="Map around ${esc(st.name)}">
+    <figcaption>${esc(cap.base)} at zoom ${cap.zoom}${cap.tileZoom < cap.zoom ? ` (tiles at ${cap.tileZoom}, enlarged)` : ''}, scale bar ${esc(cap.scale)}. Rivers in blue, the catchment edge dashed yellow, water bodies by type, premises green with a licence and red without, stations by their latest WQI class. ${esc(cap.credit)}.</figcaption></figure>` : sec.map ? '<h2>Location map</h2><div class="note">The map could not be captured: the basemap tiles did not load.</div>' : ''}
   ${sec.station ? sectionStation(g) : ''}
   ${sec.quality ? sectionQuality(g) : ''}
   ${sec.tmdl ? sectionTmdl(g) : ''}
   ${sec.licences ? sectionLicences(g) : ''}
-  <div class="foot">Station positions are real; the parameter values are sample readings, not measurements. No licence register is published as open data: licences marked example or estimated are placeholders. Design flows are estimates until replaced with the DID gauged record. Exported from the LUAS System prototype on ${esc(today())}.</div>
+  <h2>Sign-off</h2>
+  <div class="sig">
+    <div><b>Prepared by</b>Name, position<i>Date</i></div>
+    <div><b>Checked by</b>Name, position<i>Date</i></div>
+    <div><b>Approved by</b>Name, position<i>Date</i></div>
+  </div>
+  <div class="foot">Station positions are real; the parameter values are sample readings, not measurements. No licence register is published as open data: licences marked example or estimated are placeholders. Design flows are estimates until replaced with the DID gauged record. Generated by the LUAS System prototype on ${esc(stamp)} as ${esc(ref)}.</div>
+</div>
+</td></tr></tbody></table>
 </div></body></html>`;
 }
 
