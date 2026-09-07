@@ -198,6 +198,44 @@ export function buildExamples() {
    it for a decision. It cannot be edited; New TMDL starts a copy the user
    owns.
    ============================================================ */
+/* ---- A meter gauging for each worked TMDL ----
+   Invented, like the licence figures, and for the same reason: no meter
+   record is published. It is built to be consistent rather than plausible
+   in detail — the volume between the two readings, over the hours between
+   them, is exactly the station's design flow, so a reader who checks the
+   arithmetic on the card finds it holds. The window varies by station,
+   from a two-hour gauging to a month between meter reads, because that is
+   the range these are actually taken over.
+
+   The stamps are local, in the form the meter-reading fields write, so a
+   record opened for editing reads back the same. */
+const GAUGE_WINDOWS = [2, 6, 24, 168, 696];          /* hours: hours, a day, a week, a month */
+const codeSeed = (code) => [...String(code)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 2147483647, 7);
+const stamp = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-`
+  + `${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:`
+  + `${String(d.getMinutes()).padStart(2, '0')}`;
+
+function sampleGauging(st, flow) {
+  const seed = codeSeed(st.code);
+  const hours = GAUGE_WINDOWS[Math.floor(hash(seed, 21) * GAUGE_WINDOWS.length)];
+  const from = new Date(2026, 5, 1 + Math.floor(hash(seed, 22) * 20), 8 + Math.floor(hash(seed, 23) * 3), 0);
+  const to = new Date(from.getTime() + hours * 3600000);
+  /* A totaliser that has been turning for years, so the readings are large
+     and the difference between them is the interesting part */
+  const initial = Math.round((120000 + hash(seed, 24) * 880000) * 1000) / 1000;
+  const volume = flow * hours;                       /* exact: flow and hours are whole */
+  return {
+    initial,
+    final: Math.round((initial + volume) * 1000) / 1000,
+    from: stamp(from),
+    to: stamp(to),
+    hours,
+    volume,
+    flow,
+    example: true,
+  };
+}
+
 export function buildTmdlExamples() {
   const cond = {
     targetClass: DEFAULT_CONDITIONS.targetClass,
@@ -217,6 +255,7 @@ export function buildTmdlExamples() {
     designFlow: flow,
     flowUnit: 'm3h',
     flowVerified: false,
+    gauging: sampleGauging(st, flow),
     alloc: suggestAllocation(designReading(st, 12), licencesAt(st.code), at),
     note: `Worked example. Written to the Class ${cond.targetClass} loading capacity at an estimated `
       + `${flow.toLocaleString('en')} m³/h low flow${st.code === 'LGT06' ? '' : `, scaled from Dengkil's 16,200 m³/h by the channel length draining here`}, `
@@ -224,7 +263,9 @@ export function buildTmdlExamples() {
       + 'in the register are honoured in the ΣWLA, the background takes what the 12-month median at '
       + 'this station says the river carries beyond them, and any capacity to spare is added to the '
       + 'ΣWLA. Where the river is already over capacity the ΣLA takes what is left, so the diffuse '
-      + 'reduction needed shows. Not a decision — write your own with New TMDL.',
+      + 'reduction needed shows. The meter readings below it are invented too, built so the volume '
+      + 'between them over the hours between them comes to exactly this flow. Not a decision — '
+      + 'write your own with New TMDL.',
     example: true,
     created: '2026-09-01T00:00:00Z',
     updated: '2026-09-01T00:00:00Z',

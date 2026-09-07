@@ -33,6 +33,15 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
 const nf = (n, d = 0) => (Number.isFinite(Number(n))
   ? Number(n).toLocaleString('en-MY', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—');
 const today = () => new Date().toISOString().slice(0, 10);
+/* A gauging can run over two hours or over a month, so the days are said
+   too once the hours stop being readable on their own */
+const fmtPeriod = (h) => (h >= 48 ? `${nf(h, 2)} h · ${nf(h / 24, 1)} days` : `${nf(h, 2)} h`);
+const fmtStamp = (iso) => {
+  const d = new Date(iso);
+  if (!iso || Number.isNaN(d.getTime())) return String(iso ?? '—').replace('T', ' ');
+  return `${d.toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })}, `
+    + `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
 
 /* ============================================================
    The map, drawn
@@ -420,9 +429,9 @@ function sectionTmdl(g) {
     <div class="sub">TMDL = ΣWLA + ΣLA + MOS · ${esc(tmdl.ref)}${tmdl.example ? ' · worked example' : ''}${tmdl.title ? ` · ${esc(tmdl.title)}` : ''}</div>
     <div class="meta"><span>Target <b>Class ${esc(tmdl.targetClass)}</b></span><span>Design flow <b>${nf(tmdl.designFlow)} m³/h</b> ${tmdl.flowVerified ? '(verified)' : '(estimate)'}</span><span>Written <b>${esc(tmdl.date ?? '')}</b></span><span>Licences counting here <b>${here.length}</b></span></div>
     ${tmdl.gauging ? `<table><thead><tr><th colspan="2">Flow gauging</th></tr></thead><tbody>
-      <tr><td>Initial reading <span class="mut">bacaan awal</span></td><td class="num">${nf(tmdl.gauging.initial, 3)} m³ at ${esc(String(tmdl.gauging.from).replace('T', ' '))}</td></tr>
-      <tr><td>Final reading <span class="mut">bacaan akhir</span></td><td class="num">${nf(tmdl.gauging.final, 3)} m³ at ${esc(String(tmdl.gauging.to).replace('T', ' '))}</td></tr>
-      <tr><td>Volume over the period</td><td class="num">${nf(tmdl.gauging.volume, 3)} m³ over ${nf(tmdl.gauging.hours, 2)} h</td></tr>
+      <tr><td>Initial reading <span class="mut">bacaan awal</span></td><td class="num">${nf(tmdl.gauging.initial, 3)} m³ at ${esc(fmtStamp(tmdl.gauging.from))}</td></tr>
+      <tr><td>Final reading <span class="mut">bacaan akhir</span></td><td class="num">${nf(tmdl.gauging.final, 3)} m³ at ${esc(fmtStamp(tmdl.gauging.to))}</td></tr>
+      <tr><td>Volume past the meter</td><td class="num">${nf(tmdl.gauging.volume, 3)} m³ over ${fmtPeriod(tmdl.gauging.hours)}</td></tr>
       <tr><td><b>Design flow</b></td><td class="num"><b>${nf(tmdl.gauging.flow)} m³/h</b></td></tr>
     </tbody></table>` : ''}
     ${tmdl.flowVerified ? '' : `<div class="note">${esc(flowBasis(st))}</div>`}

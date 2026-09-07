@@ -1368,3 +1368,13 @@ table.register col.c-at{width:72px}
 }
 .gauge-grid input:focus{outline:none;border-color:var(--cyan-2);box-shadow:0 0 0 3px rgba(0,180,216,.12)}
 .tf-gauge .hint{margin-top:9px;text-transform:none;letter-spacing:0}
+
+/* The meter readings the design flow was worked out from, on the record */
+.tc-gauge{padding:12px 16px;border-bottom:1px solid var(--line);background:#fbfcfe}
+.g-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(176px,1fr));gap:12px}
+.g-row>div{display:flex;flex-direction:column;gap:2px;padding-left:11px;border-left:2px solid var(--line-2)}
+.g-row>div:last-child{border-left-color:var(--cyan)}
+.g-k{font-size:10px;text-transform:uppercase;letter-spacing:.07em;font-weight:700;color:var(--muted)}
+.g-k i{font-style:normal;text-transform:none;letter-spacing:0;font-weight:400;color:var(--muted-2)}
+.g-row b{font-family:var(--fm);font-size:14px;font-weight:700;color:var(--navy);letter-spacing:-.01em}
+.g-n{font-size:11px;color:var(--muted)}

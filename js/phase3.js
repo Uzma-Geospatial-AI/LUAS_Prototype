@@ -67,6 +67,19 @@ const num = (v) => (v === '' || v == null ? NaN : Number(v));
 const nf = (n, d = 0) => Number(n).toLocaleString('en-MY',
   { minimumFractionDigits: d, maximumFractionDigits: d });
 const today = () => new Date().toISOString().slice(0, 10);
+/* When a meter was read, written out rather than left as an ISO stamp */
+const fmtWhen = (iso) => {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso).replace('T', ' ');
+  return `${d.toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })}, `
+    + `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+/* A gauging can run over two hours or over a month, so hours alone stops
+   being readable at some point and the days are said as well */
+const fmtPeriod = (h) => (h >= 48
+  ? `${nf(h, 2)} h · ${nf(h / 24, 1)} days`
+  : `${nf(h, 2)} h`);
 const fmtDate = (iso) => {
   if (!iso) return '—';
   const d = new Date(iso);
@@ -407,7 +420,7 @@ function readGauge(apply = false) {
   const g = { initial: q0, final: q1, from: t0, to: t1, hours: Math.round(hours * 1000) / 1000,
     volume: Math.round(vol * 1000) / 1000, flow: Math.round(flow) };
   if (apply) $('tfFlow').value = g.flow;
-  say(`${nf(vol, vol < 100 ? 2 : 0)} m³ over ${nf(hours, 2)} h${overnight ? ' (read the next morning)' : ''}`
+  say(`${nf(vol, vol < 100 ? 2 : 0)} m³ over ${fmtPeriod(hours)}${overnight ? ' (read the next morning)' : ''}`
     + ` = ${nf(g.flow)} m³/h${apply ? ' — written into the design flow above' : ''}`, ' ok');
   return g;
 }
@@ -602,10 +615,9 @@ function renderTmdlCard(t, budgets) {
             title="${t.flowVerified ? 'Checked against the DID gauged low-flow record.'
               : esc(flowBasis(DATA.focus)) + ' Every load figure scales with this number.'}">${t.flowVerified ? 'verified' : 'estimate'}</i></span>
           <span>Written <b>${fmtDate(t.date)}</b></span>
-          ${t.gauging ? `<span title="Initial reading ${nf(t.gauging.initial, 3)} m³, final ${nf(t.gauging.final, 3)} m³, ${nf(t.gauging.hours, 2)} hours apart">Metered
-            <b>${nf(t.gauging.volume)} m³ / ${nf(t.gauging.hours, 2)} h</b></span>` : ''}
         </div>
       </div>
+      ${gaugeStrip(t)}
       <div class="tbl-scroll">
         <table class="data alloc">
           <thead><tr>
@@ -632,6 +644,26 @@ function renderTmdlCard(t, budgets) {
         ${attachGallery(t.attachments, { small: true })}</div>` : ''}
     </div>`;
   if (t.attachments?.length) wireGallery($('p3Tmdl'), t.attachments);
+}
+
+/* Where the design flow came from, on the record rather than only in the
+   form that wrote it: both meter readings, when each was taken, and the
+   arithmetic between them. */
+function gaugeStrip(t) {
+  const g = t.gauging;
+  if (!g) return '';
+  const cell = (lab, sub, val, note) => `
+    <div><span class="g-k">${lab}${sub ? ` <i>${sub}</i>` : ''}</span>
+      <b>${val}</b>${note ? `<span class="g-n">${note}</span>` : ''}</div>`;
+  return `<div class="tc-gauge">
+    <div class="tc-att-h">Flow gauging · the design flow is worked out from these readings</div>
+    <div class="g-row">
+      ${cell('Initial reading', 'bacaan awal', `${nf(g.initial, 3)} m³`, fmtWhen(g.from))}
+      ${cell('Final reading', 'bacaan akhir', `${nf(g.final, 3)} m³`, fmtWhen(g.to))}
+      ${cell('Volume past the meter', '', `${nf(g.volume, g.volume < 100 ? 2 : 0)} m³`, `over ${fmtPeriod(g.hours)}`)}
+      ${cell('Design flow', '', `${nf(g.flow)} m³/h`, `${nf(g.volume, 0)} ÷ ${nf(g.hours, 2)}`)}
+    </div>
+  </div>`;
 }
 
 /* ============================================================
