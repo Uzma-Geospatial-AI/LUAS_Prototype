@@ -1380,3 +1380,14 @@ table.register col.c-at{width:72px}
 .g-k i{font-style:normal;text-transform:none;letter-spacing:0;font-weight:400;color:var(--muted-2)}
 .g-row b{font-family:var(--fm);font-size:14px;font-weight:700;color:var(--navy);letter-spacing:-.01em}
 .g-n{font-size:11px;color:var(--muted)}
+
+/* ---------------- Rainfall and humidity ---------------- */
+.heat-cv{position:absolute;left:0;top:0;pointer-events:none}
+.lay-sec{
+  font-size:9px;text-transform:uppercase;letter-spacing:.11em;font-weight:700;color:var(--muted-2);
+  margin:11px 0 5px;padding-top:8px;border-top:1px solid var(--line);display:flex;gap:6px;align-items:baseline;
+}
+.card-body>.lay-sec:first-child{margin-top:2px;padding-top:0;border-top:0}
+.lay-sec i{font-style:normal;font-weight:500;letter-spacing:0;text-transform:none;font-size:10px;color:var(--muted-2)}
+.wx-row{display:flex;gap:4px;flex-wrap:wrap;margin:2px 0 5px}
+.wx-when{font-size:10px;color:var(--muted-2);line-height:1.4}

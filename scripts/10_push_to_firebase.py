@@ -89,6 +89,9 @@ DATASETS = [
      'Monitoring stations, 16 x 56 months. Positions real, readings simulated.'),
     ('water_levels', 'water_levels.json',
      'JPS river water level, 21 stations. Snapshot, see scripts/09.'),
+    ('rainfall', 'rainfall.json',
+     'JPS rainfall, 98 gauges over four windows. Snapshot, see scripts/12. '
+     'The humidity beside it is SIMULATED, not measured.'),
     ('basin_pollution', 'basin_pollution.json',
      'National river basin pollution, data.gov.my water_pollution_basin.'),
     ('catchment', 'langat_basin.geojson',

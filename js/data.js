@@ -53,6 +53,7 @@ export async function loadAll(onStep) {
     ['sources', 'sources', 'data/pollution_sources.geojson', 'point sources'],
     ['selangor', 'selangor', 'data/selangor_boundary.geojson', 'the Selangor boundary'],
     ['levels', 'water_levels', 'data/water_levels.json', 'river water levels'],
+    ['rainfall', 'rainfall', 'data/rainfall.json', 'rainfall and humidity'],
   ];
 
   /* One probe decides for all eight. Asking the database node by node would
@@ -90,6 +91,8 @@ export async function loadAll(onStep) {
   /* JPS river water level. A snapshot with the station clock on it, because
      InfoBanjir sends no CORS header and a static page cannot read it live. */
   DATA.levels = got.levels;
+  /* The same feed's rainfall, and the simulated humidity beside it */
+  DATA.rainfall = got.rainfall;
 
   /* A FeatureCollection: the map draws the outlines, everything else reads
      the properties, so both views are served off one file. */

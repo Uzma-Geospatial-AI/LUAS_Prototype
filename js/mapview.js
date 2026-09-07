@@ -20,6 +20,7 @@ import { wqiClass, WQI_CLASSES, classCompliance, PARAM_META } from './wqi.js';
 import { store } from './store.js';
 import { IMAGERY, gibsLayer, REFERENCE_MAPS, WATER_INDICES, WQ_PRODUCTS, WQ_QUARTERS, wqUrl } from './satellite.js';
 import { sourceIcon, sourceSwatch } from './symbols.js';
+import { HEAT_MODES, makeHeatLayer, heatColour, heatSummary, RAIN_MAX, HUM_MIN, HUM_MAX } from './weather.js';
 import { licenceStatus } from './licenceStatus.js';
 
 const $ = (id) => document.getElementById(id);
@@ -41,6 +42,8 @@ let map = null, base = null, current = 'esri';
 let stationLayer = null, basinLayer = null, stateLayer = null;
 const waterLayers = {};       // water:<group>
 let flowLayer = null;         // the animated direction overlay
+let heatLayer = null;         // rainfall or humidity, drawn as a surface
+let heatMode = null;          // which reading the surface is showing, or none
 let licenceLayer = null;      // premises with a discharge licence
 /* Satellite water quality: one product, one quarter, on its own pane */
 const wq = { product: null, quarter: WQ_QUARTERS.at(-1).id, opacity: 0.85, waterOnly: true };
@@ -118,6 +121,7 @@ export function initMap() {
   buildBasemaps();
   buildLayerToggles();
   buildLegend();
+  buildWeather();
   buildSearch();
   buildTimeline();
   setBase('esri');
@@ -128,6 +132,7 @@ export function initMap() {
 
   applyVisibility();
   applyFlowSpeed();
+  syncWeather();
   if (pendingWq) { setWq(pendingWq); pendingWq = null; }
   if (pendingWater) { const id = pendingWater; pendingWater = null; setTimeout(() => selectWaterBody(id), 300); }
   if (pendingStation) { const c = pendingStation; pendingStation = null; setTimeout(() => showStation(c), 300); }
@@ -289,6 +294,78 @@ function flowStyle(f) {
     className: 'flow-anim',
     interactive: false,
   };
+}
+
+/* ---------------- Rainfall and humidity ----------------
+   One surface at a time, off by default: it covers the catchment, and a
+   reader who has not asked for it should see the water first. The scale is
+   fixed rather than stretched to the day, so the legend also says what was
+   actually observed — on a dry day an empty map is the right answer, and
+   the words are what make it legible. */
+function buildWeather() {
+  /* Under the water bodies and the rivers, over the basemap: the surface is
+     context for the lines, not a replacement for them. */
+  map.createPane('heat').style.zIndex = 235;
+  map.getPane('heat').style.pointerEvents = 'none';
+  heatLayer = makeHeatLayer(L, 'heat');
+
+  const box = $('mapWx');
+  box.innerHTML = `<button class="mc-btn sm active" data-wx="">Off</button>`
+    + Object.values(HEAT_MODES).map((m) => `<button class="mc-btn sm" data-wx="${m.key}"
+        title="${esc(m.long)}">${esc(m.label)}</button>`).join('');
+  box.querySelectorAll('[data-wx]').forEach((b) => {
+    b.onclick = () => setHeat(b.dataset.wx || null);
+  });
+
+  const r = DATA.rainfall;
+  $('ovRain').textContent = r ? `${r.stations.length} gauges` : '';
+  $('mapWxWhen').innerHTML = r
+    ? `JPS · InfoBanjir snapshot${r.latest ? ` · as at ${esc(r.latest)}` : ''}`
+    : 'Rainfall unavailable.';
+}
+
+function setHeat(mode) {
+  heatMode = HEAT_MODES[mode] ? mode : null;
+  if (heatMode) {
+    if (!map.hasLayer(heatLayer)) heatLayer.addTo(map);
+    heatLayer.setMode(heatMode);
+  } else if (map.hasLayer(heatLayer)) {
+    map.removeLayer(heatLayer);
+  }
+  syncWeather();
+}
+
+function syncWeather() {
+  document.querySelectorAll('[data-wx]').forEach((b) =>
+    b.classList.toggle('active', (b.dataset.wx || null) === heatMode));
+
+  const box = $('mapLegendWx');
+  if (!box) return;
+  if (!heatMode) { box.hidden = true; box.innerHTML = ''; return; }
+  const m = HEAT_MODES[heatMode];
+  const s = heatSummary(heatMode);
+  const rain = m.kind === 'rain';
+  const lo = rain ? 0 : HUM_MIN, hi = rain ? RAIN_MAX : HUM_MAX;
+  const stops = [];
+  for (let i = 0; i <= 20; i++) stops.push(heatColour(heatMode, lo + ((hi - lo) * i) / 20));
+  const unit = rain ? 'mm' : '%';
+
+  box.hidden = false;
+  box.innerHTML = `
+    <h5 class="ml-head"><span class="ml-ht">${esc(m.long)}
+      ${rain ? '' : '<span class="est-dot">SIMULATED</span>'}</span></h5>
+    <div class="ml-wq">
+      <div class="idx-ramp" style="background:linear-gradient(90deg,${stops.join(',')})"></div>
+      <div class="idx-lab"><span>${lo} ${unit}</span><span>${hi}${rain ? '+' : ''} ${unit}</span></div>
+      <div class="ml-wq-n">${rain
+        ? (s.n
+          ? `${s.wet} of ${s.n} gauges recorded rain${s.wet ? `, most ${nf1(s.hi)} mm` : ''}${s.silent ? ` · ${s.silent} silent` : ''}.
+             Coloured against DID's bands, not against the day, so an empty map means a dry catchment.`
+          : 'No gauge reported this window.')
+        : `Simulated, not measured: DID publishes no humidity. ${s.n} gauge positions,
+           ${nf1(s.lo)}–${nf1(s.hi)}%.`}
+        Interpolated between gauges and clipped to the catchment.</div>
+    </div>`;
 }
 
 /* ---------------- Water bodies ---------------- */
@@ -524,6 +601,7 @@ function anyWaterVisible() {
 }
 
 const metres = (m) => `${Math.round(m).toLocaleString('en')} m`;
+const nf1 = (n) => Number(n).toLocaleString('en-MY', { maximumFractionDigits: 1 });
 
 /* A name the ETL gave a feature that had none — what it is and where it
    is, from the nearest locality. Said so wherever it is shown. */
@@ -1394,16 +1472,19 @@ function buildLegend() {
     };
   });
 
-  /* The legend is the tallest thing on the map; let it fold out of the way */
-  const card = $('mapLegend');
-  const btn = $('legendMin');
-  btn.onclick = () => {
-    const min = card.classList.toggle('min');
-    btn.setAttribute('aria-expanded', String(!min));
-    btn.title = min ? 'Show the legend' : 'Minimise the legend';
-  };
-  L.DomEvent.disableClickPropagation(card);
-  L.DomEvent.disableScrollPropagation(card);
+  /* The legend and the layer list are the two tallest things on the map, and
+     both have grown; let either fold out of the way. */
+  for (const [cardId, btnId, what] of [['mapLegend', 'legendMin', 'legend'], ['mapLayers', 'layersMin', 'layers']]) {
+    const card = $(cardId), btn = $(btnId);
+    if (!card || !btn) continue;
+    btn.onclick = () => {
+      const min = card.classList.toggle('min');
+      btn.setAttribute('aria-expanded', String(!min));
+      btn.title = min ? `Show the ${what}` : `Minimise the ${what}`;
+    };
+    L.DomEvent.disableClickPropagation(card);
+    L.DomEvent.disableScrollPropagation(card);
+  }
 }
 
 /* ---------------- Where the water goes ----------------

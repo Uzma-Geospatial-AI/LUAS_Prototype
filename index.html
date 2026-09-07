@@ -151,35 +151,47 @@
     </div>
 
     <!-- bottom left — layers -->
-    <div class="map-card map-bl">
-      <h5>Map layers</h5>
-      <label class="tog"><input type="checkbox" data-mapov="stations" checked>
-        <span class="tog-sw"></span>
-        <span class="tog-t">Monitoring stations <i id="ovStations"></i></span></label>
-      <label class="tog"><input type="checkbox" data-mapov="levels" checked>
-        <span class="tog-sw"></span>
-        <span class="tog-t">River water level <i id="ovLevels"></i></span></label>
-      <label class="tog"><input type="checkbox" data-mapov="water" checked>
-        <span class="tog-sw"></span>
-        <span class="tog-t">Water bodies <i id="ovWater"></i></span></label>
-      <label class="tog"><input type="checkbox" data-mapov="sources" checked>
-        <span class="tog-sw"></span>
-        <span class="tog-t">Point sources <i id="ovSources"></i></span></label>
-      <label class="tog"><input type="checkbox" data-mapov="licences" checked>
-        <span class="tog-sw"></span>
-        <span class="tog-t">Licence register pins <i id="ovLicences"></i></span></label>
-      <label class="tog"><input type="checkbox" data-mapov="rivers" checked>
-        <span class="tog-sw"></span>
-        <span class="tog-t">Sungai Langat &amp; tributaries <i id="ovRivers"></i></span></label>
-      <label class="tog"><input type="checkbox" data-mapov="flow" checked>
-        <span class="tog-sw"></span>
-        <span class="tog-t">Flow direction <i>animated</i></span></label>
-      <label class="tog"><input type="checkbox" data-mapov="basin" checked>
-        <span class="tog-sw"></span>
-        <span class="tog-t">Langat catchment <i id="ovBasin"></i></span></label>
-      <label class="tog"><input type="checkbox" data-mapov="selangor" checked>
-        <span class="tog-sw"></span>
-        <span class="tog-t">Selangor boundary <i id="ovState"></i></span></label>
+    <div class="map-card map-bl" id="mapLayers">
+      <button class="card-min" id="layersMin" aria-expanded="true"
+        title="Minimise the layers"><span>Map layers</span></button>
+      <div class="card-body">
+        <div class="lay-sec">Water</div>
+        <label class="tog"><input type="checkbox" data-mapov="stations" checked>
+          <span class="tog-sw"></span>
+          <span class="tog-t">Monitoring stations <i id="ovStations"></i></span></label>
+        <label class="tog"><input type="checkbox" data-mapov="levels" checked>
+          <span class="tog-sw"></span>
+          <span class="tog-t">River water level <i id="ovLevels"></i></span></label>
+        <label class="tog"><input type="checkbox" data-mapov="water" checked>
+          <span class="tog-sw"></span>
+          <span class="tog-t">Water bodies <i id="ovWater"></i></span></label>
+        <label class="tog"><input type="checkbox" data-mapov="rivers" checked>
+          <span class="tog-sw"></span>
+          <span class="tog-t">Sungai Langat &amp; tributaries <i id="ovRivers"></i></span></label>
+        <label class="tog"><input type="checkbox" data-mapov="flow" checked>
+          <span class="tog-sw"></span>
+          <span class="tog-t">Flow direction <i>by design flow</i></span></label>
+
+        <div class="lay-sec">Activity</div>
+        <label class="tog"><input type="checkbox" data-mapov="sources" checked>
+          <span class="tog-sw"></span>
+          <span class="tog-t">Point sources <i id="ovSources"></i></span></label>
+        <label class="tog"><input type="checkbox" data-mapov="licences" checked>
+          <span class="tog-sw"></span>
+          <span class="tog-t">Licence register pins <i id="ovLicences"></i></span></label>
+
+        <div class="lay-sec">Weather <i id="ovRain"></i></div>
+        <div class="wx-row" id="mapWx"></div>
+        <div class="wx-when" id="mapWxWhen"></div>
+
+        <div class="lay-sec">Context</div>
+        <label class="tog"><input type="checkbox" data-mapov="basin" checked>
+          <span class="tog-sw"></span>
+          <span class="tog-t">Langat catchment <i id="ovBasin"></i></span></label>
+        <label class="tog"><input type="checkbox" data-mapov="selangor" checked>
+          <span class="tog-sw"></span>
+          <span class="tog-t">Selangor boundary <i id="ovState"></i></span></label>
+      </div>
     </div>
 
     <!-- bottom centre — the month being shown -->
@@ -200,6 +212,7 @@
       <button class="card-min" id="legendMin" aria-expanded="true"
         title="Minimise the legend"><span>Legend</span></button>
       <div class="card-body">
+        <div id="mapLegendWx" hidden></div>
         <h5 class="ml-head"><span class="ml-ht">WQI class · station colour</span>
           <input type="checkbox" class="ml-master" data-group="mapLegendWqi" aria-label="All WQI classes"></h5>
         <div id="mapLegendWqi"></div>

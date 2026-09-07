@@ -53,11 +53,17 @@ LUAS_Prototype/
 │   ├── loads.js               load, TMDL, headroom and effluent-standard maths
 │   ├── store.js               localStorage: readings, licence register, conditions
 │   ├── mapview.js             the map, its four corners and the legend filter
+│   ├── weather.js             rainfall and humidity, interpolated into a surface
 │   ├── symbols.js             one shape per point source category
 │   ├── satellite.js           imagery catalogue + spectral index reference
-│   ├── phase1.js              Phase 1 — station assessment + class calculator
-│   ├── phase2.js              Phase 2 — monitoring, water bodies, national context
-│   └── phase3.js              Phase 3 — TMDL budget + licence register
+│   ├── locations.js           adding a monitoring location from the app bar
+│   ├── attach.js              photographs attached to a record
+│   ├── report.js              the location report, with the map drawn into it
+│   ├── licenceStatus.js       licensed or not, where the register is silent
+│   ├── glossary.js            the terms behind the book icon
+│   ├── phase1.js              station assessment + class calculator
+│   ├── phase2.js              quality monitoring, water bodies, national context
+│   └── phase3.js              TMDL records + licence register
 ├── data/
 │   ├── langat_basin.geojson       the catchment
 │   ├── langat_rivers.geojson      489 river reaches
@@ -65,6 +71,7 @@ LUAS_Prototype/
 │   ├── pollution_sources.geojson  651 sites in the riparian zone
 │   ├── selangor_boundary.geojson  state boundary
 │   ├── water_levels.json          21 JPS river water level stations
+│   ├── rainfall.json              98 JPS rainfall gauges (+ simulated humidity)
 │   ├── stations.json              16 stations x 56 months
 │   └── basin_pollution.json       national basin pollution, data.gov.my
 └── scripts/                   the ETL, one step per file
@@ -101,7 +108,7 @@ python scripts/01_fetch_waterbodies.py
 
 ## The database
 
-The eight datasets live in a **Firebase Realtime Database**, one node each under `/luas`, plus a
+The nine datasets live in a **Firebase Realtime Database**, one node each under `/luas`, plus a
 `/luas/meta` node recording when each was written and what it is — so the database can be read
 without coming back to this repository to find out what is in it.
 
@@ -109,6 +116,7 @@ without coming back to this repository to find out what is in it.
 |---|---|
 | `stations` | 16 monitoring stations × 56 months |
 | `water_levels` | 21 JPS river water level stations |
+| `rainfall` | 98 JPS rainfall gauges, with simulated humidity |
 | `basin_pollution` | national basin pollution, data.gov.my |
 | `catchment` | the Sungai Langat catchment |
 | `rivers` | 489 river reaches |
@@ -265,7 +273,9 @@ counts move with it, which is the quickest read of whether the basin is improvin
 | Point sources | 651 sites that can put a load into the river, one shape per category; the fill is **green** with a discharge licence and **red** without. Where the register has an entry the colour follows it; everywhere else the status is an **estimate** (`js/licenceStatus.js`), because no licence register is published as open data |
 | Licence register pins | a pin at each licence entered at a new location; a licensed premises already on the map shows its licence as its green fill |
 | Sungai Langat & tributaries | 682 km of mapped channel, drawn at a width scaled by what it carries |
-| Flow direction | the same channels, dashed and animated downstream |
+| Flow direction & rate | the same channels, dashed and animated downstream. The dashes run at the rate the **design flow on the TMDL for the nearest station** implies, carried across by the channel length draining to each reach, so the trunk runs quick and a headwater slow. Change a design flow and the water changes with it; a reach's tooltip says what it carries |
+| Rainfall | 98 JPS gauges over four windows — 1 h, 3 h, 6 h, 24 h — interpolated into a surface and clipped to the catchment |
+| Humidity | the same gauge positions, **simulated**, on the same surface |
 | Satellite water quality | quarterly Sentinel-2 NDTI, NDCI and estimated SS over Selangor, as PMTiles from the Digital Earth bucket (`js/satellite.js` · `WQ_PRODUCTS`). One product and one quarter at a time, clipped to the mapped rivers and water bodies unless "Water only" is unticked; the ramp is in the legend. The SS layer is uncalibrated and marked so |
 | Langat catchment | 2,140 km², the clip for everything else |
 | Selangor boundary | the state LUAS is responsible for, Federal Territories excluded |
@@ -278,6 +288,35 @@ counts move with it, which is the quickest read of whether the basin is improvin
 > the built file, and from the app, so the three cannot drift. Eleven point sources had a wetland
 > as their nearest water; `scripts/08` was re-run, so their distances and screening scores now
 > measure to water that exists.
+
+### Rainfall and humidity
+
+DID publishes rainfall at **98 telemetry stations** in the Sungai Langat basin, as running totals
+over four windows: the last hour, three, six and twenty-four. Those are points; where the rain fell
+is a surface, so the points are interpolated into one — inverse distance weighting on a coarse
+grid, each cell a mean of the gauges within 25 km weighted by 1/d², rendered small and scaled up
+with smoothing. Away from every gauge the surface fades out rather than inventing a value, and the
+whole thing is clipped to the catchment, because a wash of colour over the rest of Selangor would
+say the gauges know more than they do.
+
+**The scale is fixed, not stretched.** Rainfall is coloured against DID's own bands — *renyai*,
+*sederhana*, *lebat*, *sangat lebat* — so a colour means the same thing on every visit and a dry
+day looks dry. The legend says what was actually observed beside the scale, which is what makes an
+empty map legible rather than ambiguous: *3 of 92 gauges recorded rain, most 3 mm · 6 silent*.
+`-9999` is DID's missing marker and becomes **null, not zero** — a station that did not report is
+not a station that recorded no rain, and on a surface the difference is the whole point.
+
+Same source as the water levels, and for the same reason a snapshot: the feed sends no
+`Access-Control-Allow-Origin`, so the readings are fetched at build time by
+`scripts/12_fetch_rainfall.py` and carry the station clock they were read at, which the panel
+states.
+
+> ⚠️ **Humidity is simulated.** Nothing this project can reach publishes humidity for these
+> stations. The figure in `data/rainfall.json` is a deterministic invention per station — higher
+> after rain, a little higher towards the coast and the hills, with a fixed wobble so no two read
+> alike and the same station always reads the same. It is flagged `humiditySimulated` in the file
+> and badged **SIMULATED** in the legend. Every station's position, name, district and rainfall are
+> real.
 
 ### Basemaps
 
@@ -660,7 +699,8 @@ python scripts/03_fetch_basin_pollution.py     # data.gov.my water_pollution_bas
 python scripts/04_build_stations.py            # stations (REPLACE with real readings)
 python scripts/05_fetch_selangor_boundary.py   # DOSM state boundary
 python scripts/09_fetch_water_levels.py         # JPS water levels (re-run to refresh)
-python scripts/10_push_to_firebase.py          # push all eight to the database
+python scripts/12_fetch_rainfall.py            # JPS rainfall + simulated humidity
+python scripts/10_push_to_firebase.py          # push all nine to the database
 ```
 
 Intermediate downloads (`*_raw.geojson`, `*_raw.json`, `hybas_*.zip`) are gitignored and
