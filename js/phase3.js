@@ -593,7 +593,7 @@ function renderHeadline(budgets, head, t) {
     sub = `The river carries <b>${fmtLoad(laOver.reduce((s, b) => s - b.laRemaining, 0))}</b> more `
       + `background and diffuse load than the load allocation allows for, so the reach holds `
       + `Class ${esc(t.targetClass)} only once that comes down. The licences sit inside the ΣWLA, `
-      + `with <b>${fmtVol(head.volume)}</b> left to licence at ${esc(head.standard.label)}.`;
+      + `with <b>${fmtVol(Math.max(0, head.volume))}</b> left to licence at ${esc(head.standard.label)}.`;
   } else {
     headline = `Within allocation — ${binding} is binding`;
     sub = `<b>${fmtVol(head.volume)}</b> of new effluent could still be licensed at `
