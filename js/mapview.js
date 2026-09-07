@@ -758,35 +758,22 @@ function paintLicences() {
     if (typeof l.lat !== 'number' || typeof l.lon !== 'number') continue;
     if (l.bulk) continue;     /* the estimate is the symbol's colour, not a ring */
     const off = l.active === false;
-    /* A premises taken from the map is already drawn as a point source, so the
-       licence rings it rather than covering it with a second marker. */
-    const onMap = l.srcId != null && receiving !== null && sourceIds.has(l.srcId);
-    const icon = onMap
-      ? L.divIcon({
-        className: '',
-        html: `<div class="lic-ring${off ? ' off' : ''}"><i>L</i></div>`,
-        iconSize: [30, 30], iconAnchor: [15, 15],
-      })
-      : L.divIcon({
-        className: '',
-        html: `<div class="lic-pin${off ? ' off' : ''}${l.example ? ' eg' : ''}">L</div>`,
-        iconSize: [22, 22], iconAnchor: [11, 11],
-      });
-
-    if (onMap) {
-      /* The ring is a mark on a marker that is already there and already
-         clickable. Taking the click would hide the source's own popup — which
-         is where the licence is now shown. */
-      L.marker([l.lat, l.lon], { zIndexOffset: 420, icon, interactive: false })
-        .addTo(licenceLayer);
-    } else {
-      const m = L.marker([l.lat, l.lon], { zIndexOffset: 500, icon })
-        .bindTooltip(`<b>${esc(l.premises)}</b><br>${esc(l.ref)}`,
-          { direction: 'top', offset: [0, -12] })
-        .bindPopup(() => licencePopup(l), POPUP)
-        .addTo(licenceLayer);
-      licenceMarkers.push({ lat: l.lat, lon: l.lon, marker: m });
-    }
+    /* A premises taken from the map is already drawn as a point source: its
+       symbol turns green with the licence and its own popup shows it, so
+       nothing is drawn on top of it. Only a licence at a new location, with
+       no symbol of its own, gets a pin. */
+    if (l.srcId != null && receiving !== null && sourceIds.has(l.srcId)) continue;
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="lic-pin${off ? ' off' : ''}${l.example ? ' eg' : ''}">L</div>`,
+      iconSize: [22, 22], iconAnchor: [11, 11],
+    });
+    const m = L.marker([l.lat, l.lon], { zIndexOffset: 500, icon })
+      .bindTooltip(`<b>${esc(l.premises)}</b><br>${esc(l.ref)}`,
+        { direction: 'top', offset: [0, -12] })
+      .bindPopup(() => licencePopup(l), POPUP)
+      .addTo(licenceLayer);
+    licenceMarkers.push({ lat: l.lat, lon: l.lon, marker: m });
   }
 
   /* Every point source is coloured by whether it holds a licence: green with
@@ -808,7 +795,7 @@ function paintLicences() {
   countLicences();
 }
 
-/* How many register entries are drawn: the rings and pins, not the estimate */
+/* How many register entries are drawn as pins: licences at new locations */
 function countLicences() {
   const n = licenceLayer?.getLayers().length ?? 0;
   const a = $('ovLicences');

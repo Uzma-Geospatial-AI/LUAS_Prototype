@@ -1,10 +1,11 @@
 /* ============================================================
    store.js — Browser-local store
 
-   Holds two things the portal lets a user edit:
+   Holds what the portal lets a user edit:
      · readings  — six-parameter sampling records entered in Phase 1
      · licences  — the effluent discharge licence register used in Phase 3
-     · cond      — the TMDL design conditions
+     · tmdls     — the TMDLs written in Phase 3, one or more per location
+     · cond      — which station every page is written for
 
    There is no backend, so everything lives in localStorage and belongs to
    one browser. Export writes files that can be committed into data/.
@@ -12,7 +13,7 @@
 import { DEFAULT_CONDITIONS } from './loads.js';
 
 const KEY = 'luas-system-v2';
-const EMPTY = { readings: [], licences: [], cond: null, examplesCleared: false };
+const EMPTY = { readings: [], licences: [], tmdls: [], tmdlPick: {}, cond: null, examplesCleared: false };
 
 let cache = null;
 
@@ -24,6 +25,9 @@ function read() {
   } catch {
     cache = structuredClone(EMPTY);      // private mode, blocked storage, corrupt value
   }
+  /* Older stores predate these keys */
+  cache.tmdls ??= [];
+  cache.tmdlPick ??= {};
   return cache;
 }
 
@@ -51,10 +55,27 @@ let examples = [];
 export const setExamples = (list) => { examples = Array.isArray(list) ? list : []; };
 export const exampleLicences = () => examples;
 
+/* One worked TMDL per station, built from the monitoring record and the
+   register once both are in — see js/examples.js. */
+let tmdlExamples = [];
+export const setTmdlExamples = (list) => { tmdlExamples = Array.isArray(list) ? list : []; };
+
 export const store = {
-  /* ---------------- Design conditions ---------------- */
+  /* ---------------- Design conditions ----------------
+     The station is the one thing stored here. The target class and the
+     design flow every page reads come from the TMDL on record for that
+     station, so the app bar, the assessment and the budget cannot disagree
+     about what the water is being held to. Without a record, the defaults. */
   conditions() {
-    return { ...DEFAULT_CONDITIONS, ...(read().cond ?? {}) };
+    const stored = read().cond ?? {};
+    const base = { ...DEFAULT_CONDITIONS, focusStation: stored.focusStation ?? DEFAULT_CONDITIONS.focusStation };
+    const t = store.activeTmdl(base.focusStation);
+    if (t) {
+      base.targetClass = t.targetClass ?? base.targetClass;
+      base.designFlow = Number(t.designFlow) || base.designFlow;
+      base.flowVerified = !!t.flowVerified;
+    }
+    return base;
   },
   setConditions(patch) {
     read().cond = { ...(cache.cond ?? {}), ...patch };
@@ -62,6 +83,50 @@ export const store = {
   },
   resetConditions() {
     read().cond = null;
+    write();
+  },
+
+  /* ---------------- TMDL records ----------------
+     A location can hold several — a revision a year, say. The user's own
+     come first, newest first, then the worked example. Which one the page
+     shows is remembered per location. */
+  setTmdlExamples,
+  tmdls: () => [...read().tmdls, ...tmdlExamples],
+  userTmdls: () => read().tmdls,
+  tmdlsFor(code) {
+    return store.tmdls().filter((t) => t.station === code);
+  },
+  activeTmdl(code) {
+    const list = store.tmdlsFor(code);
+    if (!list.length) return null;
+    const pick = read().tmdlPick[code];
+    return list.find((t) => t.id === pick) ?? list.find((t) => !t.example) ?? list[0];
+  },
+  pickTmdl(code, id) {
+    read().tmdlPick[code] = id;
+    write();
+  },
+  addTmdl(t) {
+    const now = new Date().toISOString();
+    const rec = { id: uid(), created: now, updated: now, ...t, example: false };
+    read().tmdls.unshift(rec);
+    cache.tmdlPick[rec.station] = rec.id;
+    write();
+    return rec;
+  },
+  updateTmdl(id, patch) {
+    const d = read();
+    const i = d.tmdls.findIndex((t) => t.id === id);
+    if (i < 0) return false;
+    d.tmdls[i] = { ...d.tmdls[i], ...patch, example: false, updated: new Date().toISOString() };
+    write();
+    return true;
+  },
+  removeTmdl(id) {
+    const d = read();
+    const gone = d.tmdls.find((t) => t.id === id);
+    d.tmdls = d.tmdls.filter((t) => t.id !== id);
+    if (gone && d.tmdlPick[gone.station] === id) delete d.tmdlPick[gone.station];
     write();
   },
 
@@ -137,6 +202,13 @@ export const store = {
         n++;
       }
     }
+    if (Array.isArray(payload?.tmdls)) {
+      for (const t of payload.tmdls) {
+        if (!t || typeof t.station !== 'string' || typeof t.alloc !== 'object') continue;
+        d.tmdls.unshift({ ...t, id: uid(), example: false });
+        n++;
+      }
+    }
     if (Array.isArray(payload?.readings)) {
       for (const r of payload.readings) {
         if (!r || typeof r.t !== 'string') continue;
@@ -144,7 +216,7 @@ export const store = {
         n++;
       }
     }
-    if (payload?.cond) { d.cond = { ...(d.cond ?? {}), ...payload.cond }; n++; }
+    if (payload?.cond?.focusStation) { d.cond = { ...(d.cond ?? {}), focusStation: payload.cond.focusStation }; n++; }
     if (n) write();
     return n;
   },
@@ -155,10 +227,12 @@ export function registerAsJson() {
   return {
     meta: {
       generated: new Date().toISOString().slice(0, 10),
-      system: 'LUAS · LEDS effluent discharge licence register',
-      note: 'Rows marked example:true are the shipped worked example, not real licences.',
+      system: 'LUAS · LEDS effluent discharge licence register and TMDLs',
+      note: 'Rows marked example:true are the shipped worked example, not real licences. '
+        + 'tmdls holds the TMDLs written in this browser; each is TMDL = ΣWLA + ΣLA + MOS in kg/day per pollutant.',
       conditions: store.conditions(),
     },
+    tmdls: store.userTmdls(),
     licences: store.licences(),
     readings: store.readings(),
   };

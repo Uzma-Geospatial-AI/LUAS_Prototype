@@ -89,10 +89,11 @@
       <div class="ab-status"><span class="live-dot"></span> <span id="tbStatus">—</span></div>
     </div>
     <div class="ab-meta">
-      <label class="pill pick" title="The station every phase is written for">
+      <label class="pill pick" title="The location every page is written for. It is picked once, here.">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
           stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="2.8"/>
           <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/></svg>
+        <span class="pick-lab">Location</span>
         <select id="stationPick"></select>
       </label>
       <div class="pill">WQI <b id="pillWqi">—</b>
@@ -341,58 +342,115 @@
 
     <div class="page-head">
       <h2>Total Maximum Daily Load <button type="button" class="tipmark" tabindex="0" data-tip="The mass of a pollutant this reach can receive per day and still hold its class. It splits into ΣWLA, the wasteload allocated to licensed point sources; ΣLA, the load allocation for background and non-point sources; and MOS, the margin of safety." aria-label="The mass of a pollutant this reach can receive per day and still hold its class. It splits into ΣWLA, the wasteload allocated to licensed point sources; ΣLA, the load allocation for background and non-point sources; and MOS, the margin of safety.">i</button></h2>
-      <p>What the reach can carry, what it carries now, and how much is left to licence.</p>
+      <p>What is written for the reach — ΣWLA, ΣLA and MOS — against what it can carry, what it carries now, and how much is left to licence.</p>
       <div class="formula">TMDL = ΣWLA + ΣLA + MOS</div>
     </div>
 
     <div class="tabs" role="tablist">
       <button class="tab active" data-tab="capacity" role="tab" aria-selected="true">
-        <b>Loading capacity</b><span>What this water can carry</span></button>
+        <b>TMDL</b><span>What is written for this water, and how much of it is used</span></button>
       <button class="tab" data-tab="licences" role="tab" aria-selected="false">
         <b>Licences</b><span>What is permitted to discharge into it</span></button>
     </div>
 
     <div class="tabpane active" id="tab-capacity">
-      <div class="written-for">
-        <label for="p3For">Written for</label>
-        <select id="p3For"></select>
-        <span class="wf-note" id="p3ForNote"></span>
+    <!-- The location is picked once, in the app bar, and every page follows
+         it. This bar names it and lists the TMDLs on record for it. -->
+    <div class="card tmdl-bar">
+      <div class="tb-loc">
+        <div class="tb-lab">Written for</div>
+        <div class="tb-name" id="p3LocName">—</div>
+        <div class="tb-sub" id="p3LocNote"></div>
+        <button type="button" class="tb-change" id="p3ChangeLoc"
+          title="The location is picked once, in the bar at the top, and every page follows it">Change the location in the bar above ↑</button>
       </div>
-    <!-- Design conditions -->
-    <div class="card cond-card">
-      <div class="cond-head">
-        <h3>Design conditions</h3>
-        <button class="btn btn-ghost" id="p3ResetCond">Reset to defaults</button>
-      </div>
-      <div class="cond-grid">
-        <div class="field">
-          <label for="p3Class">Target water class <button type="button" class="tipmark" tabindex="0" data-tip="The ambient class the loading capacity is computed against. Sungai Langat must hold Class II to serve as a raw water source with conventional treatment." aria-label="The ambient class the loading capacity is computed against. Sungai Langat must hold Class II to serve as a raw water source with conventional treatment.">i</button></label>
-          <select id="p3Class"></select>
+      <div class="tb-rec">
+        <div class="tb-lab">TMDL on record for this location <button type="button" class="tipmark" tabindex="0" data-tip="A location can hold more than one TMDL — a revision a year, say. Pick one and it loads; New TMDL writes another, starting from the one on screen. A worked example is written for every station so a pick always loads something." aria-label="A location can hold more than one TMDL. Pick one and it loads; New TMDL writes another, starting from the one on screen.">i</button></div>
+        <div class="tb-row">
+          <select id="p3Rec" aria-label="Which TMDL to load"></select>
+          <button class="btn btn-primary" id="p3NewTmdl">+ New TMDL</button>
+          <button class="btn btn-ghost" id="p3EditTmdl">Edit</button>
+          <button class="btn btn-ghost danger" id="p3DelTmdl">Delete</button>
         </div>
-        <div class="field">
-          <label for="p3Flow">Design river flow <span class="unit">m³/s</span>
-            <span class="flag" id="p3FlowFlag">estimate</span> <button type="button" class="tipmark" tabindex="0" data-tip="A TMDL is written for a low-flow condition (MAM7 or 7Q10), when the river has least capacity to assimilate a load. Every load figure scales directly with it." aria-label="A TMDL is written for a low-flow condition (MAM7 or 7Q10), when the river has least capacity to assimilate a load. Every load figure scales directly with it.">i</button></label>
-          <input id="p3Flow" type="number" step="0.1" min="0.1">
-          <label class="check-inline">
-            <input type="checkbox" id="p3FlowVerified">
-            <span>Verified against DID gauged record</span>
-          </label>
-        </div>
-        <div class="field">
-          <label for="p3Mos">Margin of safety <span class="unit">%</span> <button type="button" class="tipmark" tabindex="0" data-tip="Capacity held back for model and measurement uncertainty, as a TMDL requires. It is subtracted before anything is allocated." aria-label="Capacity held back for model and measurement uncertainty, as a TMDL requires. It is subtracted before anything is allocated.">i</button></label>
-          <input id="p3Mos" type="number" step="1" min="0" max="50">
-        </div>
-        <div class="field">
-          <label for="p3Std">Effluent standard for new licences <button type="button" class="tipmark" tabindex="0" data-tip="EQ (Industrial Effluent) Regulations 2009. Standard A applies upstream of a water intake and is the tighter of the two." aria-label="EQ (Industrial Effluent) Regulations 2009. Standard A applies upstream of a water intake and is the tighter of the two.">i</button></label>
-          <select id="p3Std"></select>
-        </div>
+        <div class="tb-sub" id="p3RecNote"></div>
       </div>
     </div>
 
+    <!-- Writing or editing a TMDL: every term of the formula is an input -->
+    <div class="modal" id="p3TmdlForm" hidden role="dialog" aria-modal="true" aria-labelledby="tfHead">
+      <div class="modal-back" id="tfBack"></div>
+      <div class="modal-card tmdl-form">
+      <div class="cond-head">
+        <h3 id="tfHead">New TMDL</h3>
+        <span class="formula-inline">TMDL = ΣWLA + ΣLA + MOS</span>
+        <button type="button" class="gl-close" id="tfClose" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+      <div class="form-grid tf-meta">
+        <div class="field">
+          <label for="tfRef">Reference</label>
+          <input id="tfRef" placeholder="TMDL/LGT06/2026/01">
+        </div>
+        <div class="field tf-wide">
+          <label for="tfTitle">Title</label>
+          <input id="tfTitle" placeholder="What this TMDL is for">
+        </div>
+        <div class="field">
+          <label for="tfDate">Date written</label>
+          <input id="tfDate" type="date">
+        </div>
+        <div class="field">
+          <label for="tfClass">Target water class <button type="button" class="tipmark" tabindex="0" data-tip="The ambient class the loading capacity is computed against. Sungai Langat must hold Class II to serve as a raw water source with conventional treatment." aria-label="The ambient class the loading capacity is computed against.">i</button></label>
+          <select id="tfClass"></select>
+        </div>
+        <div class="field">
+          <label for="tfFlow">Design river flow <span class="unit">m³/s</span> <button type="button" class="tipmark" tabindex="0" data-tip="A TMDL is written for a low-flow condition (MAM7 or 7Q10), when the river has least capacity to assimilate a load. The loading capacity scales directly with it." aria-label="A TMDL is written for a low-flow condition (MAM7 or 7Q10). The loading capacity scales directly with it.">i</button></label>
+          <input id="tfFlow" type="number" step="0.1" min="0.1">
+          <label class="check-inline">
+            <input type="checkbox" id="tfFlowVerified">
+            <span>Verified against DID gauged record</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="tf-alloc-head">
+        <div><b>Allocation</b> <span>kg/day for each pollutant · the three terms add up to the TMDL, which has to fit the loading capacity</span></div>
+        <div class="tf-fill">
+          <label for="tfMos">MOS <input id="tfMos" type="number" step="1" min="0" max="50" value="10"> %</label>
+          <button type="button" class="btn btn-ghost" id="tfFill"
+            title="A starting point: the margin of safety as this share of the capacity, the licences in the register honoured in the ΣWLA, the background given what the river carries beyond them, and any capacity to spare added to the ΣWLA as room to licence. Where the river is already over capacity the ΣLA takes what is left, so the diffuse reduction needed shows.">Write to capacity</button>
+        </div>
+      </div>
+      <div class="tbl-scroll">
+        <table class="data alloc-edit">
+          <thead><tr>
+            <th>Pollutant</th><th class="num">ΣWLA</th><th class="num">ΣLA</th><th class="num">MOS</th>
+            <th class="num">= TMDL</th><th class="num">Loading capacity</th><th>Fit</th>
+          </tr></thead>
+          <tbody id="tfAlloc"></tbody>
+        </table>
+      </div>
+      <div class="field" style="margin-top:12px">
+        <label for="tfNote">Notes</label>
+        <textarea id="tfNote" rows="2" placeholder="Basis of the allocation, the flow record used, who wrote it…"></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="tfSave" disabled>Save TMDL</button>
+        <button class="btn btn-ghost" id="tfCancel">Cancel</button>
+        <span class="hint" id="tfHint"></span>
+      </div>
+      </div>
+      </div>
+    </div>
+
+    <!-- The record as written -->
+    <div id="p3Tmdl"></div>
+
+    <div id="p3Body">
     <div class="grid verdict-grid" id="p3Headline" style="margin-top:14px"></div>
 
     <div class="section-title">
-      <h2>Load Budget <button type="button" class="tipmark" tabindex="0" data-tip="River load = mg/L × m³/s × 86.4. Licence wasteload = mg/L × m³/day ÷ 1000. The in-river concentration is the 12-month median at the selected station, which is steadier than any single sample. Diffuse is whatever the river carries that the licences do not account for." aria-label="River load = mg/L × m³/s × 86.4. Licence wasteload = mg/L × m³/day ÷ 1000. The in-river concentration is the 12-month median at the selected station, which is steadier than any single sample. Diffuse is whatever the river carries that the licences do not account for.">i</button></h2>
+      <h2>Load now against the allocation <button type="button" class="tipmark" tabindex="0" data-tip="River load = mg/L × m³/s × 86.4. Licence wasteload = mg/L × m³/day ÷ 1000. The in-river concentration is the 12-month median at the selected station, which is steadier than any single sample. Licensed is the register summed; diffuse is whatever the river carries that the licences do not account for. Each is set against the term of the TMDL written for it." aria-label="River load = mg/L × m³/s × 86.4. Licence wasteload = mg/L × m³/day ÷ 1000. Licensed is the register summed; diffuse is whatever the river carries that the licences do not account for. Each is set against the term of the TMDL written for it.">i</button></h2>
       <span class="st-sub" id="p3BudgetNote"></span>
     </div>
     <div class="card pad0 tbl-scroll">
@@ -401,15 +459,17 @@
           <tr>
             <th rowspan="2">Pollutant</th>
             <th colspan="2">Concentration (mg/L)</th>
-            <th colspan="3">Loading capacity (kg/day)</th>
-            <th colspan="3">Load now (kg/day)</th>
-            <th rowspan="2">Remaining<br>(kg/day) <button type="button" class="tipmark" tabindex="0" data-tip="Allocable capacity minus the load the river already carries. Negative means the reach is over capacity and nothing further can be licensed." aria-label="Allocable capacity minus the load the river already carries. Negative means the reach is over capacity and nothing further can be licensed.">i</button></th>
-            <th rowspan="2">Utilisation <button type="button" class="tipmark" tabindex="0" data-tip="Current load as a percentage of allocable capacity. Over 100%% is over capacity." aria-label="Current load as a percentage of allocable capacity. Over 100%% is over capacity.">i</button></th>
+            <th colspan="2">Allocated (kg/day)</th>
+            <th colspan="2">Load now (kg/day)</th>
+            <th rowspan="2">Left to<br>licence <button type="button" class="tipmark" tabindex="0" data-tip="ΣWLA minus the licensed load. Positive: room for more licences. Negative: the licences already exceed the wasteload allocation and nothing further can be licensed." aria-label="ΣWLA minus the licensed load. Positive: room for more licences. Negative: the licences already exceed the wasteload allocation.">i</button></th>
+            <th rowspan="2">ΣWLA used <button type="button" class="tipmark" tabindex="0" data-tip="The licensed load as a percentage of the wasteload allocation. Over 100%% means the licences exceed it." aria-label="The licensed load as a percentage of the wasteload allocation. Over 100%% means the licences exceed it.">i</button></th>
           </tr>
           <tr>
             <th>Standard</th><th>In river</th>
-            <th>TMDL <button type="button" class="tipmark" tabindex="0" data-tip="Total Maximum Daily Load: the mass this reach can receive per day and still hold its class. Standard concentration x design flow x 86.4." aria-label="Total Maximum Daily Load: the mass this reach can receive per day and still hold its class. Standard concentration x design flow x 86.4.">i</button></th><th>MOS <button type="button" class="tipmark" tabindex="0" data-tip="Margin of safety, held back from the capacity before anything is allocated." aria-label="Margin of safety, held back from the capacity before anything is allocated.">i</button></th><th>Allocable <button type="button" class="tipmark" tabindex="0" data-tip="TMDL minus the margin of safety: what is actually available to allocate between licensed and diffuse sources." aria-label="TMDL minus the margin of safety: what is actually available to allocate between licensed and diffuse sources.">i</button></th>
-            <th>Total <button type="button" class="tipmark" tabindex="0" data-tip="What the river actually carries: the 12-month median concentration at the selected station x design flow x 86.4." aria-label="What the river actually carries: the 12-month median concentration at the selected station x design flow x 86.4.">i</button></th><th>Licensed <button type="button" class="tipmark" tabindex="0" data-tip="The sum of the wasteloads permitted by the licences in the register." aria-label="The sum of the wasteloads permitted by the licences in the register.">i</button></th><th>Diffuse <button type="button" class="tipmark" tabindex="0" data-tip="Total load minus licensed load: background, run-off and unlicensed discharge that no permit accounts for." aria-label="Total load minus licensed load: background, run-off and unlicensed discharge that no permit accounts for.">i</button></th>
+            <th>ΣWLA <button type="button" class="tipmark" tabindex="0" data-tip="The wasteload allocation written in the record for licensed point sources." aria-label="The wasteload allocation written in the record for licensed point sources.">i</button></th>
+            <th>ΣLA <button type="button" class="tipmark" tabindex="0" data-tip="The load allocation written in the record for background and diffuse sources." aria-label="The load allocation written in the record for background and diffuse sources.">i</button></th>
+            <th>Licensed <button type="button" class="tipmark" tabindex="0" data-tip="The sum of the wasteloads permitted by the active licences in the register." aria-label="The sum of the wasteloads permitted by the active licences in the register.">i</button></th>
+            <th>Diffuse <button type="button" class="tipmark" tabindex="0" data-tip="Total river load minus licensed load: background, run-off and unlicensed discharge that no permit accounts for. Red where it is more than the ΣLA allows for." aria-label="Total river load minus licensed load. Red where it is more than the load allocation allows for.">i</button></th>
           </tr>
         </thead>
         <tbody id="p3Budget"></tbody>
@@ -419,9 +479,10 @@
     <div class="card pad0" style="margin-top:14px">
       <div class="card-head">
         <h3>Where the capacity goes</h3>
-        <div class="card-sub">Loading capacity, split into committed, diffuse and left <button type="button" class="tipmark" tabindex="0" data-tip="Each bar is the full loading capacity for one pollutant. The segments are the load already licensed, the diffuse load the river carries anyway, and whatever remains to be allocated." aria-label="Each bar is the full loading capacity for one pollutant. The segments are the load already licensed, the diffuse load the river carries anyway, and whatever remains to be allocated.">i</button></div>
+        <div class="card-sub">The TMDL by term, with the loading capacity marked <button type="button" class="tipmark" tabindex="0" data-tip="Each bar is the TMDL for one pollutant as written: the licensed load inside the ΣWLA, any licensed load beyond it, what is left of the ΣWLA to licence, the ΣLA and the MOS. The line across is the loading capacity the whole bar has to fit under." aria-label="Each bar is the TMDL for one pollutant as written. The line across is the loading capacity the whole bar has to fit under.">i</button></div>
       </div>
       <div class="chart-box lg"><canvas id="p3Chart"></canvas></div>
+    </div>
     </div>
     </div>
 

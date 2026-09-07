@@ -381,22 +381,6 @@ td.act{white-space:nowrap;text-align:right}
 .tabpane{display:none}
 .tabpane.active{display:block}
 
-/* The water the budget is written for */
-.written-for{
-  display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;
-  padding:10px 14px;background:var(--surface);border:1px solid var(--line);
-  border-left:3px solid var(--cyan);border-radius:var(--r);
-}
-.written-for label{font-size:10px;text-transform:uppercase;letter-spacing:.09em;
-  font-weight:700;color:var(--muted)}
-.written-for select{
-  flex:none;max-width:min(320px,100%);
-  border:1.5px solid var(--line);border-radius:var(--r-sm);padding:5px 9px;
-  font-family:inherit;font-size:13px;font-weight:600;color:var(--text);
-  background:var(--surface-2);cursor:pointer;
-}
-.written-for select:focus{outline:none;border-color:var(--cyan-2)}
-.wf-note{font-size:11px;color:var(--muted)}
 
 /* The prefilled figures are placeholders, and have to say so where they are */
 .prefill-note{
@@ -446,18 +430,6 @@ td.act{white-space:nowrap;text-align:right}
 }
 .lic-pin.off{background:var(--muted-2);border-color:#fff;opacity:.75}
 /* A source that is already drawn gets a ring, not a second marker */
-.lic-ring{
-  width:30px;height:30px;border-radius:50%;border:2.5px solid var(--green-2);
-  box-shadow:0 0 0 1.5px rgba(20,25,50,.55),inset 0 0 0 1.5px rgba(20,25,50,.35);
-  position:relative;pointer-events:none;
-}
-.lic-ring i{
-  position:absolute;right:-5px;top:-5px;width:14px;height:14px;border-radius:50%;
-  background:var(--navy);color:#fff;font:700 8px var(--fm);font-style:normal;
-  display:grid;place-items:center;border:1.5px solid var(--green-2);
-}
-.lic-ring.off{border-color:var(--muted-2);opacity:.6}
-.lic-ring.off i{background:var(--muted-2);border-color:#fff}
 .lic-pin.eg{border-style:dashed}
 /* --- JPS river water level: a staff gauge standing on its station --- */
 .wl-gauge{
@@ -550,10 +522,8 @@ select{cursor:pointer}
   padding:7px 12px}
 
 /* ---------------- Design conditions ---------------- */
-.cond-card{border-left:4px solid var(--cyan)}
 .cond-head{display:flex;justify-content:space-between;align-items:center;
   margin-bottom:13px;gap:12px;flex-wrap:wrap}
-.cond-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
 
 /* ---------------- Preview panel ---------------- */
 .preview{
@@ -1074,8 +1044,8 @@ select{cursor:pointer}
   .btn.locate{width:100%}
   .tabs{overflow-x:auto}
   .tab{padding:8px 11px 9px}
-  .written-for{flex-direction:column;align-items:stretch}
-  .written-for select{max-width:none}
+  .tmdl-bar{grid-template-columns:1fr}
+  .tf-wide{grid-column:auto}
 }
 
 /* ---------------- Register pager ---------------- */
@@ -1195,3 +1165,125 @@ body.gl-open{overflow:hidden}
    attributes Leaflet writes, and the flash keyframes would lose to
    !important and never play over the pick. */
 .water-selected{stroke:#ffd400;stroke-width:3px;stroke-opacity:1;filter:drop-shadow(0 0 4px rgba(0,0,0,.6))}
+
+/* ---------------- The TMDL bar: the location, said once, and the records for it ---------------- */
+.tmdl-bar{display:grid;grid-template-columns:minmax(240px,1fr) minmax(300px,1.5fr);gap:20px;
+  border-left:4px solid var(--cyan);margin-bottom:14px}
+.tb-lab{font-size:10px;text-transform:uppercase;letter-spacing:.09em;font-weight:700;color:var(--muted);
+  margin-bottom:5px;display:flex;align-items:center;gap:4px}
+.tb-name{font-size:17px;font-weight:650;letter-spacing:-.01em;color:var(--navy);line-height:1.25}
+.tb-sub{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.45}
+.tb-change{margin-top:8px;border:0;background:none;padding:0;font:inherit;font-size:11.5px;font-weight:600;
+  color:var(--cyan-2);cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+.tb-change:hover{color:var(--navy)}
+.tb-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tb-row select{flex:1 1 220px;min-width:0;border:1.5px solid var(--line);border-radius:var(--r-sm);
+  padding:7px 9px;font:inherit;font-size:12.5px;font-weight:600;color:var(--text);background:var(--surface-2)}
+.tb-row select:focus{outline:none;border-color:var(--cyan-2)}
+.tb-row .btn{padding:7px 12px;font-size:12px;white-space:nowrap}
+.btn-ghost.danger{color:var(--c5);border-color:#f5c9c5}
+.btn-ghost.danger:hover{background:#fdeceb;border-color:var(--c5);color:var(--c5)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* The one location picker, in the app bar, said to be that */
+.pill.pick .pick-lab{font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;
+  color:var(--muted);margin-right:1px}
+@keyframes nudge{
+  0%,100%{box-shadow:0 0 0 0 rgba(0,180,216,0)}
+  50%{box-shadow:0 0 0 5px rgba(0,180,216,.35);border-color:var(--cyan)}
+}
+.pill.pick.nudge{animation:nudge .6s ease-in-out 3}
+
+/* ---------------- The record as written ---------------- */
+.tmdl-card{padding:0;overflow:hidden}
+.tc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;
+  padding:14px 16px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.tc-ref{font-family:var(--fm);font-size:14.5px;font-weight:700;color:var(--navy);
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tc-title{font-size:12.5px;color:var(--muted);margin-top:3px}
+.tc-meta{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);align-items:center;padding-top:2px}
+.tc-meta b{color:var(--text);font-family:var(--fm);font-weight:650}
+.tc-meta .flag{margin-left:6px}
+table.alloc td.eq,table.alloc-edit td.eq{color:var(--navy);font-weight:750;font-size:13px}
+table.alloc th.num,table.alloc-edit th.num{text-align:right}
+table.alloc td .sub{display:block;font-size:10px;color:var(--muted-2);font-weight:400}
+.alloc-bar{position:relative;height:11px;border-radius:4px;background:var(--surface-2);
+  border:1px solid var(--line);display:flex;min-width:160px;margin:3px 0 0}
+.alloc-bar i{display:block;height:100%}
+.alloc-bar i:first-child{border-radius:3px 0 0 3px}
+.alloc-bar::after{content:'';position:absolute;top:-4px;bottom:-4px;left:var(--cap,100%);width:2px;
+  margin-left:-1px;background:var(--navy);border-radius:1px}
+.alloc-lab{font-size:10.5px;margin-top:5px;font-weight:600}
+.tc-foot{display:flex;gap:14px;flex-wrap:wrap;align-items:center;padding:9px 16px;
+  border-top:1px solid var(--line);font-size:10.5px;color:var(--muted)}
+.tc-key{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.tc-key i{display:inline-block;width:9px;height:9px;border-radius:2px}
+.tc-key i.mark{width:2px;height:11px;background:var(--navy);border-radius:1px}
+.tc-note{flex:1 1 100%;line-height:1.5;color:var(--muted)}
+.fit-ok{color:#0d7a3f;font-weight:600;font-size:11px}
+.fit-bad{color:var(--c5);font-weight:650;font-size:11px}
+
+/* ---------------- Writing one ---------------- */
+.tmdl-form{border-left:4px solid var(--navy);margin-bottom:14px}
+.formula-inline{font-family:var(--fm);font-size:12.5px;font-weight:600;color:var(--navy);
+  background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:4px 9px}
+.tf-meta{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.tf-wide{grid-column:span 2}
+.tf-alloc-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:16px 0 8px}
+.tf-alloc-head b{font-size:12.5px}
+.tf-alloc-head span{font-size:11px;color:var(--muted)}
+.tf-fill{display:flex;align-items:center;gap:10px}
+.tf-fill label{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px;white-space:nowrap}
+.tf-fill input{width:54px;border:1.5px solid var(--line);border-radius:var(--r-sm);padding:4px 6px;
+  font:inherit;font-size:12px;text-align:right}
+.tf-fill .btn{padding:6px 12px;font-size:12px}
+table.alloc-edit input{width:112px;border:1.5px solid var(--line);border-radius:var(--r-sm);padding:5px 7px;
+  font-family:var(--fm);font-size:12px;text-align:right;background:var(--surface)}
+table.alloc-edit input:focus{outline:none;border-color:var(--cyan-2);box-shadow:0 0 0 3px rgba(0,180,216,.12)}
+table.alloc-edit td{vertical-align:middle}
+.btn-row .hint{font-size:11.5px;color:var(--muted);margin-left:4px}
+.btn-row .hint.err{color:var(--c5);font-weight:600}
+.btn-row .hint.ok{color:#0d7a3f;font-weight:600}
+.k-sub select{border:1px solid var(--line);border-radius:5px;padding:2px 5px;font:inherit;font-size:11px;
+  font-weight:600;color:var(--text);background:var(--surface-2);max-width:100%}
+
+/* ---------------- The form as a dialog over the page ---------------- */
+.modal{position:fixed;inset:0;z-index:5000;display:grid;place-items:center;padding:24px}
+.modal[hidden]{display:none}
+.modal-back{position:absolute;inset:0;background:rgba(15,18,40,.55);backdrop-filter:blur(2px)}
+.modal-card{
+  position:relative;width:min(1100px,100%);max-height:calc(100vh - 48px);display:flex;flex-direction:column;
+  background:var(--surface);border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.35);overflow:hidden;padding:0;
+}
+.modal-card.tmdl-form{border-left:0;margin-bottom:0}
+.modal-card .cond-head{padding:16px 20px 12px;border-bottom:1px solid var(--line);margin:0;justify-content:flex-start}
+.modal-card .cond-head h3{font-size:17px}
+.modal-card .cond-head .formula-inline{margin-left:auto}
+.modal-body{overflow:auto;padding:16px 20px 18px}
+body.modal-open{overflow:hidden}
+@media (max-width:760px){
+  .modal{padding:0}
+  .modal-card{max-height:100vh;border-radius:0}
+}
+
+/* A verdict that is neither: the record fits and the licences fit, but the
+   river carries more diffuse load than the ΣLA allows for */
+.verdict.warn{border-left-color:#ef7d1a;background:linear-gradient(100deg,#fff7ee,#fff 55%)}
+.verdict.warn .v-icon{background:#fde7cf;color:#b54708}
+.verdict.warn .v-head{color:#b54708}
+
+/* The one location picker holds a long station name without cutting it */
+.pill.pick select{max-width:240px}
+
+/* Rows told apart: a line under every row, and a line between the column
+   groups of the tables that have them */
+table.data td{border-bottom:1px solid var(--line)}
+#v-tmdl table.data tbody td{border-bottom:1px solid var(--line-2)}
+#v-tmdl table.data tbody tr:last-child td{border-bottom:0}
+table.budget thead tr:first-child th:nth-child(-n+4),
+table.budget thead tr:nth-child(2) th:nth-child(2n),
+table.budget tbody td:nth-child(odd):not(:last-child){border-right:1px solid var(--line)}
+table.alloc th:nth-child(1),table.alloc td:nth-child(1),
+table.alloc th:nth-child(5),table.alloc td:nth-child(5),
+table.alloc-edit th:nth-child(1),table.alloc-edit td:nth-child(1),
+table.alloc-edit th:nth-child(5),table.alloc-edit td:nth-child(5){border-right:1px solid var(--line)}

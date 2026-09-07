@@ -2,10 +2,17 @@
    loads.js — Pollutant load accounting and TMDL
 
    TMDL = ΣWLA + ΣLA + MOS
-     TMDL  Total Maximum Daily Load — the loading capacity of the reach
+     TMDL  Total Maximum Daily Load — what is written for the reach
      WLA   Wasteload allocation — licensed point-source discharges
      LA    Load allocation — background and non-point sources
      MOS   Margin of safety
+
+   A TMDL record holds the three terms as inputs, in kg/day for each
+   pollutant, together with the target class and the design low flow it was
+   written for. The loading capacity — standard concentration × design flow
+   × 86.4 — is what the sum has to fit inside. Nothing here invents an
+   allocation; the record says what it is, and this file says whether it
+   fits and how much of it is used.
 
    Unit convention throughout:
      river load   kg/day = C (mg/L) × Q (m³/s) × 86.4
@@ -19,7 +26,7 @@ export const RIVER_FACTOR = 86.4;
 export const riverLoad = (concMgL, flowCumecs) => concMgL * flowCumecs * RIVER_FACTOR;
 export const licenceLoad = (concMgL, flowM3PerDay) => (concMgL * flowM3PerDay) / 1000;
 
-/* ---- Design conditions the whole calculation hangs on ---- */
+/* ---- Defaults a new TMDL starts from ---- */
 export const DEFAULT_CONDITIONS = {
   /* Which station the assessment and the load budget are written for. Dengkil
      is the default because it is the Langat station the brief names, not
@@ -45,50 +52,108 @@ export const EFFLUENT_STANDARDS = {
 };
 
 /* ============================================================
-   The budget for one pollutant
+   Loading capacity — what the reach can carry at a class and a flow
    ============================================================ */
-export function pollutantBudget(param, observedConc, licences, cond) {
-  const { targetClass, designFlow, mosPercent } = cond;
+export function loadingCapacity(param, targetClass, designFlow) {
   const standard = INWQS[targetClass]?.[param];
   if (standard == null || Array.isArray(standard)) return null;
+  return { standard, capacity: riverLoad(standard, designFlow) };
+}
 
-  const capacity = riverLoad(standard, designFlow);          // TMDL / loading capacity
-  const mos = capacity * (mosPercent / 100);
-  const available = capacity - mos;                           // allocable to all sources
-  const current = riverLoad(observedConc, designFlow);        // load the river carries now
-
-  const licensed = licences.reduce(
+/* The wasteload every active licence in the register permits, summed */
+export function licensedLoad(licences, param) {
+  return licences.reduce(
     (t, l) => t + (l.active === false ? 0 : licenceLoad(l.conc?.[param] ?? 0, l.flow ?? 0)), 0);
+}
 
+/* ============================================================
+   Writing a TMDL to capacity
+
+   The starting point a new record is offered. The margin of safety is a
+   share of the capacity. With room to spare, the licences in the register
+   are honoured in the ΣWLA, the background takes what the river carries
+   beyond them, and the spare is added to the ΣWLA as room to licence.
+   Where the river is already over capacity the licences are kept, up to
+   the capacity, and the ΣLA takes what is left — so the page shows the
+   diffuse reduction the class would need, rather than a licence headroom
+   the river does not have.
+   ============================================================ */
+const r1 = (x) => Math.round(x * 10) / 10;
+export function suggestAllocation(reading, licences, cond) {
+  const out = {};
+  for (const p of LOAD_PARAMS) {
+    const cap = loadingCapacity(p, cond.targetClass, cond.designFlow);
+    if (!cap) continue;
+    const mos = cap.capacity * ((cond.mosPercent ?? 10) / 100);
+    const available = cap.capacity - mos;
+    const current = riverLoad(reading[p] ?? 0, cond.designFlow);
+    const licensed = licensedLoad(licences, p);
+    const diffuse = Math.max(0, current - licensed);
+    let wla, la;
+    if (licensed + diffuse <= available) {
+      la = diffuse;
+      wla = available - la;
+    } else {
+      wla = Math.min(licensed, available);
+      la = available - wla;
+    }
+    out[p] = { wla: r1(wla), la: r1(la), mos: r1(mos) };
+  }
+  return out;
+}
+
+/* ============================================================
+   The budget for one pollutant, under one TMDL record
+   ============================================================ */
+export function pollutantBudget(param, observedConc, licences, tmdl) {
+  const cap = loadingCapacity(param, tmdl.targetClass, tmdl.designFlow);
+  if (!cap) return null;
+  const { standard, capacity } = cap;
+
+  const a = tmdl.alloc?.[param] ?? {};
+  const wla = Number(a.wla) || 0;
+  const la = Number(a.la) || 0;
+  const mos = Number(a.mos) || 0;
+  const total = wla + la + mos;                               // the TMDL itself
+  const excess = Math.max(0, total - capacity);               // what does not fit
+
+  const current = riverLoad(observedConc, tmdl.designFlow);   // load the river carries now
+  const licensed = licensedLoad(licences, param);
   /* Whatever the river carries that licensed point sources do not account for:
      background, diffuse run-off and unlicensed discharge. */
   const diffuse = Math.max(0, current - licensed);
 
-  const remaining = available - current;
-  const utilisation = available > 0 ? current / available : Infinity;
+  const remaining = wla - licensed;                           // left to licence
+  const laRemaining = la - diffuse;                           // room left in the LA
+  const utilisation = wla > 0 ? licensed / wla : (licensed > 0 ? Infinity : 0);
 
   return {
     param,
     standard,
     capacity,
-    mos,
-    available,
+    wla, la, mos,
+    tmdl: total,
+    available: wla + la,
+    excess,
+    fits: excess < 0.5,
     current,
     licensed,
     diffuse,
     remaining,
+    laRemaining,
     utilisation,
-    overCapacity: remaining < 0,
-    /* When over capacity, this is the cut needed to bring the reach into class. */
-    reductionNeeded: remaining < 0 ? -remaining : 0,
+    overCapacity: remaining < -0.5,
+    /* When the licences exceed the WLA, the cut needed to come back inside it */
+    reductionNeeded: remaining < -0.5 ? -remaining : 0,
     observedConc,
   };
 }
 
-export function budgetAll(reading, licences, cond) {
+export function budgetAll(reading, licences, tmdl) {
   const out = {};
+  if (!tmdl) return out;
   for (const p of LOAD_PARAMS) {
-    const b = pollutantBudget(p, reading[p], licences, cond);
+    const b = pollutantBudget(p, reading[p], licences, tmdl);
     if (b) out[p] = b;
   }
   return out;
@@ -97,9 +162,9 @@ export function budgetAll(reading, licences, cond) {
 /* ============================================================
    "Berapa lagi yang tinggal" expressed as licensable headroom
 
-   Converts the remaining kg/day into the effluent volume that could still be
-   licensed at a given discharge standard. The binding pollutant — the one that
-   runs out first — sets the answer.
+   Converts what is left of the ΣWLA into the effluent volume that could
+   still be licensed at a given discharge standard. The binding pollutant —
+   the one that runs out first — sets the answer.
    ============================================================ */
 export function headroom(budgets, standardKey = 'A') {
   const std = EFFLUENT_STANDARDS[standardKey];
@@ -127,7 +192,7 @@ export function headroom(budgets, standardKey = 'A') {
     standardKey,
     rows,
     binding,
-    /* Negative means the reach is already over capacity for at least one pollutant */
+    /* Negative means the licences already exceed the WLA for at least one pollutant */
     volume: binding ? binding.volume : 0,
     anyOver: rows.some((r) => r.overCapacity),
     allClear: positive.length === rows.length,

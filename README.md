@@ -263,7 +263,7 @@ counts move with it, which is the quickest read of whether the basin is improvin
 | River water level | 21 JPS gauges, drawn as a staff gauge and coloured by JPS status |
 | Water bodies | 1,089 Digital Earth outlines, coloured by type. Each carries a `flow` read off the mapped rivers: *thru*, *out*, *in* or *still* |
 | Point sources | 651 sites that can put a load into the river, one shape per category; the fill is **green** with a discharge licence and **red** without. Where the register has an entry the colour follows it; everywhere else the status is an **estimate** (`js/licenceStatus.js`), because no licence register is published as open data |
-| Licence register pins | the ring or pin drawn on each premises that has an entry in the licence register |
+| Licence register pins | a pin at each licence entered at a new location; a licensed premises already on the map shows its licence as its green fill |
 | Sungai Langat & tributaries | 682 km of mapped channel, drawn at a width scaled by what it carries |
 | Flow direction | the same channels, dashed and animated downstream |
 | Satellite water quality | quarterly Sentinel-2 NDTI, NDCI and estimated SS over Selangor, as PMTiles from the Digital Earth bucket (`js/satellite.js` · `WQ_PRODUCTS`). One product and one quarter at a time, clipped to the mapped rivers and water bodies unless "Water only" is unticked; the ramp is in the legend. The SS layer is uncalibrated and marked so |
@@ -474,12 +474,22 @@ Two tabs, because they are two jobs:
 
 | Tab | What it does |
 |---|---|
-| **Loading capacity** | What this water can carry, and how much of it is left |
+| **TMDL** | The TMDL on record for the location — ΣWLA, ΣLA and MOS as written — against what the water can carry and what it carries now |
 | **Licences** | What is permitted to discharge into it — the licence register |
 
-The capacity tab opens by naming the water it is **written for**, and lets it be changed there
-rather than only from the app bar. A loading capacity with no stated subject invites being read
-as the whole river's.
+The **location is picked once, in the app bar**, and every page follows it; the TMDL tab names it
+at the top rather than offering a second picker. Under the name are the **TMDLs on record** for
+that location: pick one and it loads, **New TMDL** writes another, and a record of your own can be
+edited or deleted. A worked example ships for every station so a pick always loads something.
+
+A TMDL record is the formula as inputs. For each of BOD, COD, SS and NH₃-N it holds **ΣWLA**,
+**ΣLA** and **MOS** in kg/day, with the target class and the design low flow it was written for.
+The form adds the three up live and checks the sum against the loading capacity at that class and
+flow. **Write to capacity** offers a starting point — MOS as a share of the capacity, the register
+honoured in the ΣWLA, the background given what the river carries beyond it, and any spare added to
+the ΣWLA as room to licence; where the river is already over capacity the ΣLA takes what is left,
+so the diffuse reduction needed shows — to be edited, not accepted. The form opens as a dialog over
+the page. The records live in this browser, and go out with the JSON export.
 
 A licence is granted to a place, so the form asks **which place first**, then the reference and
 everything else. Two ways in:
@@ -504,9 +514,9 @@ twice in the budget.
 
 Either way the licence carries a position, and anything with a position is drawn:
 
-- a premises **already on the map** is ringed where it stands, not covered by a second marker,
-  and its own popup gains the licence — reference, permitted flow, wasteload. Two markers for one
-  place would be the map disagreeing with itself.
+- a premises **already on the map** keeps its own symbol, which turns green with the licence, and
+  its own popup gains the licence — reference, permitted flow, wasteload. Nothing is drawn on top
+  of it: two markers for one place would be the map disagreeing with itself.
 - a **new location** gets its own pin, since nothing else draws it.
 
 **Show on map** beside either mode opens the map at that premises **and opens its popup** —
@@ -520,21 +530,28 @@ are located and which are not, so a register of six against a map of two is not 
 
 | Term | Meaning | Where it comes from |
 |---|---|---|
-| **TMDL** | Loading capacity of the reach | standard × design flow × 86.4 |
-| **WLA** | Wasteload allocation | the licence register |
-| **LA** | Load allocation | background and non-point, inferred as the balance |
-| **MOS** | Margin of safety | a set percentage of capacity |
+| **TMDL** | ΣWLA + ΣLA + MOS, as written | the record |
+| **Loading capacity** | What the TMDL has to fit inside | standard × design flow × 86.4 |
+| **WLA** | Wasteload allocation to licensed point sources | the record; the register shows how much is taken |
+| **LA** | Load allocation to background and non-point sources | the record; the diffuse load now is checked against it |
+| **MOS** | Margin of safety | the record; Write to capacity sets it as a share |
+
+The verdict reads three ways: red when the record does not fit the capacity or the licences
+exceed the ΣWLA, amber when both fit but the river carries more diffuse load than the ΣLA allows
+for — the class is held only once that comes down — and green when everything sits inside.
 
 **Units.** River load `kg/day = C (mg/L) × Q (m³/s) × 86.4`. Licence wasteload
 `kg/day = C (mg/L) × Q (m³/day) ÷ 1000`.
 
 The in-river concentration is the **12-month median** at the selected station, which is steadier
-than any single sample. Remaining capacity is `TMDL − MOS − current load`, converted into the
-volume of new effluent that could still be licensed. The pollutant that runs out first is the
-binding one.
+than any single sample. What is left to licence is `ΣWLA − licensed load`, converted into the
+volume of new effluent that could still be licensed at the chosen standard. The pollutant that
+runs out first is the binding one. The diffuse load — current load minus licensed — is checked
+against the ΣLA the same way.
 
-Target class, design river flow, margin of safety and the effluent standard are all editable,
-and every figure recomputes from them.
+The target class and design flow every page reads come from the TMDL on record for the selected
+station, so the app bar, the assessment and the budget cannot disagree about what the water is
+held to.
 
 > ⚠️ **The design flow ships as an unverified estimate (4.5 m³/s).** A TMDL must be written for a
 > low-flow design condition — MAM7 or 7Q10 — because that is when the river has least capacity to

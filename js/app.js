@@ -6,7 +6,7 @@ import { DATA, loadAll, readingAt, latestIdx, complianceRecord, fmtMonth,
 import { wqiClass } from './wqi.js';
 import { sourceLabel } from './firebase.js';
 import { store, registerAsJson, registerAsCsv, download } from './store.js';
-import { buildExamples } from './examples.js';
+import { buildExamples, buildTmdlExamples } from './examples.js';
 import { buildGlossary } from './glossary.js';
 import { renderSesams, resizeSesams } from './sesams.js';
 import { renderPhase1, resizePhase1 } from './phase1.js';
@@ -113,6 +113,8 @@ function buildStationPicker() {
   /* The worked examples are premises taken off the map, so they cannot be
      built until the sources are in. Before any phase renders. */
   store.setExamples(buildExamples());
+  /* And a worked TMDL for every station, from the record and the register */
+  store.setTmdlExamples(buildTmdlExamples(store.licences()));
 
   buildStationPicker();
   updatePills();
@@ -138,7 +140,7 @@ function buildStationPicker() {
     + ` · served from ${esc(sourceLabel())}`;
   $('p2Measure').onchange = (e) => renderNational(e.target.value);
 
-  /* Changing the target class ripples through every phase */
+  /* A change to the store — the station, a licence, a TMDL — ripples through every phase */
   document.addEventListener('storechange', () => {
     updatePills();
     if (ready.map) refreshMap();

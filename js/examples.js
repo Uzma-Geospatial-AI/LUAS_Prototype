@@ -34,9 +34,9 @@
    two were generated separately the register and the form would disagree
    about the same licence, which is worse than either number being invented.
    ============================================================ */
-import { sourceSummary } from './data.js';
+import { DATA, designReading, sourceSummary } from './data.js';
 import { LOAD_PARAMS } from './wqi.js';
-import { EFFLUENT_STANDARDS } from './loads.js';
+import { DEFAULT_CONDITIONS, EFFLUENT_STANDARDS, suggestAllocation } from './loads.js';
 import { estimatedLicensed } from './licenceStatus.js';
 
 /* m3/day, a plausible middle for the category */
@@ -180,4 +180,45 @@ export function buildExamples() {
     .forEach((f) => out.push(row(f, { bulk: true })));
 
   return out;
+}
+
+/* ============================================================
+   Worked TMDLs
+
+   One per station, so picking any location loads a record. Each is written
+   to the Class II loading capacity at the estimated 4.5 m³/s low flow with
+   10% held back, the way Write to capacity does it: the register is
+   honoured in the ΣWLA, the background takes what the station's 12-month
+   median says the river carries beyond it, and where the river is already
+   over capacity the ΣLA takes what is left. Built once the monitoring
+   record and the register are in, and marked example so nothing mistakes
+   it for a decision. It cannot be edited; New TMDL starts a copy the user
+   owns.
+   ============================================================ */
+export function buildTmdlExamples(licences) {
+  const cond = {
+    targetClass: DEFAULT_CONDITIONS.targetClass,
+    designFlow: DEFAULT_CONDITIONS.designFlow,
+    mosPercent: DEFAULT_CONDITIONS.mosPercent,
+  };
+  return DATA.stations.map((st) => ({
+    id: `tx-${st.code}`,
+    station: st.code,
+    ref: `TMDL/${st.code}/2026/EX`,
+    title: `${st.name} · ${st.river} · Class ${cond.targetClass}`,
+    date: '2026-09-01',
+    targetClass: cond.targetClass,
+    designFlow: cond.designFlow,
+    flowVerified: false,
+    alloc: suggestAllocation(designReading(st, 12), licences, cond),
+    note: `Worked example. Written to the Class ${cond.targetClass} loading capacity at the `
+      + `estimated ${cond.designFlow} m³/s low flow, with ${cond.mosPercent}% held back: the licences `
+      + 'in the register are honoured in the ΣWLA, the background takes what the 12-month median at '
+      + 'this station says the river carries beyond them, and any capacity to spare is added to the '
+      + 'ΣWLA. Where the river is already over capacity the ΣLA takes what is left, so the diffuse '
+      + 'reduction needed shows. Not a decision — write your own with New TMDL.',
+    example: true,
+    created: '2026-09-01T00:00:00Z',
+    updated: '2026-09-01T00:00:00Z',
+  }));
 }
