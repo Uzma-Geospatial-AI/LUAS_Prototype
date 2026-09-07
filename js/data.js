@@ -3,6 +3,7 @@
    ============================================================ */
 import { computeWQI, wqiClass, classCompliance } from './wqi.js';
 import { store } from './store.js';
+import { DEFAULT_CONDITIONS } from './loads.js';
 import { probe, readNode, SOURCE } from './firebase.js';
 
 /* The station the assessment is written for. It defaults to Sungai Langat at
@@ -199,12 +200,92 @@ export function refreshUserStations() {
   }
   extendMonths();
   derive();
+  estimateFlows();
   /* The focus is held by code: the object behind it may have been rebuilt,
      or removed */
   const code = DATA.focus?.code ?? store.conditions().focusStation ?? FOCUS_STATION;
   DATA.focus = DATA.stations.find((s) => s.code === code)
     ?? DATA.stations.find((s) => s.code === FOCUS_STATION)
     ?? DATA.stations[0];
+}
+
+/* ---- A design low flow for each station ----
+   Only Dengkil has an estimate written down: 4.5 m³/s, MAM7. No other
+   station has one, and a TMDL cannot be written without a flow, so each
+   station's is scaled from Dengkil's by the mapped channel length draining
+   to it — the same accumulation the map scales line width by, read off the
+   nearest reach at the point the station sits on it. A first estimate,
+   flagged as one everywhere it shows, to be replaced station by station
+   with the DID gauged record. */
+function drainedAt(st) {
+  const all = DATA.rivers?.features ?? [];
+  const k = Math.cos((st.lat * Math.PI) / 180);
+  const px = st.lon * k, py = st.lat;
+  /* The station's own river first: at a confluence or a mouth the nearest
+     line can be a side channel that drains almost nothing. Any reach only
+     when the named river is not mapped within about 2 km. */
+  const nearest = (feats) => {
+    let best = null;
+    for (const f of feats) {
+    const c = f.geometry.coordinates;
+    for (let i = 0; i < c.length - 1; i++) {
+      const x1 = c[i][0] * k, y1 = c[i][1], x2 = c[i + 1][0] * k, y2 = c[i + 1][1];
+      const dx = x2 - x1, dy = y2 - y1, l2 = dx * dx + dy * dy;
+      let t = l2 ? ((px - x1) * dx + (py - y1) * dy) / l2 : 0;
+      t = Math.max(0, Math.min(1, t));
+      const d = (px - (x1 + t * dx)) ** 2 + (py - (y1 + t * dy)) ** 2;
+      if (!best || d < best.d) best = { d, f, i, t };
+    }
+  }
+    return best;
+  };
+  const own = st.river ? nearest(all.filter((f) => f.properties.name === st.river)) : null;
+  const best = own && Math.sqrt(own.d) < 0.018 ? own : nearest(all);
+  if (!best) return null;
+  /* How far down the reach the station sits: what the reach itself adds
+     below that point is not yet draining through the station */
+  const c = best.f.geometry.coordinates;
+  const seg = (a, b) => Math.hypot((b[0] - a[0]) * k, b[1] - a[1]);
+  let before = 0, total = 0;
+  for (let i = 0; i < c.length - 1; i++) {
+    const l = seg(c[i], c[i + 1]);
+    total += l;
+    if (i < best.i) before += l;
+    else if (i === best.i) before += l * best.t;
+  }
+  const frac = total ? before / total : 1;
+  const p = best.f.properties;
+  let val = Math.max(1, (p.up ?? 0) - (p.m ?? 0) * (1 - frac));
+  /* An outlet reach of a river that has bigger reaches upstream is a mouth
+     the mapped network does not join up to; the mouth carries the whole
+     river, so the river's largest accumulation is added to it. */
+  if (best === own && p.next == null) {
+    const maxUp = Math.max(0, ...all.filter((f) => f.properties.name === st.river).map((f) => f.properties.up ?? 0));
+    if (maxUp > (p.up ?? 0)) val += maxUp;
+  }
+  return val;
+}
+
+function estimateFlows() {
+  if (!DATA.rivers) return;
+  const ref = DATA.stations.find((s) => s.code === FOCUS_STATION);
+  const refUp = ref ? (ref.drained ??= drainedAt(ref)) : null;
+  for (const s of DATA.stations) {
+    if (s.flowEst != null) continue;
+    s.drained = s.drained ?? drainedAt(s);
+    s.flowEst = refUp && s.drained
+      ? Math.max(0.05, Math.round(DEFAULT_CONDITIONS.designFlow * (s.drained / refUp) * 100) / 100)
+      : DEFAULT_CONDITIONS.designFlow;
+  }
+}
+
+/* How the estimate was arrived at, for the flag that sits on it */
+export function flowBasis(st) {
+  if (!st?.drained) return 'An estimate, not yet checked against a gauged record.';
+  return st.code === FOCUS_STATION
+    ? 'MAM7 low-flow estimate for Dengkil, not yet checked against the DID gauged record (station 2816441).'
+    : `Scaled from Dengkil's 4.5 m³/s by mapped channel length draining to this station `
+      + `(${(st.drained / 1000).toFixed(0)} km). An estimate, to be replaced with the DID gauged record.`;
 }
 
 /* ---- Which station a licence counts at ----

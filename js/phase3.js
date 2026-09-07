@@ -12,7 +12,7 @@
    at its target class and design low flow. The register then says how much
    of the ΣWLA the licences have taken, and how much is left to licence.
    ============================================================ */
-import { DATA, designReading, sourceSummary, licencesAt, stationForLicence } from './data.js';
+import { DATA, designReading, sourceSummary, licencesAt, stationForLicence, flowBasis } from './data.js';
 import { LOAD_PARAMS, PARAM_META, TARGET_CLASSES } from './wqi.js';
 import {
   budgetAll, headroom, headroomInPE, licenceLoads, licenceCompliance, loadingCapacity,
@@ -382,7 +382,8 @@ function openForm(t) {
   $('tfTitle').value = t ? (t.title ?? '') : `${st.name} · ${st.river}`;
   $('tfDate').value = t ? (t.date ?? today()) : today();
   $('tfClass').value = base?.targetClass ?? DEFAULT_CONDITIONS.targetClass;
-  $('tfFlow').value = base?.designFlow ?? DEFAULT_CONDITIONS.designFlow;
+  /* With nothing to copy, the station's own estimated low flow */
+  $('tfFlow').value = base?.designFlow ?? st.flowEst ?? DEFAULT_CONDITIONS.designFlow;
   $('tfFlowVerified').checked = !!base?.flowVerified;
   $('tfNote').value = t ? (t.note ?? '') : '';
   for (const p of LOAD_PARAMS) {
@@ -535,7 +536,7 @@ function renderTmdlCard(t, budgets) {
           <span>Target <b>Class ${esc(t.targetClass)}</b></span>
           <span>Design flow <b>${esc(t.designFlow)} m³/s</b><i class="flag${t.flowVerified ? ' ok' : ''}"
             title="${t.flowVerified ? 'Checked against the DID gauged low-flow record.'
-              : 'Not yet checked against a gauged record. Every load figure scales with this number.'}">${t.flowVerified ? 'verified' : 'estimate'}</i></span>
+              : esc(flowBasis(DATA.focus)) + ' Every load figure scales with this number.'}">${t.flowVerified ? 'verified' : 'estimate'}</i></span>
           <span>Written <b>${fmtDate(t.date)}</b></span>
         </div>
       </div>

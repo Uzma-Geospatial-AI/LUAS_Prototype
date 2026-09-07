@@ -94,7 +94,7 @@ export const GLOSSARY = [
         'Background, run-off and unlicensed discharge that no permit accounts for.'],
       ['Counts at', 'The station a licence is set against: the nearest monitoring station to the premises, unless the register says another.',
         'So each location carries only its own licensed load, and no two read the same.'],
-      ['Design flow', 'The low-flow condition a TMDL is written for (MAM7 / 7Q10), not the mean. Part of the record; 4.5 m³/s at Dengkil as an estimate.',
+      ['Design flow', 'The low-flow condition a TMDL is written for (MAM7 / 7Q10), not the mean. Part of the record; 4.5 m³/s at Dengkil as an estimate, and every other station scaled from it by the channel length draining to it.',
         'The river has least capacity to dilute a load when flow is lowest, so that is the case to plan for.'],
       ['Wasteload', 'The mass a licence permits per day: concentration × permitted flow ÷ 1000, in kg/day.',
         'Each register row shows it for BOD, COD, SS and NH₃-N.'],

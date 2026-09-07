@@ -88,15 +88,16 @@ function buildStationPicker() {
   const own = !!DATA.focus?.user;
   pickerHadEdit = own;
 
+  /* Adding comes first, where it is seen without scrolling the list */
   const sel = $('stationPick');
-  sel.innerHTML = Object.entries(byRiver).map(([river, list]) => `
+  sel.innerHTML = `<optgroup label="Locations">
+        <option value="__add" class="pick-add">＋ Add a new location…</option>
+        ${own ? '<option value="__edit" class="pick-edit">✎ Edit this location…</option>' : ''}
+      </optgroup>`
+    + Object.entries(byRiver).map(([river, list]) => `
     <optgroup label="${esc(river)}">
       ${list.map((st) => `<option value="${st.code}">${esc(st.name)} · ${st.code}${st.user ? ' · added' : ''}</option>`).join('')}
-    </optgroup>`).join('')
-    + `<optgroup label="Locations">
-        <option value="__add">＋ Add a new location…</option>
-        ${own ? '<option value="__edit">✎ Edit this location…</option>' : ''}
-      </optgroup>`;
+    </optgroup>`).join('');
   sel.value = DATA.focus.code;
 
   sel.onchange = (e) => {

@@ -1181,6 +1181,10 @@ body.gl-open{overflow:hidden}
   50%{box-shadow:0 0 0 5px rgba(0,180,216,.35);border-color:var(--cyan)}
 }
 .pill.pick.nudge{animation:nudge .6s ease-in-out 3}
+/* The door in the list, told apart from the stations: adding in the site's
+   cyan, editing in amber */
+.pill.pick option.pick-add{color:#0b7fae;background:#e6f6fb;font-weight:700}
+.pill.pick option.pick-edit{color:#8a5a06;background:#fdf1d6;font-weight:700}
 
 /* ---------------- The record as written ---------------- */
 .tmdl-card{padding:0;overflow:hidden}

@@ -561,10 +561,13 @@ The target class and design flow every page reads come from the TMDL on record f
 station, so the app bar, the assessment and the budget cannot disagree about what the water is
 held to.
 
-> ⚠️ **The design flow ships as an unverified estimate (4.5 m³/s).** A TMDL must be written for a
-> low-flow design condition — MAM7 or 7Q10 — because that is when the river has least capacity to
-> assimilate a load. Replace it with the DID gauged record and tick **Verified**. Every load
-> figure scales linearly with it.
+> ⚠️ **The design flow ships as an unverified estimate.** A TMDL must be written for a low-flow
+> design condition — MAM7 or 7Q10 — because that is when the river has least capacity to
+> assimilate a load. Dengkil's is 4.5 m³/s; every other station's is scaled from it by the mapped
+> channel length draining to it (the same accumulation the map scales line width by), so the
+> capacity, the margin of safety and the TMDL differ by location rather than repeating Dengkil's.
+> Replace each with the DID gauged record and tick **Verified**. Every load figure scales linearly
+> with it.
 
 > ⚠️ **No LUAS licence register is published as open data**, so five worked examples ship with
 > the system to make the budget computable. They are built from **premises that are actually on

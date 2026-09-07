@@ -185,7 +185,8 @@ export function buildExamples() {
 /* ============================================================
    Worked TMDLs
 
-   One per station, so picking any location loads a record. Each counts
+   One per station, so picking any location loads a record. Each is written
+   at that station's own design low flow, so the capacity differs. Each counts
    only the licences that count at that station — the nearest one to each
    premises — so no two locations read the same. Each is written
    to the Class II loading capacity at the estimated 4.5 m³/s low flow with
@@ -203,18 +204,22 @@ export function buildTmdlExamples() {
     designFlow: DEFAULT_CONDITIONS.designFlow,
     mosPercent: DEFAULT_CONDITIONS.mosPercent,
   };
-  return DATA.stations.map((st) => ({
+  return DATA.stations.map((st) => {
+    const flow = st.flowEst ?? cond.designFlow;
+    const at = { ...cond, designFlow: flow };
+    return {
     id: `tx-${st.code}`,
     station: st.code,
     ref: `TMDL/${st.code}/2026/EX`,
     title: `${st.name} · ${st.river} · Class ${cond.targetClass}`,
     date: '2026-09-01',
     targetClass: cond.targetClass,
-    designFlow: cond.designFlow,
+    designFlow: flow,
     flowVerified: false,
-    alloc: suggestAllocation(designReading(st, 12), licencesAt(st.code), cond),
-    note: `Worked example. Written to the Class ${cond.targetClass} loading capacity at the `
-      + `estimated ${cond.designFlow} m³/s low flow, with ${cond.mosPercent}% held back: the licences `
+    alloc: suggestAllocation(designReading(st, 12), licencesAt(st.code), at),
+    note: `Worked example. Written to the Class ${cond.targetClass} loading capacity at an estimated `
+      + `${flow} m³/s low flow${st.code === 'LGT06' ? '' : `, scaled from Dengkil's 4.5 m³/s by the channel length draining here`}, `
+      + `with ${cond.mosPercent}% held back: the licences `
       + 'in the register are honoured in the ΣWLA, the background takes what the 12-month median at '
       + 'this station says the river carries beyond them, and any capacity to spare is added to the '
       + 'ΣWLA. Where the river is already over capacity the ΣLA takes what is left, so the diffuse '
@@ -222,5 +227,6 @@ export function buildTmdlExamples() {
     example: true,
     created: '2026-09-01T00:00:00Z',
     updated: '2026-09-01T00:00:00Z',
-  }));
+    };
+  });
 }
