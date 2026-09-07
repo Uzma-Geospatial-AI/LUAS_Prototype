@@ -1341,7 +1341,6 @@ function buildLegend() {
     + `<div class="ml-key" title="Where the register has an entry the colour follows it. Everywhere else it is an estimate: no licence register is published as open data.">
         <span><i class="ml-dot lic-on"></i>Licensed <b id="legLicN">0</b></span>
         <span><i class="ml-dot lic-off"></i>No licence <b id="legNoLicN">0</b></span>
-        <span class="est-dot">ESTIMATED</span>
       </div>`;
 
   const w = waterSummary();

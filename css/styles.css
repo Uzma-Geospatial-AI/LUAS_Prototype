@@ -842,7 +842,6 @@ select{cursor:pointer}
   font-size:10.5px;color:var(--muted)}
 .ml-key span{display:inline-flex;align-items:center;gap:5px}
 .ml-key b{font-family:var(--fm);font-weight:600;color:var(--text)}
-.ml-key .est-dot{margin-left:auto}
 .ml-dot.lic-on{background:var(--green-2)}
 .ml-dot.lic-off{background:#d9262c}
 .src-swatch{display:inline-flex;flex:none;align-items:center}
