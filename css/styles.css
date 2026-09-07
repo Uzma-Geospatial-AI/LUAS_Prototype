@@ -1289,3 +1289,68 @@ table.register col.c-at{width:72px}
 .rpt-result{margin-top:14px;padding:12px 14px;border:1px solid #bfe4c9;background:#f2fbf5;border-radius:var(--r)}
 .rpt-result b{color:#0d7a3f}
 .rpt-result .btn{text-decoration:none;display:inline-flex;align-items:center}
+
+/* ---------------- Photographs attached to a record ---------------- */
+.att{gap:7px}
+.att-drop{
+  display:flex;align-items:center;gap:11px;padding:11px 14px;cursor:pointer;
+  border:1.5px dashed var(--line-2);border-radius:var(--r);background:var(--surface-2);
+  color:var(--muted);transition:border-color .12s,background .12s;
+}
+.att-drop:hover,.att-drop:focus,.att-drop.over{border-color:var(--cyan);background:#f2fbfe;outline:none}
+.att-drop svg{width:22px;height:22px;flex:none;color:var(--navy-2)}
+.att-drop b{display:block;font-size:12.5px;color:var(--text);text-transform:none;letter-spacing:0}
+.att-drop span{display:block;font-size:11px}
+.att-list{display:grid;gap:8px}
+.att-list:not(:empty){margin-top:2px}
+.att-item{
+  display:flex;align-items:center;gap:11px;margin:0;padding:7px;position:relative;
+  border:1px solid var(--line);border-radius:var(--r);background:var(--surface);
+}
+.att-item img{width:74px;height:56px;object-fit:cover;border-radius:5px;flex:none;cursor:zoom-in;
+  background:var(--surface-2)}
+.att-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.att-cap{
+  border:1px solid var(--line);border-radius:5px;padding:5px 8px;font:inherit;font-size:12px;
+  color:var(--text);background:var(--surface);width:100%;
+}
+.att-cap:focus{outline:none;border-color:var(--cyan-2)}
+.att-meta{font-size:10.5px;color:var(--muted-2);font-family:var(--fm);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.att-x{
+  border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:5px;
+  width:26px;height:26px;flex:none;font-size:16px;line-height:1;cursor:pointer;
+}
+.att-x:hover{background:#fdeceb;border-color:var(--c5);color:var(--c5)}
+.att-hint{text-transform:none;letter-spacing:0}
+
+/* A gallery of what is attached, on a page rather than in a form */
+.att-gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:10px}
+.att-gal.sm{grid-template-columns:repeat(auto-fill,minmax(126px,1fr));gap:8px}
+.att-gal figure{margin:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;
+  background:var(--surface-2);cursor:zoom-in}
+.att-gal img{width:100%;height:118px;object-fit:cover;display:block}
+.att-gal.sm img{height:84px}
+.att-gal figcaption{font-size:10.5px;color:var(--muted);padding:5px 8px;line-height:1.35;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tc-att{padding:12px 16px;border-top:1px solid var(--line)}
+.tc-att-h{font-size:10px;text-transform:uppercase;letter-spacing:.09em;font-weight:700;
+  color:var(--muted);margin-bottom:8px}
+
+/* One photograph, full size */
+.lbox{position:fixed;inset:0;z-index:6000;display:grid;place-items:center;padding:32px}
+.lbox[hidden]{display:none}
+.lbox-back{position:absolute;inset:0;background:rgba(10,12,28,.86);backdrop-filter:blur(3px)}
+.lbox figure{position:relative;margin:0;max-width:min(1200px,92vw);max-height:88vh;display:flex;
+  flex-direction:column;gap:10px;align-items:center}
+.lbox img{max-width:100%;max-height:78vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.lbox figcaption{color:#e8ecf6;font-size:12.5px;text-align:center;max-width:760px}
+.lbox button{position:absolute;border:0;background:rgba(255,255,255,.14);color:#fff;cursor:pointer;
+  border-radius:999px;backdrop-filter:blur(4px)}
+.lbox button:hover{background:rgba(255,255,255,.28)}
+.lbox-x{top:18px;right:20px;width:38px;height:38px;font-size:22px;line-height:1}
+.lbox-p,.lbox-n{top:50%;margin-top:-25px;width:50px;height:50px;font-size:26px;line-height:1}
+.lbox-p{left:18px}.lbox-n{right:18px}
+@media(max-width:760px){
+  .att-item img{width:58px;height:46px}
+  .lbox{padding:12px}.lbox-p,.lbox-n{width:40px;height:40px;font-size:22px}
+}

@@ -261,6 +261,8 @@
       <div class="chart-box lg"><canvas id="p1Chart"></canvas></div>
     </div>
 
+    <div id="p1Photos" hidden></div>
+
     <div class="section-title">
       <h2>Class Identification Calculator</h2>
       <span class="st-sub">Type six values, get the verdict</span>
@@ -279,6 +281,7 @@
           </div>
         </div>
         <div class="form-grid" id="p1Calc"></div>
+        <div class="field" id="p1Attach" style="margin-top:14px"></div>
         <div class="btn-row">
           <button class="btn btn-primary" id="p1Save" disabled>Save reading</button>
           <button class="btn btn-ghost" id="p1Load">Load current month</button>
@@ -406,8 +409,8 @@
           <select id="tfClass"></select>
         </div>
         <div class="field">
-          <label for="tfFlow">Design river flow <span class="unit">m³/s</span> <button type="button" class="tipmark" tabindex="0" data-tip="A TMDL is written for a low-flow condition (MAM7 or 7Q10), when the river has least capacity to assimilate a load. The loading capacity scales directly with it." aria-label="A TMDL is written for a low-flow condition (MAM7 or 7Q10). The loading capacity scales directly with it.">i</button></label>
-          <input id="tfFlow" type="number" step="0.1" min="0.1">
+          <label for="tfFlow">Design river flow <span class="unit">m³/h</span> <button type="button" class="tipmark" tabindex="0" data-tip="A TMDL is written for a low-flow condition (MAM7 or 7Q10), when the river has least capacity to assimilate a load. The loading capacity scales directly with it. Cubic metres an hour: one m³/s is 3,600 m³/h." aria-label="A TMDL is written for a low-flow condition (MAM7 or 7Q10). The loading capacity scales directly with it. One m³/s is 3,600 m³/h.">i</button></label>
+          <input id="tfFlow" type="number" step="10" min="1">
           <label class="check-inline">
             <input type="checkbox" id="tfFlowVerified">
             <span>Verified against DID gauged record</span>
@@ -436,6 +439,7 @@
         <label for="tfNote">Notes</label>
         <textarea id="tfNote" rows="2" placeholder="Basis of the allocation, the flow record used, who wrote it…"></textarea>
       </div>
+      <div class="field" id="tfAttach" style="margin-top:14px"></div>
       <div class="btn-row">
         <button class="btn btn-primary" id="tfSave" disabled>Save TMDL</button>
         <button class="btn btn-ghost" id="tfCancel">Cancel</button>
@@ -452,7 +456,7 @@
     <div class="grid verdict-grid" id="p3Headline" style="margin-top:14px"></div>
 
     <div class="section-title">
-      <h2>Load now against the allocation <button type="button" class="tipmark" tabindex="0" data-tip="River load = mg/L × m³/s × 86.4. Licence wasteload = mg/L × m³/day ÷ 1000. The in-river concentration is the 12-month median at the selected station, which is steadier than any single sample. Licensed is the register summed; diffuse is whatever the river carries that the licences do not account for. Each is set against the term of the TMDL written for it." aria-label="River load = mg/L × m³/s × 86.4. Licence wasteload = mg/L × m³/day ÷ 1000. Licensed is the register summed; diffuse is whatever the river carries that the licences do not account for. Each is set against the term of the TMDL written for it.">i</button></h2>
+      <h2>Load now against the allocation <button type="button" class="tipmark" tabindex="0" data-tip="River load = mg/L × m³/h × 0.024. Licence wasteload = mg/L × m³/day ÷ 1000. The in-river concentration is the 12-month median at the selected station, which is steadier than any single sample. Licensed is the register summed; diffuse is whatever the river carries that the licences do not account for. Each is set against the term of the TMDL written for it." aria-label="River load = mg/L × m³/h × 0.024. Licence wasteload = mg/L × m³/day ÷ 1000. Licensed is the register summed; diffuse is whatever the river carries that the licences do not account for. Each is set against the term of the TMDL written for it.">i</button></h2>
       <span class="st-sub" id="p3BudgetNote"></span>
     </div>
     <div class="card pad0 tbl-scroll">
@@ -566,6 +570,8 @@
         <div style="margin:18px 0 10px;font-size:10.5px;text-transform:uppercase;
           letter-spacing:.09em;font-weight:650;color:var(--muted)">Permitted concentration</div>
         <div class="form-grid" id="p3ConcFields"></div>
+
+        <div class="field" id="lAttach" style="margin-top:2px"></div>
 
         <div class="btn-row">
           <button class="btn btn-primary" id="p3Add" disabled>Add licence</button>
@@ -879,6 +885,7 @@
           <label><input type="checkbox" id="rptSecQuality" checked> Quality monitoring · exceedance over the record</label>
           <label><input type="checkbox" id="rptSecTmdl" checked> TMDL on record · allocation and load budget</label>
           <label><input type="checkbox" id="rptSecLicences" checked> Licences counting at this location</label>
+          <label><input type="checkbox" id="rptSecPhotos" checked> Photographs attached to the records</label>
         </div>
       </div>
       <div class="btn-row">

@@ -189,7 +189,7 @@ export function buildExamples() {
    at that station's own design low flow, so the capacity differs. Each counts
    only the licences that count at that station — the nearest one to each
    premises — so no two locations read the same. Each is written
-   to the Class II loading capacity at the estimated 4.5 m³/s low flow with
+   to the Class II loading capacity at the estimated 16,200 m³/h low flow with
    10% held back, the way Write to capacity does it: the register is
    honoured in the ΣWLA, the background takes what the station's 12-month
    median says the river carries beyond it, and where the river is already
@@ -215,10 +215,11 @@ export function buildTmdlExamples() {
     date: '2026-09-01',
     targetClass: cond.targetClass,
     designFlow: flow,
+    flowUnit: 'm3h',
     flowVerified: false,
     alloc: suggestAllocation(designReading(st, 12), licencesAt(st.code), at),
     note: `Worked example. Written to the Class ${cond.targetClass} loading capacity at an estimated `
-      + `${flow} m³/s low flow${st.code === 'LGT06' ? '' : `, scaled from Dengkil's 4.5 m³/s by the channel length draining here`}, `
+      + `${flow.toLocaleString('en')} m³/h low flow${st.code === 'LGT06' ? '' : `, scaled from Dengkil's 16,200 m³/h by the channel length draining here`}, `
       + `with ${cond.mosPercent}% held back: the licences `
       + 'in the register are honoured in the ΣWLA, the background takes what the 12-month median at '
       + 'this station says the river carries beyond them, and any capacity to spare is added to the '

@@ -11,7 +11,7 @@
    There is no backend, so everything lives in localStorage and belongs to
    one browser. Export writes files that can be committed into data/.
    ============================================================ */
-import { DEFAULT_CONDITIONS } from './loads.js';
+import { DEFAULT_CONDITIONS, CUMEC_TO_M3H } from './loads.js';
 
 const KEY = 'luas-system-v2';
 const EMPTY = { readings: [], licences: [], tmdls: [], tmdlPick: {}, stations: [], cond: null, examplesCleared: false };
@@ -30,16 +30,39 @@ function read() {
   cache.tmdls ??= [];
   cache.tmdlPick ??= {};
   cache.stations ??= [];
+  bytes = (() => { try { return (localStorage.getItem(KEY) ?? '').length; } catch { return 0; } })();
+  /* The design flow was in m³/s until 2026-09-07. A record written before
+     that is converted once, on the way in, and stamped so it is not
+     converted twice. */
+  for (const t of cache.tmdls) {
+    if (t.flowUnit !== 'm3h') {
+      t.designFlow = Math.round((Number(t.designFlow) || 0) * CUMEC_TO_M3H);
+      t.flowUnit = 'm3h';
+    }
+  }
   return cache;
 }
 
+/* Whether the last write reached the disk, and how much room it took. A
+   photograph is large enough that a quota error has to be reported rather
+   than swallowed: the form that saved it says so. */
+let wrote = true;
+let bytes = 0;
+export const storageOk = () => wrote;
+export const storageBytes = () => bytes;
+
 function write() {
+  const json = JSON.stringify(cache);
   try {
-    localStorage.setItem(KEY, JSON.stringify(cache));
+    localStorage.setItem(KEY, json);
+    bytes = json.length;
+    wrote = true;
   } catch {
-    /* storage unavailable — entries stay in memory for this session */
+    /* storage full, or unavailable — entries stay in memory for this session */
+    wrote = false;
   }
   document.dispatchEvent(new CustomEvent('storechange'));
+  return wrote;
 }
 
 const uid = () => `u${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -110,7 +133,9 @@ export const store = {
   },
   addTmdl(t) {
     const now = new Date().toISOString();
-    const rec = { id: uid(), created: now, updated: now, ...t, example: false };
+    /* Stamped with its unit, so the m³/s migration on the way in never
+       converts a record that is already in m³/h */
+    const rec = { id: uid(), created: now, updated: now, ...t, example: false, flowUnit: 'm3h' };
     read().tmdls.unshift(rec);
     cache.tmdlPick[rec.station] = rec.id;
     write();
@@ -120,7 +145,7 @@ export const store = {
     const d = read();
     const i = d.tmdls.findIndex((t) => t.id === id);
     if (i < 0) return false;
-    d.tmdls[i] = { ...d.tmdls[i], ...patch, example: false, updated: new Date().toISOString() };
+    d.tmdls[i] = { ...d.tmdls[i], ...patch, example: false, flowUnit: 'm3h', updated: new Date().toISOString() };
     write();
     return true;
   },
@@ -227,7 +252,10 @@ export const store = {
     if (Array.isArray(payload?.tmdls)) {
       for (const t of payload.tmdls) {
         if (!t || typeof t.station !== 'string' || typeof t.alloc !== 'object') continue;
-        d.tmdls.unshift({ ...t, id: uid(), example: false });
+        /* An export written before 2026-09-07 carries the flow in m³/s */
+        const flow = t.flowUnit === 'm3h' ? Number(t.designFlow) || 0
+          : Math.round((Number(t.designFlow) || 0) * CUMEC_TO_M3H);
+        d.tmdls.unshift({ ...t, designFlow: flow, flowUnit: 'm3h', id: uid(), example: false });
         n++;
       }
     }

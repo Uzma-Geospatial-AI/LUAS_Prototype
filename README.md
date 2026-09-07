@@ -490,6 +490,14 @@ the ΣWLA as room to licence; where the river is already over capacity the ΣLA 
 so the diffuse reduction needed shows — to be edited, not accepted. The form opens as a dialog over
 the page. The records live in this browser, and go out with the JSON export.
 
+**Photographs.** A sampling round, a TMDL and a licence each take **attached photographs** —
+site pictures, a field sheet, a meter reading. They are read in the browser, drawn down to 1600 px
+and re-encoded as JPEG so a record costs a few hundred KB rather than several MB, captioned, and
+kept beside the record in `localStorage`; nothing is uploaded. The station page shows what is on
+record, the TMDL card shows its own, and the location report carries them all in a Photographs
+section. The store is about 5 MB in total, so the field says how much is spoken for and refuses a
+photograph that would not fit.
+
 **Exporting a location report.** Under Tools, *Export report* asks for a location, a basemap and
 zoom, and which sections to include, and writes one self-contained HTML file: the map captured
 around the station — tiles, catchment edge, water bodies, rivers, premises by licence status and
@@ -546,7 +554,7 @@ counts nowhere, and the register says so.
 | Term | Meaning | Where it comes from |
 |---|---|---|
 | **TMDL** | ΣWLA + ΣLA + MOS, as written | the record |
-| **Loading capacity** | What the TMDL has to fit inside | standard × design flow × 86.4 |
+| **Loading capacity** | What the TMDL has to fit inside | standard × design flow × 0.024 |
 | **WLA** | Wasteload allocation to licensed point sources | the record; the register shows how much is taken |
 | **LA** | Load allocation to background and non-point sources | the record; the diffuse load now is checked against it |
 | **MOS** | Margin of safety | the record; Write to capacity sets it as a share |
@@ -555,8 +563,10 @@ The verdict reads three ways: red when the record does not fit the capacity or t
 exceed the ΣWLA, amber when both fit but the river carries more diffuse load than the ΣLA allows
 for — the class is held only once that comes down — and green when everything sits inside.
 
-**Units.** River load `kg/day = C (mg/L) × Q (m³/s) × 86.4`. Licence wasteload
-`kg/day = C (mg/L) × Q (m³/day) ÷ 1000`.
+**Units.** River load `kg/day = C (mg/L) × Q (m³/h) × 0.024`. Licence wasteload
+`kg/day = C (mg/L) × Q (m³/day) ÷ 1000`. The design river flow is in **cubic metres an hour**;
+it was in m³/s until 2026-09-07, and a record written before that is converted where it is read
+back. One m³/s is 3,600 m³/h.
 
 The in-river concentration is the **12-month median** at the selected station, which is steadier
 than any single sample. What is left to licence is `ΣWLA − licensed load`, converted into the
@@ -570,7 +580,7 @@ held to.
 
 > ⚠️ **The design flow ships as an unverified estimate.** A TMDL must be written for a low-flow
 > design condition — MAM7 or 7Q10 — because that is when the river has least capacity to
-> assimilate a load. Dengkil's is 4.5 m³/s; every other station's is scaled from it by the mapped
+> assimilate a load. Dengkil's is 16,200 m³/h (4.5 m³/s); every other station's is scaled from it by the mapped
 > channel length draining to it (the same accumulation the map scales line width by), so the
 > capacity, the margin of safety and the TMDL differ by location rather than repeating Dengkil's.
 > Replace each with the DID gauged record and tick **Verified**. Every load figure scales linearly

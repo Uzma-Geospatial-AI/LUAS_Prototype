@@ -210,7 +210,7 @@ export function refreshUserStations() {
 }
 
 /* ---- A design low flow for each station ----
-   Only Dengkil has an estimate written down: 4.5 m³/s, MAM7. No other
+   Only Dengkil has an estimate written down: 16,200 m³/h (4.5 m³/s), MAM7. No other
    station has one, and a TMDL cannot be written without a flow, so each
    station's is scaled from Dengkil's by the mapped channel length draining
    to it — the same accumulation the map scales line width by, read off the
@@ -274,7 +274,7 @@ function estimateFlows() {
     if (s.flowEst != null) continue;
     s.drained = s.drained ?? drainedAt(s);
     s.flowEst = refUp && s.drained
-      ? Math.max(0.05, Math.round(DEFAULT_CONDITIONS.designFlow * (s.drained / refUp) * 100) / 100)
+      ? Math.max(180, Math.round(DEFAULT_CONDITIONS.designFlow * (s.drained / refUp)))
       : DEFAULT_CONDITIONS.designFlow;
   }
 }
@@ -283,8 +283,8 @@ function estimateFlows() {
 export function flowBasis(st) {
   if (!st?.drained) return 'An estimate, not yet checked against a gauged record.';
   return st.code === FOCUS_STATION
-    ? 'MAM7 low-flow estimate for Dengkil, not yet checked against the DID gauged record (station 2816441).'
-    : `Scaled from Dengkil's 4.5 m³/s by mapped channel length draining to this station `
+    ? 'MAM7 low-flow estimate for Dengkil — 16,200 m³/h, or 4.5 m³/s — not yet checked against the DID gauged record (station 2816441).'
+    : `Scaled from Dengkil's 16,200 m³/h by mapped channel length draining to this station `
       + `(${(st.drained / 1000).toFixed(0)} km). An estimate, to be replaced with the DID gauged record.`;
 }
 

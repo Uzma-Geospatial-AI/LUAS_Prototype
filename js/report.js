@@ -24,6 +24,7 @@ import {
 import { store, download } from './store.js';
 import { licenceStatus } from './licenceStatus.js';
 import { kindLabel } from './locations.js';
+import { photosAt } from './attach.js';
 import { IMAGERY, REFERENCE_MAPS, gibsLayer } from './satellite.js';
 
 const $ = (id) => document.getElementById(id);
@@ -323,6 +324,10 @@ const CSS = `
   .sig div{border-top:1px solid var(--ink);padding-top:6px;font-size:11px;color:var(--mut)}
   .sig div b{display:block;color:var(--ink);font-size:11.5px}
   .sig div i{display:block;font-style:normal;margin-top:16px}
+  .shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:6px 0 12px}
+  .shots figure{margin:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fafbfd}
+  .shots img{width:100%;height:auto;display:block}
+  .shots figcaption{font-size:10.5px;color:var(--mut);padding:6px 9px}
   .foot{margin-top:24px;padding-top:10px;border-top:1px solid var(--line);font-size:10.5px;color:var(--mut2)}
   .bar{position:sticky;top:0;z-index:2;background:var(--navy);color:#fff;padding:10px 32px;display:flex;gap:12px;align-items:center;font-size:12.5px}
   .bar button{margin-left:auto;background:var(--cyan);color:#fff;border:0;border-radius:6px;padding:7px 14px;font:600 12.5px system-ui,sans-serif;cursor:pointer}
@@ -407,13 +412,13 @@ function sectionTmdl(g) {
   const names = (a) => a.map((b) => PARAM_META[b.param].short).join(', ');
   const binding = head.binding ? PARAM_META[head.binding.param].short : '—';
   let tone, headline, sub;
-  if (notFit.length) { tone = 'bad'; headline = `The TMDL does not fit the loading capacity on ${names(notFit)}`; sub = `ΣWLA + ΣLA + MOS comes to more than Class ${tmdl.targetClass} at ${tmdl.designFlow} m³/s can carry, by ${fmtLoad(notFit.reduce((s, b) => s + b.excess, 0))}.`; }
+  if (notFit.length) { tone = 'bad'; headline = `The TMDL does not fit the loading capacity on ${names(notFit)}`; sub = `ΣWLA + ΣLA + MOS comes to more than Class ${tmdl.targetClass} at ${nf(tmdl.designFlow)} m³/h can carry, by ${fmtLoad(notFit.reduce((s, b) => s + b.excess, 0))}.`; }
   else if (over.length) { tone = 'bad'; headline = `Over-committed on ${names(over)}`; sub = `The licences counting here already permit more than the wasteload allocation, by ${fmtLoad(over.reduce((s, b) => s + b.reductionNeeded, 0))}.`; }
   else if (laOver.length) { tone = 'warn'; headline = `Diffuse load beyond the ΣLA on ${names(laOver)}`; sub = `The river carries ${fmtLoad(laOver.reduce((s, b) => s - b.laRemaining, 0))} more background and diffuse load than the allocation allows for. ${fmtVol(Math.max(0, head.volume))} is left to licence at Standard A.`; }
   else { tone = 'ok'; headline = `Within allocation — ${binding} is binding`; sub = `${fmtVol(Math.max(0, head.volume))} of new effluent could still be licensed at Standard A, about ${nf(headroomInPE(head.volume))} population equivalent.`; }
   return `<h2>Total Maximum Daily Load</h2>
     <div class="sub">TMDL = ΣWLA + ΣLA + MOS · ${esc(tmdl.ref)}${tmdl.example ? ' · worked example' : ''}${tmdl.title ? ` · ${esc(tmdl.title)}` : ''}</div>
-    <div class="meta"><span>Target <b>Class ${esc(tmdl.targetClass)}</b></span><span>Design flow <b>${esc(tmdl.designFlow)} m³/s</b> ${tmdl.flowVerified ? '(verified)' : '(estimate)'}</span><span>Written <b>${esc(tmdl.date ?? '')}</b></span><span>Licences counting here <b>${here.length}</b></span></div>
+    <div class="meta"><span>Target <b>Class ${esc(tmdl.targetClass)}</b></span><span>Design flow <b>${nf(tmdl.designFlow)} m³/h</b> ${tmdl.flowVerified ? '(verified)' : '(estimate)'}</span><span>Written <b>${esc(tmdl.date ?? '')}</b></span><span>Licences counting here <b>${here.length}</b></span></div>
     ${tmdl.flowVerified ? '' : `<div class="note">${esc(flowBasis(st))}</div>`}
     <div class="verdict ${tone}"><b>${headline}</b>${sub}</div>
     <h3>The allocation, kg/day</h3>
@@ -426,7 +431,7 @@ function sectionTmdl(g) {
       return `<tr><td><b>${PARAM_META[b.param].short}</b></td><td class="num">${b.param === 'an' ? b.observedConc.toFixed(3) : b.observedConc.toFixed(2)}</td><td class="num">${nf(b.wla)}</td><td class="num">${nf(b.la)}</td>
       <td class="num">${nf(b.licensed)}</td><td class="num ${b.laRemaining < 0 ? 'bad' : ''}">${nf(b.diffuse)}</td>
       <td class="num ${b.overCapacity ? 'bad' : 'ok'}">${b.overCapacity ? '−' : ''}${nf(Math.abs(b.remaining))}</td><td class="num">${Number.isFinite(pct) ? `${pct.toFixed(0)}%` : '∞'}</td></tr>`; }).join('')}</tbody></table>
-    <div class="sub">Loading capacity = standard × ${esc(tmdl.designFlow)} m³/s × ${RIVER_FACTOR}. River load = 12-month median × design flow × ${RIVER_FACTOR}. Licence wasteload = mg/L × m³/day ÷ 1000.</div>
+    <div class="sub">Loading capacity = standard × ${nf(tmdl.designFlow)} m³/h × ${RIVER_FACTOR}. River load = 12-month median × design flow × ${RIVER_FACTOR}. Licence wasteload = mg/L × m³/day ÷ 1000.</div>
     ${tmdl.note ? `<div class="note">${esc(tmdl.note)}</div>` : ''}`;
 }
 
@@ -470,6 +475,22 @@ function summary(g) {
   return `<div class="sum">${rows.map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}</div>`;
 }
 
+/* Everything anyone photographed and attached, grouped by the record it
+   hangs on, so a reader can see the reach as well as read it. */
+function sectionPhotos(g) {
+  const shots = photosAt(g.st.code, g.here);
+  if (!shots.length) return '';
+  const by = {};
+  for (const a of shots) (by[a.from] ??= []).push(a);
+  return `<h2>Photographs</h2>
+    <div class="sub">${shots.length} photograph${shots.length === 1 ? '' : 's'} attached to the records for this location</div>
+    ${Object.entries(by).map(([from, list]) => `
+      <h3>${esc(from)}</h3>
+      <div class="shots">${list.map((a) => `
+        <figure><img src="${a.url}" alt="${esc(a.caption || a.name)}">
+          <figcaption>${esc(a.caption || a.name)}</figcaption></figure>`).join('')}</div>`).join('')}`;
+}
+
 export function buildReport(g, sec, cap) {
   const { st } = g;
   const gen = new Date();
@@ -508,6 +529,7 @@ export function buildReport(g, sec, cap) {
   ${sec.quality ? sectionQuality(g) : ''}
   ${sec.tmdl ? sectionTmdl(g) : ''}
   ${sec.licences ? sectionLicences(g) : ''}
+  ${sec.photos ? sectionPhotos(g) : ''}
   <h2>Sign-off</h2>
   <div class="sig">
     <div><b>Prepared by</b>Name, position<i>Date</i></div>
@@ -536,7 +558,14 @@ export function buildJson(g, sec) {
   if (sec.tmdl) {
     out.tmdl = tmdl ? { ...tmdl, budget: budgets, headroomStdA: { volume: head.volume, binding: head.binding?.param ?? null } } : null;
   }
-  if (sec.licences) out.licences = here.map((l) => ({ ...l, loads: licenceLoads(l) }));
+  if (sec.licences) {
+    /* The pictures are in the report; the data pack names them rather than
+       carrying a second copy of every one. */
+    out.licences = here.map((l) => ({ ...l, attachments: (l.attachments ?? []).map((a) => a.name), loads: licenceLoads(l) }));
+  }
+  if (sec.photos) {
+    out.photographs = photosAt(st.code, here).map((a) => ({ from: a.from, name: a.name, caption: a.caption, w: a.w, h: a.h, bytes: a.bytes, added: a.added }));
+  }
   return out;
 }
 
@@ -589,6 +618,7 @@ async function generate() {
   const sec = {
     map: $('rptSecMap').checked, station: $('rptSecStation').checked, quality: $('rptSecQuality').checked,
     tmdl: $('rptSecTmdl').checked, licences: $('rptSecLicences').checked,
+    photos: $('rptSecPhotos').checked,
   };
   const btn = $('rptGo');
   btn.disabled = true;

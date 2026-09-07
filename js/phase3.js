@@ -21,6 +21,7 @@ import {
 import { store, registerAsJson, registerAsCsv, download } from './store.js';
 import { prefillFor, CAT_LABEL } from './examples.js';
 import { mapCentre } from './mapview.js';
+import { mountAttach, attachGallery, wireGallery, saveWarning } from './attach.js';
 
 /* One premises, one licence. Picking a premises that already has one must load
    it, not offer a second — two licences on the same site would count its
@@ -74,6 +75,8 @@ const fmtDate = (iso) => {
 };
 
 let chart = null, editing = null;
+/* The photographs the two forms are holding, until the record is saved */
+let tfAtt = null, lAtt = null;
 /* The effluent standard the headroom is shown at; the page's choice, not the record's */
 let stdKey = 'A';
 /* The TMDL form: open or not, which record it edits (null while writing a
@@ -353,6 +356,10 @@ function buildTmdlControls() {
   }
   $('tfClass').addEventListener('change', refreshFormCalc);
   $('tfFill').onclick = fillToCapacity;
+  tfAtt = mountAttach('tfAttach', {
+    label: 'Photographs',
+    hint: 'The reach, the gauge, the field sheet the flow was read off. Attached to this TMDL and carried into its report.',
+  });
   $('tfSave').onclick = saveForm;
   $('tfCancel').onclick = closeForm;
   /* The dialog closes the ways a dialog does: the cross, the backdrop, Escape */
@@ -386,6 +393,7 @@ function openForm(t) {
   $('tfFlow').value = base?.designFlow ?? st.flowEst ?? DEFAULT_CONDITIONS.designFlow;
   $('tfFlowVerified').checked = !!base?.flowVerified;
   $('tfNote').value = t ? (t.note ?? '') : '';
+  tfAtt?.set(t?.attachments ?? []);
   for (const p of LOAD_PARAMS) {
     for (const k of ['wla', 'la', 'mos']) $(`tf_${k}_${p}`).value = base?.alloc?.[p]?.[k] ?? '';
   }
@@ -441,6 +449,7 @@ function readTmdlForm() {
     flowVerified: $('tfFlowVerified').checked,
     alloc,
     note: $('tfNote').value.trim(),
+    attachments: tfAtt?.get() ?? [],
   };
 }
 
@@ -490,6 +499,8 @@ function saveForm() {
   /* The store's change re-renders the page */
   if (id) store.updateTmdl(id, rec);
   else store.addTmdl({ ...rec, station });
+  const w = saveWarning();
+  if (w) alert(`Saved${w}`);
 }
 
 /* ============================================================
@@ -534,7 +545,7 @@ function renderTmdlCard(t, budgets) {
         </div>
         <div class="tc-meta">
           <span>Target <b>Class ${esc(t.targetClass)}</b></span>
-          <span>Design flow <b>${esc(t.designFlow)} m³/s</b><i class="flag${t.flowVerified ? ' ok' : ''}"
+          <span>Design flow <b>${nf(t.designFlow)} m³/h</b><i class="flag${t.flowVerified ? ' ok' : ''}"
             title="${t.flowVerified ? 'Checked against the DID gauged low-flow record.'
               : esc(flowBasis(DATA.focus)) + ' Every load figure scales with this number.'}">${t.flowVerified ? 'verified' : 'estimate'}</i></span>
           <span>Written <b>${fmtDate(t.date)}</b></span>
@@ -548,7 +559,7 @@ function renderTmdlCard(t, budgets) {
             <th class="num">ΣLA ${tipmark('Load allocation: the part for background and diffuse sources with no permit, in kg/day.')}</th>
             <th class="num">MOS ${tipmark('Margin of safety, held back for what the estimate does not know, in kg/day.')}</th>
             <th class="num">= TMDL</th>
-            <th class="num">Loading capacity ${tipmark('What the reach can carry at the target class and design flow: standard concentration × design flow × 86.4. The TMDL has to fit inside it.')}</th>
+            <th class="num">Loading capacity ${tipmark('What the reach can carry at the target class and design flow: standard concentration × design flow × 0.024, with the flow in m³/h. The TMDL has to fit inside it.')}</th>
             <th>How the capacity is allocated</th>
           </tr></thead>
           <tbody>${rows}</tbody>
@@ -561,7 +572,11 @@ function renderTmdlCard(t, budgets) {
         <span class="tc-key"><i class="mark"></i>loading capacity</span>
         ${t.note ? `<span class="tc-note">${esc(t.note)}</span>` : ''}
       </div>
+      ${t.attachments?.length ? `<div class="tc-att">
+        <div class="tc-att-h">${t.attachments.length} photograph${t.attachments.length === 1 ? '' : 's'} attached</div>
+        ${attachGallery(t.attachments, { small: true })}</div>` : ''}
     </div>`;
+  if (t.attachments?.length) wireGallery($('p3Tmdl'), t.attachments);
 }
 
 /* ============================================================
@@ -580,7 +595,7 @@ function renderHeadline(budgets, head, t) {
   let headline, sub;
   if (notFit.length) {
     headline = `The TMDL does not fit the loading capacity on ${names(notFit)}`;
-    sub = `ΣWLA + ΣLA + MOS comes to more than Class ${esc(t.targetClass)} at ${esc(t.designFlow)} m³/s `
+    sub = `ΣWLA + ΣLA + MOS comes to more than Class ${esc(t.targetClass)} at ${nf(t.designFlow)} m³/h `
       + `can carry, by <b>${fmtLoad(notFit.reduce((s, b) => s + b.excess, 0))}</b>. `
       + 'Edit the record until every pollutant fits.';
   } else if (over.length) {
@@ -610,7 +625,7 @@ function renderHeadline(budgets, head, t) {
         ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 8v5M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>'
         : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m20 6-11 11-5-5"/></svg>'}</div>
       <div class="v-body">
-        <div class="v-lab">${esc(t.ref)} · Class ${esc(t.targetClass)} at ${esc(t.designFlow)} m³/s</div>
+        <div class="v-lab">${esc(t.ref)} · Class ${esc(t.targetClass)} at ${nf(t.designFlow)} m³/h</div>
         <div class="v-head">${headline}</div>
         <div class="v-sub">${sub}</div>
       </div>
@@ -687,7 +702,7 @@ function renderBudgetTable(budgets, t, st) {
 
   $('p3BudgetNote').innerHTML =
     `Allocation from ${esc(t.ref)} · loading capacity = Class ${esc(t.targetClass)} standard × `
-    + `${esc(t.designFlow)} m³/s × ${RIVER_FACTOR} · in-river concentration is the 12-month median at ${esc(st.name)}`
+    + `${nf(t.designFlow)} m³/h × ${RIVER_FACTOR} · in-river concentration is the 12-month median at ${esc(st.name)}`
     + ` · ${licencesAt(st.code).length} licences count at this station`;
 }
 
@@ -983,6 +998,10 @@ export function buildLicenceForm() {
       <div class="hint" id="lh_${p}"></div>
     </div>`).join('');
 
+  lAtt = mountAttach('lAttach', {
+    label: 'Photographs',
+    hint: 'The outfall, the premises, the permit. Attached to this licence and carried into the report for the station it counts at.',
+  });
   ['lRef', 'lPremises', 'lFlow', ...LOAD_PARAMS.map((p) => `l_${p}`)]
     .forEach((id) => $(id).addEventListener('input', previewLicence));
   $('lStd').addEventListener('change', previewLicence);
@@ -999,6 +1018,8 @@ export function buildLicenceForm() {
     if (editing) { store.updateLicence(editing, l); editing = null; }
     else if (dup) store.updateLicence(dup.id, l);
     else store.addLicence(l);
+    const w = saveWarning();
+    if (w) alert(`Saved${w}`);
     clearForm();
     renderPhase3();
   };
@@ -1044,6 +1065,7 @@ function readForm() {
     category: $('lCategory').value, standard: $('lStd').value, flow, conc,
     /* Written always: updateLicence merges, and a cleared choice must clear */
     station: $('lStation').value || null,
+    attachments: lAtt?.get() ?? [],
   };
   /* Always written, never omitted: updateLicence merges, so leaving the key
      out would let a stale `estimated: true` survive an edit. */
@@ -1083,6 +1105,7 @@ function clearForm() {
     .forEach((id) => { $(id).value = ''; });
   $('lSource').value = '';
   $('lStation').value = '';
+  lAtt?.clear();
   previewLicence();
 }
 
@@ -1105,6 +1128,7 @@ function loadIntoForm(l) {
   $('lStd').value = l.standard ?? 'A';
   $('lStation').value = l.station ?? '';
   $('lFlow').value = l.flow ?? '';
+  lAtt?.set(l.attachments ?? []);
   for (const p of LOAD_PARAMS) $(`l_${p}`).value = l.conc?.[p] ?? '';
   setAddLabel();
   previewLicence();

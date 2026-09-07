@@ -14,6 +14,7 @@ import {
 } from './wqi.js';
 import { store } from './store.js';
 import { kindLabel } from './locations.js';
+import { mountAttach, attachGallery, wireGallery, saveWarning } from './attach.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -21,6 +22,8 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
 const num = (v) => (v === '' || v == null ? NaN : Number(v));
 
 let monthIdx = null, chart = null, calcInit = false;
+/* The photographs the calculator is holding, until the reading is saved */
+let att = null;
 
 export function renderPhase1() {
   monthIdx ??= latestIdx();
@@ -36,6 +39,7 @@ export function renderPhase1() {
   }
 
   renderHeader(s, target);
+  renderPhotos(s);
   renderVerdict(s, target);
   renderParamTable(s, target);
   renderTrend(s, target);
@@ -69,6 +73,24 @@ function renderHeader(s, target) {
   $('p1Prev').onclick = () => { monthIdx = Math.max(0, monthIdx - 1); renderPhase1(); };
   $('p1Next').onclick = () => { monthIdx = Math.min(DATA.months.length - 1, monthIdx + 1); renderPhase1(); };
   $('p1Latest').onclick = () => { monthIdx = latestIdx(); renderPhase1(); };
+}
+
+/* What has already been attached to a reading at this station, newest month
+   first, so a round can be looked back at rather than only filed. */
+function renderPhotos(s) {
+  const box = $('p1Photos');
+  if (!box) return;
+  const rounds = store.readings()
+    .filter((r) => r.station === s.code && r.attachments?.length)
+    .sort((a, b) => String(b.t).localeCompare(String(a.t)));
+  if (!rounds.length) { box.hidden = true; box.innerHTML = ''; return; }
+  const all = rounds.flatMap((r) => r.attachments.map((a) => ({ ...a, t: r.t })));
+  box.hidden = false;
+  box.innerHTML = `
+    <div class="section-title"><h2>Photographs on record</h2>
+      <span class="st-sub">${all.length} attached to ${rounds.length} sampling round${rounds.length === 1 ? '' : 's'} at ${esc(s.name)}</span></div>
+    <div class="card">${attachGallery(all)}</div>`;
+  wireGallery(box, all);
 }
 
 /* ---------------- The class verdict ---------------- */
@@ -301,6 +323,10 @@ function buildCalculator() {
       <div class="hint" id="ch_${p}"></div>
     </div>`).join('');
 
+  att = mountAttach('p1Attach', {
+    label: 'Photographs of this round',
+    hint: 'The sampling point, the field sheet, the meter. Attached to the reading and carried into the location report.',
+  });
   Object.keys(PARAM_META).forEach((p) =>
     $(`c_${p}`).addEventListener('input', updateCalculator));
   $('cTemp').addEventListener('input', updateCalculator);
@@ -325,7 +351,9 @@ function buildCalculator() {
     store.addReading({
       station: s.code, stationName: s.name,
       t, ...vals, wqi, wqiClass: wqiClass(wqi).id,
+      attachments: att?.get() ?? [],
     });
+    att?.clear();
     /* For a location added here the saved reading IS its record, and the
        store's change has already redrawn the page with it in; the page then
        goes to that month, so the saving is seen */
@@ -334,7 +362,7 @@ function buildCalculator() {
       if (i >= 0) { monthIdx = i; renderPhase1(); }
     }
     $('p1Msg').innerHTML = `<span class="saved-note">Saved · WQI ${wqi.toFixed(1)} · ${wqiClass(wqi).label}`
-      + `${s.user ? ` · now on ${esc(s.code)}'s record for ${fmtMonth(t)}` : ''}</span>`;
+      + `${s.user ? ` · now on ${esc(s.code)}'s record for ${fmtMonth(t)}` : ''}${esc(saveWarning())}</span>`;
     setTimeout(() => { $('p1Msg').innerHTML = ''; }, 6000);
   };
 

@@ -10,20 +10,26 @@
    A TMDL record holds the three terms as inputs, in kg/day for each
    pollutant, together with the target class and the design low flow it was
    written for. The loading capacity — standard concentration × design flow
-   × 86.4 — is what the sum has to fit inside. Nothing here invents an
+   × 0.024 — is what the sum has to fit inside. Nothing here invents an
    allocation; the record says what it is, and this file says whether it
    fits and how much of it is used.
 
    Unit convention throughout:
-     river load   kg/day = C (mg/L) × Q (m³/s) × 86.4
+     river load   kg/day = C (mg/L) × Q (m³/h) × 0.024
      licence load kg/day = C (mg/L) × Q (m³/day) / 1000
+
+   The river flow is in cubic metres an hour, the unit the operators here
+   work in. It was in m³/s until 2026-09-07; records written before that
+   are converted where they are read back (see store.js).
    ============================================================ */
 import { INWQS, LOAD_PARAMS, PARAM_META } from './wqi.js';
 
-/* 1 m³/s = 86,400 m³/day; 1 mg/L = 1 g/m³ → 86,400 g/day = 86.4 kg/day */
-export const RIVER_FACTOR = 86.4;
+/* 1 m³/h = 24 m³/day; 1 mg/L = 1 g/m³ → 24 g/day = 0.024 kg/day */
+export const RIVER_FACTOR = 0.024;
+/* One m³/s in m³/h, for reading back a record written before the change */
+export const CUMEC_TO_M3H = 3600;
 
-export const riverLoad = (concMgL, flowCumecs) => concMgL * flowCumecs * RIVER_FACTOR;
+export const riverLoad = (concMgL, flowM3PerHour) => concMgL * flowM3PerHour * RIVER_FACTOR;
 export const licenceLoad = (concMgL, flowM3PerDay) => (concMgL * flowM3PerDay) / 1000;
 
 /* ---- Defaults a new TMDL starts from ---- */
@@ -37,7 +43,7 @@ export const DEFAULT_CONDITIONS = {
      condition (MAM7 / 7Q10), not mean flow, because that is when the river
      has least capacity to assimilate a load. This default is an ESTIMATE and
      is meant to be replaced with the DID gauged record for station 2816441. */
-  designFlow: 4.5,
+  designFlow: 16200,          /* 4.5 m³/s */
   flowLabel: 'MAM7 low-flow estimate',
   flowVerified: false,
   mosPercent: 10,
