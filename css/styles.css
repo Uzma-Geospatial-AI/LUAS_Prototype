@@ -1391,3 +1391,15 @@ table.register col.c-at{width:72px}
 .lay-sec i{font-style:normal;font-weight:500;letter-spacing:0;text-transform:none;font-size:10px;color:var(--muted-2)}
 .wx-row{display:flex;gap:4px;flex-wrap:wrap;margin:2px 0 5px}
 .wx-when{font-size:10px;color:var(--muted-2);line-height:1.4}
+
+/* A reach of river picked from another page: outlined, and flashed on arrival.
+   No !important here for the same reason the water pick has none — the flash
+   keyframes have to be able to win while they play. */
+.reach-selected{stroke:#ffd400;stroke-opacity:1;filter:drop-shadow(0 0 5px rgba(0,0,0,.65))}
+@keyframes flashReach{
+  0%,100%{stroke:#ffd400;stroke-width:4px;stroke-opacity:1}
+  50%{stroke:#fff8b0;stroke-width:13px;stroke-opacity:.95}
+}
+.flash-reach{animation:flashReach .66s ease-in-out 5}
+.tc-ref .mini{margin-left:2px;font-weight:600}
+@media(prefers-reduced-motion:reduce){.flash-reach{animation:none}}

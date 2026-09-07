@@ -606,7 +606,9 @@ function renderTmdlCard(t, budgets) {
       <div class="tc-head">
         <div>
           <div class="tc-ref">${esc(t.ref)}
-            <span class="badge soft${t.example ? ' est' : ''}">${t.example ? 'Worked example' : 'On record'}</span></div>
+            <span class="badge soft${t.example ? ' est' : ''}">${t.example ? 'Worked example' : 'On record'}</span>
+            <button class="mini" id="p3ShowReach"
+              title="Open the map on the reach this TMDL is written for">Show on map</button></div>
           <div class="tc-title">${esc(t.title || '')}</div>
         </div>
         <div class="tc-meta">
@@ -644,6 +646,10 @@ function renderTmdlCard(t, budgets) {
         ${attachGallery(t.attachments, { small: true })}</div>` : ''}
     </div>`;
   if (t.attachments?.length) wireGallery($('p3Tmdl'), t.attachments);
+  /* The water it is written for, on the map and flashing */
+  $('p3ShowReach').onclick = () => document.dispatchEvent(new CustomEvent('showonmap', {
+    detail: { reach: { station: t.station } },
+  }));
 }
 
 /* Where the design flow came from, on the record rather than only in the

@@ -14,7 +14,7 @@
    on, off or part-on from its members. One state, two ways into it, so the
    two panels can never disagree.
    ============================================================ */
-import { DATA, readingAt, latestIdx, fmtMonth, waterSummary, sourceSummary, reachFlows,
+import { DATA, readingAt, latestIdx, fmtMonth, waterSummary, sourceSummary, reachFlows, nearestReach,
          WATER_GROUPS } from './data.js';
 import { wqiClass, WQI_CLASSES, classCompliance, PARAM_META } from './wqi.js';
 import { store } from './store.js';
@@ -136,6 +136,7 @@ export function initMap() {
   if (pendingWq) { setWq(pendingWq); pendingWq = null; }
   if (pendingWater) { const id = pendingWater; pendingWater = null; setTimeout(() => selectWaterBody(id), 300); }
   if (pendingStation) { const c = pendingStation; pendingStation = null; setTimeout(() => showStation(c), 300); }
+  if (pendingReach) { const t = pendingReach; pendingReach = null; setTimeout(() => showReach(t), 300); }
   if (pendingFly) {
     const [lat, lon, z, srcId] = pendingFly;
     pendingFly = null;
@@ -223,13 +224,16 @@ function buildRivers() {
       style: riverStyle,
       onEachFeature: (f, layer) => {
         const r = f.properties;
-        layer.bindTooltip(
-          `<b>${r.name ? esc(r.name) : 'Unnamed river'}</b>${given(r)}<br>`
-          + `${(r.m / 1000).toFixed(1)} km of mapped channel`
-          + (r.main ? '<br>Main channel' : '')
-          + (() => { const q = reachFlow(r.id); return q ? `<br>Carries about <b>${Math.round(q).toLocaleString('en')} m³/h</b>` : ''; })()
-          + '<br><i>Click to trace downstream</i>',
-          { sticky: true });
+        /* A function, not a string: the flows are read off the TMDLs after
+           the layers are built, and they change when a record changes. */
+        layer.bindTooltip(() => {
+          const q = reachFlow(r.id);
+          return `<b>${r.name ? esc(r.name) : 'Unnamed river'}</b>${given(r)}<br>`
+            + `${(r.m / 1000).toFixed(1)} km of mapped channel`
+            + (r.main ? '<br>Main channel' : '')
+            + (q ? `<br>Carries about <b>${Math.round(q).toLocaleString('en')} m³/h</b>` : '')
+            + '<br><i>Click to trace downstream</i>';
+        }, { sticky: true });
         layer.bindPopup(() => riverPopup(r), POPUP);
         layer.on('click', () => drawTrace(r.id));
         if (r.id != null) receiving.set(`river:${r.id}`, { layer, vis: `river:${key}` });
@@ -905,6 +909,52 @@ export function selectWaterBody(id) {
     void el.getBoundingClientRect();
     el.classList.add('flash-water');
     setTimeout(() => el.classList.remove('flash-water'), 3200);
+    t.layer.openTooltip(t.layer.getBounds().getCenter());
+  };
+  map.once('moveend', mark);
+  setTimeout(mark, 1000);
+}
+
+/* Take the map to a reach of river and make it the one thing on the screen:
+   the view fits it, it is picked out in yellow and flashed, and its own
+   tooltip opens. The pick stays until another reach is picked, so the eye
+   can come back to it after a pan.
+
+   Given a station rather than a reach, the reach it sits on is the target —
+   that is the water a TMDL is written for. */
+let selectedReach = null;
+let pendingReach = null;
+
+export function showReach(target) {
+  if (!map) { pendingReach = target; return; }
+  let id = target?.reachId ?? null;
+  if (id == null && target?.station) {
+    const st = DATA.stations.find((s) => s.code === target.station);
+    id = st ? nearestReach(st)?.f?.properties?.id ?? null : null;
+  }
+  const t = id != null ? receiving.get(`river:${id}`) : null;
+  if (!t) { if (target?.station) showStation(target.station); return; }
+  if (!visible.has(t.vis)) { visible.add(t.vis); applyVisibility(); }
+
+  if (selectedReach && selectedReach !== t.layer) {
+    selectedReach.getElement?.()?.classList.remove('reach-selected');
+    selectedReach.closeTooltip();
+  }
+  selectedReach = t.layer;
+
+  /* A reach can be 45 km long, so fitting it whole would pull the map out
+     past the point of recognising anything. Fit it, but no further out than
+     the reach and its surroundings. */
+  map.fitBounds(t.layer.getBounds().pad(0.25), { maxZoom: 14, animate: true, duration: 0.8 });
+
+  const mark = () => {
+    const el = t.layer.getElement?.();
+    if (!el) return;
+    el.classList.add('reach-selected');
+    el.classList.remove('flash-reach');
+    void el.getBoundingClientRect();
+    el.classList.add('flash-reach');
+    setTimeout(() => el.classList.remove('flash-reach'), 3400);
     t.layer.openTooltip(t.layer.getBounds().getCenter());
   };
   map.once('moveend', mark);

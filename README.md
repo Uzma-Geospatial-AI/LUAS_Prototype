@@ -529,6 +529,12 @@ the ΣWLA as room to licence; where the river is already over capacity the ΣLA 
 so the diffuse reduction needed shows — to be edited, not accepted. The form opens as a dialog over
 the page. The records live in this browser, and go out with the JSON export.
 
+**Show on map.** The record card carries a *Show on map* button. It switches to the map, fits the
+view to the **reach the TMDL is written for** — the reach the station sits on, its own river
+preferred over a closer side channel — picks it out in yellow, flashes it, and opens its tooltip,
+which says what the reach carries. The pick stays until another is made, so the eye can come back
+to it after a pan.
+
 **The flow from a meter reading.** The TMDL form takes an **initial reading** (*bacaan awal*) and
 a **final reading** (*bacaan akhir*) off a totalising meter, with the time each was taken. The
 volume between them over the hours between them is the design flow, written straight into the

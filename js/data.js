@@ -220,13 +220,14 @@ export function refreshUserStations() {
    nearest reach at the point the station sits on it. A first estimate,
    flagged as one everywhere it shows, to be replaced station by station
    with the DID gauged record. */
-function drainedAt(st) {
+/* The reach a station sits on. The station's own river first: at a
+   confluence or a mouth the nearest line can be a side channel that drains
+   almost nothing, so a reach carrying the river's name within about 2 km
+   wins over a closer one that does not. */
+export function nearestReach(st) {
   const all = DATA.rivers?.features ?? [];
   const k = Math.cos((st.lat * Math.PI) / 180);
   const px = st.lon * k, py = st.lat;
-  /* The station's own river first: at a confluence or a mouth the nearest
-     line can be a side channel that drains almost nothing. Any reach only
-     when the named river is not mapped within about 2 km. */
   const nearest = (feats) => {
     let best = null;
     for (const f of feats) {
@@ -244,6 +245,13 @@ function drainedAt(st) {
   };
   const own = st.river ? nearest(all.filter((f) => f.properties.name === st.river)) : null;
   const best = own && Math.sqrt(own.d) < 0.018 ? own : nearest(all);
+  return best ? { ...best, own: best === own } : null;
+}
+
+function drainedAt(st) {
+  const all = DATA.rivers?.features ?? [];
+  const k = Math.cos((st.lat * Math.PI) / 180);
+  const best = nearestReach(st);
   if (!best) return null;
   /* How far down the reach the station sits: what the reach itself adds
      below that point is not yet draining through the station */
@@ -262,7 +270,7 @@ function drainedAt(st) {
   /* An outlet reach of a river that has bigger reaches upstream is a mouth
      the mapped network does not join up to; the mouth carries the whole
      river, so the river's largest accumulation is added to it. */
-  if (best === own && p.next == null) {
+  if (best.own && p.next == null) {
     const maxUp = Math.max(0, ...all.filter((f) => f.properties.name === st.river).map((f) => f.properties.up ?? 0));
     if (maxUp > (p.up ?? 0)) val += maxUp;
   }

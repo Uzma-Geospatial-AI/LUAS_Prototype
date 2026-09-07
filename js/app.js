@@ -13,7 +13,7 @@ import { renderPhase1, resizePhase1 } from './phase1.js';
 import { renderPhase2, renderNational, resizePhase2 } from './phase2.js';
 import { renderPhase3, buildLicenceForm, resizePhase3, buildRegisterControls } from './phase3.js';
 import { initMap, resizeMap, refreshMap, pauseMap, flyToPoint, showWqProduct, selectWaterBody,
-         showStation, mapStationsChanged, refreshTimeline } from './mapview.js';
+         showStation, showReach, mapStationsChanged, refreshTimeline } from './mapview.js';
 import { buildLocationDialog, openLocationDialog } from './locations.js';
 import { buildReportDialog, openReportDialog } from './report.js';
 
@@ -244,7 +244,10 @@ function buildStationPicker() {
      fly. */
   document.addEventListener('showonmap', (e) => {
     show('map');
-    if (e.detail.station) {
+    if (e.detail.reach) {
+      /* The water a TMDL is written for: the reach itself, flashed */
+      showReach(e.detail.reach);
+    } else if (e.detail.station) {
       showStation(e.detail.station);
     } else if (e.detail.waterId != null) {
       /* A water body is shown as itself: fitted, picked out and named */
