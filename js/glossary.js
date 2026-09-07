@@ -63,6 +63,8 @@ export const GLOSSARY = [
         'The moving dashes on the channels. Nothing is inferred; the line already runs downstream.'],
       ['Langat catchment', 'The 2,140 km² basin that drains to Sungai Langat (HydroBASINS level 8).',
         'The clip for everything: a source outside it drains somewhere else.'],
+      ['Meter reading', 'An initial and a final reading off a totalising meter, with the time of each. The volume between them over the hours between them is the design flow.',
+        'Bacaan awal and bacaan akhir. Kept with the TMDL, and printed in its report, so the flow can be checked.'],
       ['Attached photographs', 'Site pictures kept with a record — a sampling round, a TMDL, a licence. Resized in the browser and stored beside the record; the report carries them.',
         'Nothing is uploaded: they are read, resized and kept in this browser, like the register.'],
       ['Location report', 'From Tools: one location, its map captured around the station, and the sections chosen — assessment, monitoring, TMDL, licences — as one HTML file, with a JSON pack.',

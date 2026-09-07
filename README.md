@@ -490,6 +490,14 @@ the ΣWLA as room to licence; where the river is already over capacity the ΣLA 
 so the diffuse reduction needed shows — to be edited, not accepted. The form opens as a dialog over
 the page. The records live in this browser, and go out with the JSON export.
 
+**The flow from a meter reading.** The TMDL form takes an **initial reading** (*bacaan awal*) and
+a **final reading** (*bacaan akhir*) off a totalising meter, with the time each was taken. The
+volume between them over the hours between them is the design flow, written straight into the
+field above, and the four figures are kept with the record so the flow can be checked against the
+field sheet later — the report prints them as a Flow gauging table. A gauging written with the
+same date on both readings but an earlier second time is read as the next morning. Leave the
+block empty to type the flow directly.
+
 **Photographs.** A sampling round, a TMDL and a licence each take **attached photographs** —
 site pictures, a field sheet, a meter reading. They are read in the browser, drawn down to 1600 px
 and re-encoded as JPEG so a record costs a few hundred KB rather than several MB, captioned, and

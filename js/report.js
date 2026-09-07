@@ -419,6 +419,12 @@ function sectionTmdl(g) {
   return `<h2>Total Maximum Daily Load</h2>
     <div class="sub">TMDL = ΣWLA + ΣLA + MOS · ${esc(tmdl.ref)}${tmdl.example ? ' · worked example' : ''}${tmdl.title ? ` · ${esc(tmdl.title)}` : ''}</div>
     <div class="meta"><span>Target <b>Class ${esc(tmdl.targetClass)}</b></span><span>Design flow <b>${nf(tmdl.designFlow)} m³/h</b> ${tmdl.flowVerified ? '(verified)' : '(estimate)'}</span><span>Written <b>${esc(tmdl.date ?? '')}</b></span><span>Licences counting here <b>${here.length}</b></span></div>
+    ${tmdl.gauging ? `<table><thead><tr><th colspan="2">Flow gauging</th></tr></thead><tbody>
+      <tr><td>Initial reading <span class="mut">bacaan awal</span></td><td class="num">${nf(tmdl.gauging.initial, 3)} m³ at ${esc(String(tmdl.gauging.from).replace('T', ' '))}</td></tr>
+      <tr><td>Final reading <span class="mut">bacaan akhir</span></td><td class="num">${nf(tmdl.gauging.final, 3)} m³ at ${esc(String(tmdl.gauging.to).replace('T', ' '))}</td></tr>
+      <tr><td>Volume over the period</td><td class="num">${nf(tmdl.gauging.volume, 3)} m³ over ${nf(tmdl.gauging.hours, 2)} h</td></tr>
+      <tr><td><b>Design flow</b></td><td class="num"><b>${nf(tmdl.gauging.flow)} m³/h</b></td></tr>
+    </tbody></table>` : ''}
     ${tmdl.flowVerified ? '' : `<div class="note">${esc(flowBasis(st))}</div>`}
     <div class="verdict ${tone}"><b>${headline}</b>${sub}</div>
     <h3>The allocation, kg/day</h3>

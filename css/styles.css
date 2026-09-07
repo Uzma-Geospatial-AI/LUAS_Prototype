@@ -1354,3 +1354,17 @@ table.register col.c-at{width:72px}
   .att-item img{width:58px;height:46px}
   .lbox{padding:12px}.lbox-p,.lbox-n{width:40px;height:40px;font-size:22px}
 }
+
+/* ---------------- The flow, read off a meter ---------------- */
+.tf-gauge{padding:12px 14px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface-2)}
+.tf-gauge>label{margin-bottom:9px}
+.gauge-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:11px}
+.gauge-grid>div{display:flex;flex-direction:column;gap:4px}
+.g-lab{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;font-weight:650;color:var(--muted)}
+.g-lab i{font-style:normal;text-transform:none;letter-spacing:0;font-weight:400;color:var(--muted-2)}
+.gauge-grid input{
+  border:1.5px solid var(--line);border-radius:var(--r-sm);padding:7px 9px;font:inherit;
+  font-size:12.5px;color:var(--text);background:var(--surface);width:100%;
+}
+.gauge-grid input:focus{outline:none;border-color:var(--cyan-2);box-shadow:0 0 0 3px rgba(0,180,216,.12)}
+.tf-gauge .hint{margin-top:9px;text-transform:none;letter-spacing:0}

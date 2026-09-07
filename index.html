@@ -416,6 +416,21 @@
             <span>Verified against DID gauged record</span>
           </label>
         </div>
+        <div class="field tf-gauge" style="grid-column:1/-1">
+          <label>Meter reading <span class="unit">optional · the flow is worked out from it</span>
+            <button type="button" class="tipmark" tabindex="0" data-tip="A totalising meter counts the volume that has passed it. Take the reading at the start of the gauging and again at the end: the volume between them, over the hours between them, is the flow in m³/h. Filling all four writes the flow into the field above and keeps the readings with the record, so the figure can be checked later." aria-label="A totalising meter counts the volume that has passed it. Take the reading at the start of the gauging and again at the end: the volume between them, over the hours between them, is the flow in m³/h. Filling all four writes the flow into the field above and keeps the readings with the record, so the figure can be checked later.">i</button></label>
+          <div class="gauge-grid">
+            <div><span class="g-lab">Initial reading <i>bacaan awal</i></span>
+              <input id="tfQ0" type="number" step="0.001" min="0" inputmode="decimal" placeholder="m³"></div>
+            <div><span class="g-lab">Final reading <i>bacaan akhir</i></span>
+              <input id="tfQ1" type="number" step="0.001" min="0" inputmode="decimal" placeholder="m³"></div>
+            <div><span class="g-lab">Taken at <i>masa awal</i></span>
+              <input id="tfT0" type="datetime-local"></div>
+            <div><span class="g-lab">Read again at <i>masa akhir</i></span>
+              <input id="tfT1" type="datetime-local"></div>
+          </div>
+          <div class="hint" id="tfGauge"></div>
+        </div>
       </div>
 
       <div class="tf-alloc-head">

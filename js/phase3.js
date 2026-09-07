@@ -355,6 +355,12 @@ function buildTmdlControls() {
     $(id).addEventListener('input', refreshFormCalc);
   }
   $('tfClass').addEventListener('change', refreshFormCalc);
+  /* The meter readings drive the flow, so they write into it rather than
+     sitting beside it. Typing in the flow itself still works: nothing here
+     touches it until one of these four changes. */
+  for (const id of ['tfQ0', 'tfQ1', 'tfT0', 'tfT1']) {
+    $(id).addEventListener('input', () => { readGauge(true); refreshFormCalc(); });
+  }
   $('tfFill').onclick = fillToCapacity;
   tfAtt = mountAttach('tfAttach', {
     label: 'Photographs',
@@ -366,6 +372,44 @@ function buildTmdlControls() {
   $('tfClose').onclick = closeForm;
   $('tfBack').onclick = closeForm;
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && formOpen) closeForm(); });
+}
+
+/* ---------------- The flow, read off a meter ----------------
+   A totalising meter counts the volume that has gone past it, so two
+   readings and the hours between them are a flow. Written into the design
+   flow when all four are given, and kept with the record so the figure can
+   be checked against the field sheet later.
+
+   A gauging that runs past midnight is often written with the same date on
+   both readings; rather than reject it, a negative period under a day is
+   taken as the next morning. */
+function readGauge(apply = false) {
+  const q0 = num($('tfQ0').value), q1 = num($('tfQ1').value);
+  const t0 = $('tfT0').value, t1 = $('tfT1').value;
+  const some = [$('tfQ0').value, $('tfQ1').value, t0, t1].some((v) => v !== '');
+  const out = $('tfGauge');
+  const say = (msg, cls = '') => { out.textContent = msg; out.className = `hint${cls}`; };
+
+  if (!some) { say('Leave this empty to enter the design flow directly above.'); return null; }
+  if (Number.isNaN(q0) || Number.isNaN(q1) || !t0 || !t1) {
+    say('Give both readings and both times, and the flow is worked out from them.');
+    return null;
+  }
+  const vol = q1 - q0;
+  if (vol < 0) { say('The final reading is below the initial one. A totaliser only counts up.', ' err'); return null; }
+  let hours = (new Date(t1) - new Date(t0)) / 3600000;
+  let overnight = false;
+  if (hours < 0 && hours > -24) { hours += 24; overnight = true; }
+  if (!(hours > 0)) { say('The second reading has to be taken after the first.', ' err'); return null; }
+  const flow = vol / hours;
+  if (!(flow > 0)) { say('The two readings are the same, so no volume passed the meter.', ' err'); return null; }
+
+  const g = { initial: q0, final: q1, from: t0, to: t1, hours: Math.round(hours * 1000) / 1000,
+    volume: Math.round(vol * 1000) / 1000, flow: Math.round(flow) };
+  if (apply) $('tfFlow').value = g.flow;
+  say(`${nf(vol, vol < 100 ? 2 : 0)} m³ over ${nf(hours, 2)} h${overnight ? ' (read the next morning)' : ''}`
+    + ` = ${nf(g.flow)} m³/h${apply ? ' — written into the design flow above' : ''}`, ' ok');
+  return g;
 }
 
 /* ---------------- Writing a TMDL ---------------- */
@@ -392,6 +436,12 @@ function openForm(t) {
   /* With nothing to copy, the station's own estimated low flow */
   $('tfFlow').value = base?.designFlow ?? st.flowEst ?? DEFAULT_CONDITIONS.designFlow;
   $('tfFlowVerified').checked = !!base?.flowVerified;
+  const g = t ? t.gauging : null;      /* a new record starts its own gauging */
+  $('tfQ0').value = g?.initial ?? '';
+  $('tfQ1').value = g?.final ?? '';
+  $('tfT0').value = g?.from ?? '';
+  $('tfT1').value = g?.to ?? '';
+  readGauge(false);
   $('tfNote').value = t ? (t.note ?? '') : '';
   tfAtt?.set(t?.attachments ?? []);
   for (const p of LOAD_PARAMS) {
@@ -448,6 +498,9 @@ function readTmdlForm() {
     designFlow: flow,
     flowVerified: $('tfFlowVerified').checked,
     alloc,
+    /* Written always, even as null: updateTmdl merges, so a gauging that was
+       cleared has to clear on the record too */
+    gauging: readGauge(false),
     note: $('tfNote').value.trim(),
     attachments: tfAtt?.get() ?? [],
   };
@@ -549,6 +602,8 @@ function renderTmdlCard(t, budgets) {
             title="${t.flowVerified ? 'Checked against the DID gauged low-flow record.'
               : esc(flowBasis(DATA.focus)) + ' Every load figure scales with this number.'}">${t.flowVerified ? 'verified' : 'estimate'}</i></span>
           <span>Written <b>${fmtDate(t.date)}</b></span>
+          ${t.gauging ? `<span title="Initial reading ${nf(t.gauging.initial, 3)} m³, final ${nf(t.gauging.final, 3)} m³, ${nf(t.gauging.hours, 2)} hours apart">Metered
+            <b>${nf(t.gauging.volume)} m³ / ${nf(t.gauging.hours, 2)} h</b></span>` : ''}
         </div>
       </div>
       <div class="tbl-scroll">
