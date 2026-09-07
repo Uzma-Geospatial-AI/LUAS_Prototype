@@ -44,6 +44,9 @@ let flowLayer = null;         // the animated direction overlay
 let licenceLayer = null;      // premises with a discharge licence
 /* Satellite water quality: one product, one quarter, on its own pane */
 const wq = { product: null, quarter: WQ_QUARTERS.at(-1).id, opacity: 0.85, waterOnly: true };
+/* Whether the product on screen is clipped to water: asked for, and not a
+   product that is shown whole regardless (SS). */
+const wqClipped = () => !!wq.product && wq.waterOnly && !WQ_PRODUCTS[wq.product]?.full;
 let wqLayer = null;
 let wqClipPath = null;        // the <path> inside the clipPath that keeps it to water
 let waterFlowLayer = null;    // water that drains out to a mapped channel
@@ -1140,7 +1143,7 @@ function buildWqControls() {
         Water only</label>
     </div>
     <div class="wq-src">${have
-      ? 'Google Earth Engine · Digital Earth. The scene is clipped to the mapped rivers and water bodies; untick to see it whole.'
+      ? 'Google Earth Engine · Digital Earth. The indices are clipped to the mapped rivers and water bodies; untick to see them whole. SS is always shown whole.'
       : 'The tile reader did not load, so these layers are unavailable.'}</div>`;
   box.querySelectorAll('[data-wqp]').forEach((b) => {
     b.onclick = () => setWq({ product: b.dataset.wqp || null });
@@ -1165,6 +1168,14 @@ function syncWqControls() {
 
   const d = wq.product ? WQ_PRODUCTS[wq.product] : null;
   const q = WQ_QUARTERS.find((x) => x.id === wq.quarter);
+  /* A whole-scene product takes the tick out of play, and says why */
+  const wc = $('wqWater');
+  if (wc) {
+    wc.disabled = !!d?.full;
+    wc.checked = d?.full ? false : wq.waterOnly;
+    wc.parentElement.title = d?.full ? `${d.label} is shown across the whole scene` : '';
+    wc.parentElement.classList.toggle('off', !!d?.full);
+  }
   $('mapLegendWqHead').hidden = !d;
   $('mapLegendWq').hidden = !d;
   $('mapLegendWq').innerHTML = d ? `
@@ -1194,7 +1205,7 @@ function setWq(patch) {
     /* Between the basemap and the overlays: the water outlines, rivers and
        markers keep drawing over the product. */
     map.createPane('wq').style.zIndex = 250;
-    map.on('moveend', () => { if (wq.product && wq.waterOnly) buildWqClip(); });
+    map.on('moveend', () => { if (wqClipped()) buildWqClip(); });
   }
   const pane = map.getPane('wq');
 
@@ -1209,7 +1220,7 @@ function setWq(patch) {
     }).addTo(map);
   }
 
-  if (wq.product && wq.waterOnly) {
+  if (wqClipped()) {
     buildWqClip();
     pane.style.clipPath = 'url(#wqClip)';
   } else {

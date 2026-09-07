@@ -732,6 +732,7 @@ select{cursor:pointer}
 .wq-opacity input{width:86px;accent-color:var(--navy-2)}
 .wq-check{display:inline-flex;align-items:center;gap:5px;cursor:pointer}
 .wq-check input{accent-color:var(--navy-2);margin:0}
+.wq-check.off{opacity:.45;cursor:default}
 .wq-src{font-size:10px;color:var(--muted-2);line-height:1.4;margin-top:6px}
 .idx-bands{font-family:var(--fm);font-size:10px;color:var(--muted-2);margin-left:6px}
 .idx-caveat{display:inline-block;margin-top:6px;font-size:10px;font-weight:650;color:#8a1e22;

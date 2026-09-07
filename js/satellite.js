@@ -96,6 +96,9 @@ export const WQ_PRODUCTS = {
     stops: ['#000000', '#ffffff'], ramp: ramp(['#000000', '#ffffff']), lo: 'Low', hi: 'High',
     note: 'A regression on the Red/Green ratio, not yet fitted to these rivers: relative pattern only.',
     caveat: true,
+    /* Shown across the whole scene, never clipped to the mapped water: the
+       sediment pattern reads as a surface, not as a set of outlines. */
+    full: true,
   },
 };
 
