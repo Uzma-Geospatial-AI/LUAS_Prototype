@@ -267,7 +267,6 @@ counts move with it, which is the quickest read of whether the basin is improvin
 | Sungai Langat & tributaries | 682 km of mapped channel, drawn at a width scaled by what it carries |
 | Flow direction | the same channels, dashed and animated downstream |
 | Satellite water quality | quarterly Sentinel-2 NDTI, NDCI and estimated SS over Selangor, as PMTiles from the Digital Earth bucket (`js/satellite.js` · `WQ_PRODUCTS`). One product and one quarter at a time, clipped to the mapped rivers and water bodies unless "Water only" is unticked; the ramp is in the legend. The SS layer is uncalibrated and marked so |
-| Water body flow | a body a river passes through carries the river's own flow; one that drains to a channel shows an animated run out to it; standing water that no mapped river touches gets a dashed ring that turns in place, from zoom 13. No direction is invented: 1,071 of the 1,089 bodies are *still* in the data |
 | Langat catchment | 2,140 km², the clip for everything else |
 | Selangor boundary | the state LUAS is responsible for, Federal Territories excluded |
 

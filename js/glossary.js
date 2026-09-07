@@ -58,7 +58,7 @@ export const GLOSSARY = [
       ['Water body', 'An outline of open water from the Digital Earth national file, clipped to the catchment.',
         'Typed as treatment & oxidation basins, lakes & reservoirs, ponds (mostly ex-mining and detention), channel surface, or other.'],
       ['Water body flow', 'How water moves through a body, read off the mapped rivers: a river passes through it, it drains out to one, or nothing touches it.',
-        'A turning dashed ring marks standing water with no mapped inflow or outflow; an animated run marks an outlet.'],
+        'Said in the body’s tooltip. Only the rivers carry the flow animation.'],
       ['Flow direction', 'The downstream direction of every river reach, from the way OpenStreetMap draws it.',
         'The moving dashes on the channels. Nothing is inferred; the line already runs downstream.'],
       ['Langat catchment', 'The 2,140 km² basin that drains to Sungai Langat (HydroBASINS level 8).',

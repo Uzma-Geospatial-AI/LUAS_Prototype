@@ -49,8 +49,6 @@ const wq = { product: null, quarter: WQ_QUARTERS.at(-1).id, opacity: 0.85, water
 const wqClipped = () => !!wq.product && wq.waterOnly && !WQ_PRODUCTS[wq.product]?.full;
 let wqLayer = null;
 let wqClipPath = null;        // the <path> inside the clipPath that keeps it to water
-let waterFlowLayer = null;    // water that drains out to a mapped channel
-let stillLayer = null;        // standing water, ringed; drawn from zoom 13
 const sourceLayers = {};      // src:<category>
 const levelLayers = {};       // wl:<status> — JPS river water level
 const riverLayers = {};       // river:main | river:trib
@@ -126,7 +124,7 @@ export function initMap() {
 
   /* A 1 ha pond is sub-pixel across the whole basin, so the outline has to
      carry the colour itself until the zoom makes the shape readable. */
-  map.on('zoomend', () => { restyleWater(); restyleRivers(); restyleWaterFlow(); syncStill(); });
+  map.on('zoomend', () => { restyleWater(); restyleRivers(); });
 
   applyVisibility();
   if (pendingWq) { setWq(pendingWq); pendingWq = null; }
@@ -239,8 +237,7 @@ function buildRivers() {
      takes a click away from them. */
   flowLayer = L.geoJSON(DATA.rivers, { style: flowStyle });
   visible.add('flow:anim');
-  visible.add('flow:water');
-  MASTERS.flow = ['flow:anim', 'flow:water'];
+  MASTERS.flow = ['flow:anim'];
 }
 
 /* The moving dashes ride on top of the channel, at about half its width, so a
@@ -262,11 +259,6 @@ function flowStyle(f) {
 /* ---------------- Water bodies ---------------- */
 function buildWaterBodies() {
   const ids = [];
-  /* Its own pane, above the fills: a ring drawn in the overlay pane would
-     end up under whichever water layer was toggled on last. */
-  map.createPane('waterflow').style.zIndex = 450;
-  waterFlowLayer = L.layerGroup();
-  stillLayer = L.layerGroup();
   for (const key of Object.keys(WATER_GROUPS)) {
     const list = DATA.water.geo.features.filter((f) => f.properties.group === key);
     if (!list.length) continue;
@@ -281,7 +273,6 @@ function buildWaterBodies() {
           + `${(b.area_m2 / 1e4).toFixed(2)} ha · ${b.km.toFixed(1)} km from the nearest river`
           + (b.flow ? `<br><i>${flowNote(b)}</i>` : ''),   /* older data has no flow */
           { sticky: true });
-        drawWaterFlow(f, b);
         l.on({
           mouseover: (e) => e.target.setStyle({ weight: 1.8, fillOpacity: 0.8 }),
           mouseout: (e) => layer.resetStyle(e.target),
@@ -312,67 +303,6 @@ function flowNote(b) {
         ? 'Channel surface: flows with the river'
         : 'Standing water: no mapped inflow or outflow';
   }
-}
-
-/* The moving picture of that.
-     thru  — the river's own flow animation already crosses the body, so
-             nothing is added: one flow, drawn once.
-     out   — a dashed run from the body's centre to where the outlet reach
-             begins, animated the same way as the channels, so the eye can
-             follow the water out of the pond and down the river.
-     still — dashed rings that turn in place, the outline and two shrunk
-             copies of it towards the centre. Not a direction, because the
-             data has none to give; it says "water, not moving through".
-             Drawn from zoom 13 only: below that a pond is smaller than the
-             ring would be, and a floodplain of them would just shimmer.
-   A channel-surface polygon is the river itself, so it gets neither. */
-function drawWaterFlow(f, b) {
-  const opts = { pane: 'waterflow', interactive: false, color: '#ffffff' };
-  if (b.flow === 'out' && b.outlet) {
-    L.polyline([[b.lat, b.lon], [b.outlet[1], b.outlet[0]]], {
-      ...opts, weight: flowWeight(), opacity: 0.9, dashArray: '6 14', className: 'flow-anim',
-    }).addTo(waterFlowLayer);
-  } else if (b.flow === 'still' && b.group !== 'channel') {
-    /* Every ring turns the same way, so the winding of the source polygon
-       is normalised: clockwise on the screen. */
-    const ring = f.geometry.coordinates[0];
-    let a = 0;
-    for (let i = 0; i < ring.length - 1; i++) {
-      a += (ring[i + 1][0] - ring[i][0]) * (ring[i + 1][1] + ring[i][1]);
-    }
-    const cw = a > 0 ? ring : ring.slice().reverse();
-    /* The outline, then the same shape shrunk towards the centre so the
-       turning reads across the surface and not only at the bank. Only where
-       there is a surface to speak of: under half a hectare the inner rings
-       would sit on top of each other. */
-    const scales = b.area_m2 >= 5000 ? [1, 0.66, 0.33] : [1];
-    for (const k of scales) {
-      L.polygon(cw.map(([lon, lat]) => [b.lat + (lat - b.lat) * k, b.lon + (lon - b.lon) * k]), {
-        ...opts, weight: flowWeight(), opacity: 0.9, fill: false,
-        dashArray: '6 14', className: 'still-anim',
-      }).addTo(stillLayer);
-    }
-  }
-}
-
-/* The water-body flow is drawn as heavy as the main channel's own flow at
-   the same zoom, so a pond and the river beside it read as one system.
-   The river's weight follows the zoom, so this is re-applied with it. */
-function flowWeight() {
-  return Math.max(1, riverWeight(maxUp) * 0.5);
-}
-function restyleWaterFlow() {
-  const style = { weight: flowWeight() };
-  waterFlowLayer?.eachLayer((l) => l.setStyle(style));
-  stillLayer?.eachLayer((l) => l.setStyle(style));
-}
-
-/* The rings are worth drawing only once a pond is bigger than its ring */
-function syncStill() {
-  if (!stillLayer || !map) return;
-  const on = visible.has('flow:water') && map.getZoom() >= 13;
-  if (on) { if (!map.hasLayer(stillLayer)) stillLayer.addTo(map); }
-  else if (map.hasLayer(stillLayer)) map.removeLayer(stillLayer);
 }
 
 function waterStyle(f) {
@@ -692,8 +622,6 @@ function applyVisibility() {
   set(stateLayer, visible.has('bound:selangor'));
   for (const [k, l] of Object.entries(riverLayers)) set(l, visible.has(`river:${k}`));
   set(flowLayer, visible.has('flow:anim'));
-  set(waterFlowLayer, visible.has('flow:water'));
-  syncStill();
   set(licenceLayer, visible.has('licence:all'));
   riverLayers.main?.bringToFront();
   flowLayer?.bringToFront();
@@ -1371,13 +1299,7 @@ function buildLegend() {
     + row('river:trib', line('#45bfe0', true), 'Tributaries',
       `${riverLayers.trib?.getLayers().length ?? 0} reaches`)
     + row('flow:anim', '<span class="ml-line flowkey"></span>', 'Flow direction',
-      'downstream')
-    + row('flow:water', '<span class="ml-ring stillkey"></span>', 'Water body flow',
-      'still water turns in place',
-      'Read off the mapped rivers. A body a river passes through carries the river\'s own '
-      + 'flow; one that drains to a channel shows the run out to it; a turning ring marks '
-      + 'standing water that no mapped river enters or leaves, so nothing in the data says '
-      + 'its water moves. Rings are drawn from zoom 13.');
+      'downstream');
 
   countLicences();
 
