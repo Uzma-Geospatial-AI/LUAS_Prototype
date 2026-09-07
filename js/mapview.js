@@ -1071,7 +1071,7 @@ function buildWqControls() {
         Water only</label>
     </div>
     <div class="wq-src">${have
-      ? 'Google Earth Engine · Digital Earth. The indices are clipped to the mapped rivers and water bodies; untick to see them whole. SS is always shown whole.'
+      ? 'Google Earth Engine · Digital Earth. The indices are clipped to the mapped rivers and water bodies; untick to see them whole. SS is always shown whole and unfiltered, at full opacity.'
       : 'The tile reader did not load, so these layers are unavailable.'}</div>`;
   box.querySelectorAll('[data-wqp]').forEach((b) => {
     b.onclick = () => setWq({ product: b.dataset.wqp || null });
@@ -1097,6 +1097,8 @@ function syncWqControls() {
   const d = wq.product ? WQ_PRODUCTS[wq.product] : null;
   const q = WQ_QUARTERS.find((x) => x.id === wq.quarter);
   /* A whole-scene product takes the tick out of play, and says why */
+  const op = $('wqOpacity');
+  if (op) op.value = Math.round(wq.opacity * 100);
   const wc = $('wqWater');
   if (wc) {
     wc.disabled = !!d?.full;
@@ -1126,6 +1128,9 @@ let pendingWq = null;
 /* Swap the overlay for the product and quarter asked for. One layer at a
    time: the products are alternatives, not a stack. */
 function setWq(patch) {
+  /* A whole-scene product (SS) opens at full opacity, unclipped and undimmed:
+     the data as it is. The slider still works after. */
+  if (patch.product && patch.product !== wq.product && WQ_PRODUCTS[patch.product]?.full) patch.opacity = 1;
   Object.assign(wq, patch);
   if (wqLayer) { map.removeLayer(wqLayer); wqLayer = null; }
 
@@ -1142,8 +1147,9 @@ function setWq(patch) {
     const src = new pmtiles.PMTiles(wqUrl(wq.product, wq.quarter));
     wqLayer = pmtiles.leafletRasterLayer(src, {
       pane: 'wq', opacity: wq.opacity,
+      /* No bounds of our own: the archive's own extent is the extent, and
+         nothing at its edge is trimmed */
       minZoom: 8, maxNativeZoom: 14, maxZoom: 19,
-      bounds: [[2.60, 100.81], [3.87, 101.97]],
       attribution: `${d.label} ${wq.quarter.replace('_', ' ')} · Sentinel-2 · Digital Earth (GEE)`,
     }).addTo(map);
   }
