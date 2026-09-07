@@ -68,6 +68,8 @@
       <span><b>Earth surface activity</b><i>SESAMS</i></span></button>
 
     <div class="sb-sec">Tools</div>
+    <button class="sb-tool" id="sbReport"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h5"/></svg>
+      <span><b>Export report</b><i>one location, with the map</i></span></button>
     <button class="sb-tool" id="sbExportJson"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 11l4 4 4-4"/><path d="M4 19h16"/></svg>
       <span><b>Export register</b><i>JSON</i></span></button>
     <button class="sb-tool" id="sbExportCsv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 11l4 4 4-4"/><path d="M4 19h16"/></svg>
@@ -829,6 +831,67 @@
         <button class="btn btn-ghost" id="lcCancel">Cancel</button>
         <button class="btn btn-ghost danger" id="lcRemove" hidden>Remove location</button>
         <span class="hint" id="lcHint"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- A report for one location, with the map captured around it. From Tools. -->
+<div class="modal" id="rptDialog" hidden role="dialog" aria-modal="true" aria-labelledby="rptHead">
+  <div class="modal-back" id="rptBack"></div>
+  <div class="modal-card rpt-form">
+    <div class="cond-head">
+      <h3 id="rptHead">Export a location report</h3>
+      <span class="formula-inline">Data + map, for one location</span>
+      <button type="button" class="gl-close" id="rptClose" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field tf-wide">
+          <label for="rptStation">Location</label>
+          <select id="rptStation"></select>
+        </div>
+        <div class="field">
+          <label for="rptBase">Map</label>
+          <select id="rptBase">
+            <option value="imagery">Satellite imagery</option>
+            <option value="street">Street map</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="rptZoom">Map zoom</label>
+          <select id="rptZoom">
+            <option value="12">12 · the reach and its surroundings</option>
+            <option value="13">13 · a few kilometres around</option>
+            <option value="14" selected>14 · the station and its premises</option>
+            <option value="15">15 · close in</option>
+            <option value="16">16 · closest</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" style="margin-top:14px">
+        <label>What to include</label>
+        <div class="rpt-secs">
+          <label><input type="checkbox" id="rptSecMap" checked> Map captured around the station</label>
+          <label><input type="checkbox" id="rptSecStation" checked> Station assessment · WQI, verdict, six parameters, last 12 months</label>
+          <label><input type="checkbox" id="rptSecQuality" checked> Quality monitoring · exceedance over the record</label>
+          <label><input type="checkbox" id="rptSecTmdl" checked> TMDL on record · allocation and load budget</label>
+          <label><input type="checkbox" id="rptSecLicences" checked> Licences counting at this location</label>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="rptGo">Generate report</button>
+        <button class="btn btn-ghost" id="rptCancel">Close</button>
+        <span class="hint" id="rptHint"></span>
+      </div>
+      <div class="rpt-result" id="rptResult" hidden>
+        <div><b>Report ready</b> <span id="rptResultText"></span></div>
+        <div class="btn-row" style="margin-top:8px">
+          <a class="btn btn-primary" id="rptOpen" href="#" target="_blank" rel="noopener">Open in a new tab</a>
+          <button class="btn btn-ghost" id="rptDl">Download report (.html)</button>
+          <button class="btn btn-ghost" id="rptJson">Download data (.json)</button>
+        </div>
+        <div class="hint" style="margin-top:6px">The report is one self-contained file with the map inside it. Open it and use Print to save it as a PDF.</div>
       </div>
     </div>
   </div>

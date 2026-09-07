@@ -490,6 +490,13 @@ the ΣWLA as room to licence; where the river is already over capacity the ΣLA 
 so the diffuse reduction needed shows — to be edited, not accepted. The form opens as a dialog over
 the page. The records live in this browser, and go out with the JSON export.
 
+**Exporting a location report.** Under Tools, *Export report* asks for a location, a basemap and
+zoom, and which sections to include, and writes one self-contained HTML file: the map captured
+around the station — tiles, catchment edge, water bodies, rivers, premises by licence status and
+the stations, drawn onto a canvas — then the station assessment, the monitoring record, the TMDL
+on record with its load budget, and the licences counting there. Open it and print to PDF. A JSON
+pack of the same figures comes with it.
+
 **Adding a location.** The picker's last entry, *Add a new location…*, opens a dialog for a code,
 a name, the kind of place, its river, district and reach, and coordinates — or the map centre.
 The station is drawn on the map at once and picked, so every page follows it. It has no official

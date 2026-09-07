@@ -1279,3 +1279,13 @@ table.data td{border-bottom:1px solid var(--line)}
 .map-stn.none{background:#8b93a8;color:#fff;font-size:13px;line-height:1}
 .pop-verdict.warn{background:#fff7ee;color:#b54708}
 table.register col.c-at{width:72px}
+
+/* ---------------- The location report ---------------- */
+.modal-card.rpt-form{width:min(780px,100%)}
+.rpt-secs{display:grid;gap:7px;margin-top:2px}
+.rpt-secs label{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text);
+  text-transform:none;letter-spacing:0;font-weight:500;cursor:pointer}
+.rpt-secs input{width:14px;height:14px;accent-color:var(--navy-2);flex:none;margin:0}
+.rpt-result{margin-top:14px;padding:12px 14px;border:1px solid #bfe4c9;background:#f2fbf5;border-radius:var(--r)}
+.rpt-result b{color:#0d7a3f}
+.rpt-result .btn{text-decoration:none;display:inline-flex;align-items:center}

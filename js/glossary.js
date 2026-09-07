@@ -63,6 +63,8 @@ export const GLOSSARY = [
         'The moving dashes on the channels. Nothing is inferred; the line already runs downstream.'],
       ['Langat catchment', 'The 2,140 km² basin that drains to Sungai Langat (HydroBASINS level 8).',
         'The clip for everything: a source outside it drains somewhere else.'],
+      ['Location report', 'From Tools: one location, its map captured around the station, and the sections chosen — assessment, monitoring, TMDL, licences — as one HTML file, with a JSON pack.',
+        'Open it and print to save a PDF.'],
       ['Adding a location', 'From the app-bar picker: a code, a name, the kind of place, its river and district, a reach, and a position. It is drawn on the map and picked at once.',
         'It starts with no readings; saving from the Station Assessment calculator builds its record. Kept in this browser.'],
       ['Licence register pin', 'A pin at a coordinate for a licence entered at a new location, with no premises symbol of its own.',

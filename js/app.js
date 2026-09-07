@@ -15,6 +15,7 @@ import { renderPhase3, buildLicenceForm, resizePhase3, buildRegisterControls } f
 import { initMap, resizeMap, refreshMap, pauseMap, flyToPoint, showWqProduct, selectWaterBody,
          showStation, mapStationsChanged, refreshTimeline } from './mapview.js';
 import { buildLocationDialog, openLocationDialog } from './locations.js';
+import { buildReportDialog, openReportDialog } from './report.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -139,6 +140,8 @@ function buildStationPicker() {
   buildStationPicker();
   updatePills();
   buildLocationDialog();
+  buildReportDialog();
+  $('sbReport').onclick = openReportDialog;
   /* A location added, edited or removed: the picker and the map follow */
   document.addEventListener('stationschange', () => {
     buildStationPicker();
