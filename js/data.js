@@ -99,7 +99,7 @@ export async function loadAll(onStep) {
   };
 
   onStep?.(0.9, 'Computing indices…');
-  derive();
+  refreshUserStations();
   const chosen = store.conditions().focusStation ?? FOCUS_STATION;
   DATA.focus = DATA.stations.find((s) => s.code === chosen)
     ?? DATA.stations.find((s) => s.code === FOCUS_STATION)
@@ -115,8 +115,8 @@ function derive() {
       const c = computeWQI(r);
       return { t: r.t, wqi: c.wqi, si: c.si, raw: r, saturation: c.saturation };
     });
-    s.latest = s.wqiSeries[s.wqiSeries.length - 1];
-    s.cls = wqiClass(s.latest.wqi);
+    s.latest = s.wqiSeries[s.wqiSeries.length - 1] ?? null;
+    s.cls = s.latest ? wqiClass(s.latest.wqi) : null;
 
     const n = s.wqiSeries.length;
     const avg = (a, b) => {
@@ -130,12 +130,103 @@ function derive() {
   DATA.stations.sort((a, b) => a.code.localeCompare(b.code));
 }
 
+/* The reading standing at a month: the one taken that month, or failing that
+   the latest taken before it, so a station sampled in August still shows
+   in September. Null when the station has nothing at or before that month.
+   The reading carries its own month in `t`, so a reader can tell the two
+   cases apart. */
 export function readingAt(station, monthIdx) {
-  const i = Math.max(0, Math.min(station.wqiSeries.length - 1, monthIdx));
-  return station.wqiSeries[i];
+  const i = Math.max(0, Math.min(DATA.months.length - 1, monthIdx));
+  const m = DATA.months[i];
+  let best = null;
+  for (const r of station.wqiSeries) {
+    if (r.t <= m) best = r; else break;
+  }
+  return best;
+}
+
+/* The reading taken in exactly that month, or null */
+export function readingIn(station, month) {
+  return station.wqiSeries.find((r) => r.t === month) ?? null;
 }
 
 export const latestIdx = () => DATA.months.length - 1;
+
+/* ---- Locations added from the app bar ----
+   A station added there has no official record. Its series is whatever
+   has been saved for it from the Phase 1 calculator, one reading a month,
+   the latest saved for a month winning. The official stations' series are
+   the files' and are not touched. */
+function userSeries(code) {
+  const byMonth = new Map();
+  for (const r of store.readings()) {
+    if (r.station !== code || typeof r.t !== 'string') continue;
+    const t = r.t.slice(0, 7);
+    if (!/^\d{4}-\d{2}$/.test(t)) continue;
+    byMonth.set(t, { t, do: +r.do, bod: +r.bod, cod: +r.cod, ss: +r.ss, an: +r.an, ph: +r.ph, temp: r.temp });
+  }
+  return [...byMonth.values()].sort((a, b) => a.t.localeCompare(b.t));
+}
+
+/* The month range every page walks: the files' record, stretched to take
+   in any month a reading has been saved for, contiguous from first to last */
+function extendMonths() {
+  const base = DATA.meta.months;
+  let lo = base[0], hi = base[base.length - 1];
+  for (const s of DATA.stations) {
+    if (!s.user) continue;
+    for (const r of s.series) { if (r.t < lo) lo = r.t; if (r.t > hi) hi = r.t; }
+  }
+  const out = [];
+  let [y, m] = lo.split('-').map(Number);
+  const [hy, hm] = hi.split('-').map(Number);
+  while (y < hy || (y === hy && m <= hm)) {
+    out.push(`${y}-${String(m).padStart(2, '0')}`);
+    m += 1;
+    if (m > 12) { m = 1; y += 1; }
+  }
+  DATA.months = out;
+}
+
+/* Bring the stations added in this browser in beside the official ones,
+   with whatever readings they have, and derive everything again. Called
+   on load and whenever the store changes. */
+export function refreshUserStations() {
+  DATA.stations = DATA.stations.filter((s) => !s.user);
+  for (const u of store.stations()) {
+    if (DATA.stations.some((s) => s.code === u.code)) continue;   /* an official code wins */
+    DATA.stations.push({ ...u, user: true, series: userSeries(u.code) });
+  }
+  extendMonths();
+  derive();
+  /* The focus is held by code: the object behind it may have been rebuilt,
+     or removed */
+  const code = DATA.focus?.code ?? store.conditions().focusStation ?? FOCUS_STATION;
+  DATA.focus = DATA.stations.find((s) => s.code === code)
+    ?? DATA.stations.find((s) => s.code === FOCUS_STATION)
+    ?? DATA.stations[0];
+}
+
+/* ---- Which station a licence counts at ----
+   A licence discharges to one place, and the budget it belongs in is the
+   one written for the nearest monitoring station to it — unless the
+   register says another. A licence with no position counts nowhere, and
+   the register says so. */
+export function stationForLicence(l) {
+  if (l.station && DATA.stations.some((s) => s.code === l.station)) return l.station;
+  if (typeof l.lat !== 'number' || typeof l.lon !== 'number') return null;
+  const k = Math.cos((l.lat * Math.PI) / 180);
+  let best = null, bd = Infinity;
+  for (const s of DATA.stations) {
+    const d = (s.lat - l.lat) ** 2 + ((s.lon - l.lon) * k) ** 2;
+    if (d < bd) { bd = d; best = s.code; }
+  }
+  return best;
+}
+
+export function licencesAt(code) {
+  return store.licences().filter((l) => stationForLicence(l) === code);
+}
 
 /* ---- How often does a station meet a target class? ---- */
 export function complianceRecord(station, cls = 'II') {

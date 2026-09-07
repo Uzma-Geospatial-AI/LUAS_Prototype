@@ -555,6 +555,10 @@
               <option value="B">Standard B</option>
             </select>
           </div>
+          <div class="field">
+            <label for="lStation">Counts at <button type="button" class="tipmark" tabindex="0" data-tip="The station whose TMDL this licence is set against. Left automatic, it is the nearest monitoring station to the premises; choose one to say otherwise." aria-label="The station whose TMDL this licence is set against. Left automatic, it is the nearest monitoring station to the premises.">i</button></label>
+            <select id="lStation"></select>
+          </div>
         </div>
 
         <div style="margin:18px 0 10px;font-size:10.5px;text-transform:uppercase;
@@ -592,7 +596,7 @@
              them change, and with a fixed layout only the Premises column
              is elastic. -->
         <colgroup>
-          <col class="c-ref"><col class="c-prem"><col class="c-std"><col class="c-flow">
+          <col class="c-ref"><col class="c-prem"><col class="c-at"><col class="c-std"><col class="c-flow">
           <col class="c-conc"><col class="c-conc"><col class="c-conc"><col class="c-conc">
           <col class="c-load"><col class="c-load"><col class="c-load"><col class="c-load">
           <col class="c-stat"><col class="c-act">
@@ -601,6 +605,7 @@
           <tr>
             <th rowspan="2" class="sortable" data-sort="ref">Licence</th>
             <th rowspan="2" class="sortable" data-sort="premises">Premises</th>
+            <th rowspan="2" class="sortable" data-sort="at" title="The station this licence counts at">Counts at</th>
             <th rowspan="2" class="sortable" data-sort="standard">Std</th>
             <th rowspan="2" class="sortable" data-sort="flow">Flow<br>m³/day</th>
             <th colspan="4">Permitted concentration (mg/L)</th>
@@ -758,6 +763,76 @@
   </div><!-- /.content -->
 </div><!-- /.main -->
 </div><!-- /.app -->
+
+<!-- Adding a monitoring location: the details, then the position, then it is
+     on the map and picked. Opened from the app-bar picker. -->
+<div class="modal" id="locDialog" hidden role="dialog" aria-modal="true" aria-labelledby="lcHead">
+  <div class="modal-back" id="lcBack"></div>
+  <div class="modal-card loc-form">
+    <div class="cond-head">
+      <h3 id="lcHead">New location</h3>
+      <span class="formula-inline">Drawn on the map at its coordinates</span>
+      <button type="button" class="gl-close" id="lcClose" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field">
+          <label for="lcCode">Station code</label>
+          <input id="lcCode" placeholder="LGT12" maxlength="12" autocapitalize="characters" autocomplete="off">
+        </div>
+        <div class="field tf-wide">
+          <label for="lcName">Name</label>
+          <input id="lcName" placeholder="Sungai Langat at …">
+        </div>
+        <div class="field">
+          <label for="lcKind">Type</label>
+          <select id="lcKind"></select>
+        </div>
+        <div class="field">
+          <label for="lcRiver">River or water</label>
+          <input id="lcRiver" list="lcRivers" placeholder="Sungai Langat">
+          <datalist id="lcRivers"></datalist>
+        </div>
+        <div class="field">
+          <label for="lcDistrict">District</label>
+          <input id="lcDistrict" list="lcDistricts" placeholder="Hulu Langat">
+          <datalist id="lcDistricts"></datalist>
+        </div>
+        <div class="field">
+          <label for="lcSegment">Reach</label>
+          <select id="lcSegment"></select>
+        </div>
+      </div>
+      <div class="field" style="margin-top:14px">
+        <label>Position</label>
+        <div class="latlon">
+          <input id="lcLat" type="number" step="0.00001" placeholder="Latitude · 2.85971">
+          <input id="lcLon" type="number" step="0.00001" placeholder="Longitude · 101.68380">
+          <button type="button" class="btn btn-ghost" id="lcCentre"
+            title="Take the coordinates from the middle of the map">Use map centre</button>
+        </div>
+        <div class="hint" id="lcPosHint">Decimal degrees. The station is drawn on the map here, and every page follows it once picked.</div>
+      </div>
+      <div class="field" style="margin-top:12px">
+        <label for="lcNote">Notes</label>
+        <textarea id="lcNote" rows="2" placeholder="Why it was added, who samples it, the gauge it pairs with…"></textarea>
+      </div>
+      <div class="notice info" style="margin-top:12px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <div>A new location starts with no readings. Enter its six parameters in the Station Assessment
+          calculator and save them; each saved month becomes its record, and the map colours it once
+          it has one. It is kept in this browser and goes out with the JSON export.</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="lcSave" disabled>Save location</button>
+        <button class="btn btn-ghost" id="lcSaveShow" disabled>Save &amp; show on map</button>
+        <button class="btn btn-ghost" id="lcCancel">Cancel</button>
+        <button class="btn btn-ghost danger" id="lcRemove" hidden>Remove location</button>
+        <span class="hint" id="lcHint"></span>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>

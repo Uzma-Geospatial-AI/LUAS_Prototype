@@ -5,7 +5,7 @@
    standard, how often each one puts the river out of class, and where
    Dengkil sits against the rest of the basin and the national picture.
    ============================================================ */
-import { DATA, readingAt, latestIdx, fmtMonth, complianceRecord, basinTrend,
+import { DATA, readingAt, readingIn, latestIdx, fmtMonth, complianceRecord, basinTrend,
          waterSummary, WATER_GROUPS } from './data.js';
 import { PARAM_META, INWQS, wqiClass, checkStandard, paramStatus } from './wqi.js';
 import { store } from './store.js';
@@ -53,8 +53,8 @@ export function renderPhase2() {
 function renderExceedance(s, target, rec) {
   const rows = Object.entries(PARAM_META).map(([p, m]) => {
     const v = rec.byParam[p];
-    const cur = readingAt(s, latestIdx()).raw[p];
-    const chk = checkStandard(p, cur, target);
+    const cur = readingAt(s, latestIdx())?.raw[p] ?? null;
+    const chk = cur == null ? null : checkStandard(p, cur, target);
     return { p, m, ...v, cur, chk };
   }).sort((a, b) => b.rate - a.rate);
 
@@ -66,8 +66,8 @@ function renderExceedance(s, target, rec) {
       <div class="exc-s">of months exceed Class ${target}</div>
       <div class="exc-bar"><i style="width:${rate * 100}%;background:${col}"></i></div>
       <div class="exc-f">
-        <span>Latest ${p === 'an' ? cur.toFixed(3) : cur.toFixed(2)}</span>
-        <b style="color:${chk.pass === false ? '#d92d20' : '#17a04a'}">${chk.limitText}</b>
+        <span>Latest ${cur == null ? '—' : p === 'an' ? cur.toFixed(3) : cur.toFixed(2)}</span>
+        <b style="color:${chk?.pass === false ? '#d92d20' : '#17a04a'}">${chk ? chk.limitText : 'no reading yet'}</b>
       </div>
     </div>`;
   }).join('');
@@ -113,10 +113,12 @@ function renderParamCharts(s, target) {
 
   for (const [p, m] of Object.entries(PARAM_META)) {
     kill(`pc_${p}`);
-    const vals = s.wqiSeries.map((r) => r.raw[p]);
+    /* One value per month of the record; a month not sampled is a gap */
+    const vals = DATA.months.map((t) => readingIn(s, t)?.raw[p] ?? null);
     const std = INWQS[target][p];
     const limit = Array.isArray(std) ? std[0] : std;
     const colours = vals.map((v) => {
+      if (v == null) return '#c3c8d6';
       const st = paramStatus(p, v);
       return st === 'clean' ? '#17a04a' : st === 'slight' ? '#f2c40c' : '#d92d20';
     });
@@ -125,7 +127,7 @@ function renderParamCharts(s, target) {
       label: m.short, data: vals,
       borderColor: '#2d2f7a', borderWidth: 1.8, tension: 0.28,
       pointRadius: 2.2, pointBackgroundColor: colours, pointBorderWidth: 0,
-      fill: false,
+      fill: false, spanGaps: true,
     }];
     if (limit != null) {
       datasets.push({

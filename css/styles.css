@@ -1268,10 +1268,10 @@ body.modal-open{overflow:hidden}
 table.data td{border-bottom:1px solid var(--line)}
 #v-tmdl table.data tbody td{border-bottom:1px solid var(--line-2)}
 #v-tmdl table.data tbody tr:last-child td{border-bottom:0}
-table.budget thead tr:first-child th:nth-child(-n+4),
-table.budget thead tr:nth-child(2) th:nth-child(2n),
-table.budget tbody td:nth-child(odd):not(:last-child){border-right:1px solid var(--line)}
-table.alloc th:nth-child(1),table.alloc td:nth-child(1),
-table.alloc th:nth-child(5),table.alloc td:nth-child(5),
-table.alloc-edit th:nth-child(1),table.alloc-edit td:nth-child(1),
-table.alloc-edit th:nth-child(5),table.alloc-edit td:nth-child(5){border-right:1px solid var(--line)}
+#v-tmdl table.data th:not(:last-child),#v-tmdl table.data td:not(:last-child){border-right:1px solid var(--line)}
+
+/* ---------------- A location added from the app bar ---------------- */
+.modal-card.loc-form{width:min(820px,100%)}
+.map-stn.none{background:#8b93a8;color:#fff;font-size:13px;line-height:1}
+.pop-verdict.warn{background:#fff7ee;color:#b54708}
+table.register col.c-at{width:72px}

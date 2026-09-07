@@ -12,7 +12,7 @@
    at its target class and design low flow. The register then says how much
    of the ΣWLA the licences have taken, and how much is left to licence.
    ============================================================ */
-import { DATA, designReading, sourceSummary } from './data.js';
+import { DATA, designReading, sourceSummary, licencesAt, stationForLicence } from './data.js';
 import { LOAD_PARAMS, PARAM_META, TARGET_CLASSES } from './wqi.js';
 import {
   budgetAll, headroom, headroomInPE, licenceLoads, licenceCompliance, loadingCapacity,
@@ -247,9 +247,11 @@ export function renderPhase3() {
   const tmdl = store.activeTmdl(st.code);
   renderBar(st, tmdl);
 
-  const licences = store.licences();
+  /* Only the licences that count at this station: the nearest station to
+     each premises, unless the register says another */
+  const here = licencesAt(st.code);
   const reading = currentReading();
-  const budgets = budgetAll(reading, licences, tmdl);
+  const budgets = budgetAll(reading, here, tmdl);
   const head = headroom(budgets, stdKey);
 
   if (!tmdl) {
@@ -269,7 +271,7 @@ export function renderPhase3() {
     renderBudgetTable(budgets, tmdl, st);
     renderChart(budgets);
   }
-  renderRegister(licences, stdKey, budgets);
+  renderRegister(store.licences(), stdKey, budgets);
   if (formOpen) refreshFormCalc();
   previewLicence();
 }
@@ -407,7 +409,7 @@ function fillToCapacity() {
     mosPercent: Math.min(50, Math.max(0, num($('tfMos').value) || 0)),
   };
   if (!(cond.designFlow > 0)) { refreshFormCalc(); return; }
-  const alloc = suggestAllocation(currentReading(), store.licences(), cond);
+  const alloc = suggestAllocation(currentReading(), licencesAt(DATA.focus.code), cond);
   for (const p of LOAD_PARAMS) {
     for (const k of ['wla', 'la', 'mos']) $(`tf_${k}_${p}`).value = alloc[p]?.[k] ?? 0;
   }
@@ -639,9 +641,10 @@ function renderHeadline(budgets, head, t) {
     <div class="card kpi">
       <div class="k-lab">Licensed load committed</div>
       <div class="k-val" style="font-size:25px">${nf(totalLicensed, 0)}<span class="k-unit">kg/day</span></div>
-      <div class="k-sub">${store.licences().filter((l) => l.active !== false).length} active licences</div>
+      <div class="k-sub">${licencesAt(DATA.focus.code).filter((l) => l.active !== false).length} active licences count here</div>
       <div class="k-note">Four pollutants ${tipmark('The wasteload permitted by every active '
-        + 'licence in the register, summed across BOD, COD, SS and NH₃-N.')}</div>
+        + 'licence that counts at this station — the nearest station to each premises, unless '
+        + 'the register says another — summed across BOD, COD, SS and NH₃-N.')}</div>
     </div>`;
 
   $('p3Std').onchange = () => { stdKey = $('p3Std').value; renderPhase3(); };
@@ -683,7 +686,8 @@ function renderBudgetTable(budgets, t, st) {
 
   $('p3BudgetNote').innerHTML =
     `Allocation from ${esc(t.ref)} · loading capacity = Class ${esc(t.targetClass)} standard × `
-    + `${esc(t.designFlow)} m³/s × ${RIVER_FACTOR} · in-river concentration is the 12-month median at ${esc(st.name)}`;
+    + `${esc(t.designFlow)} m³/s × ${RIVER_FACTOR} · in-river concentration is the 12-month median at ${esc(st.name)}`
+    + ` · ${licencesAt(st.code).length} licences count at this station`;
 }
 
 /* ============================================================
@@ -756,6 +760,7 @@ let regSort = { key: null, dir: 1 };      /* column key and +1 / -1 */
 function sortValue(l, key, stdKey) {
   if (key === 'ref') return l.ref ?? '';
   if (key === 'premises') return l.premises ?? '';
+  if (key === 'at') return stationForLicence(l) ?? '';
   if (key === 'standard') return l.standard ?? '';
   if (key === 'flow') return l.flow ?? 0;
   if (key.startsWith('conc.')) return l.conc?.[key.slice(5)] ?? 0;
@@ -773,7 +778,7 @@ function sortValue(l, key, stdKey) {
 function arrangeRegister(licences, stdKey) {
   let list = licences;
   if (regSearch) {
-    list = list.filter((l) => [l.ref, l.premises, l.category, l.bulk ? 'estimated' : '',
+    list = list.filter((l) => [l.ref, l.premises, l.category, stationForLicence(l) ?? '', l.bulk ? 'estimated' : '',
       l.example && !l.bulk ? 'example' : '', l.active === false ? 'inactive suspended' : '']
       .join(' ').toLowerCase().includes(regSearch));
   }
@@ -826,6 +831,7 @@ function renderRegister(all, stdKey, budgets) {
       <td>${esc(l.premises)}${typeof l.lat === 'number'
         ? '<span class="loc-pin" title="Located — drawn on the map">◉</span>'
         : '<span class="loc-none" title="No coordinates, so it is not on the map">–</span>'}</td>
+      <td class="mono" title="${l.station ? 'Set in the register' : 'The nearest monitoring station'}">${esc(stationForLicence(l) ?? '—')}</td>
       <td><span class="badge soft">Std ${esc(l.standard ?? '—')}</span></td>
       <td class="num">${nf(l.flow)}</td>
       ${LOAD_PARAMS.map((p) => `<td class="num${comp.breaches.includes(p) ? ' over' : ''}">
@@ -842,13 +848,13 @@ function renderRegister(all, stdKey, budgets) {
         <button class="mini danger" data-del="${l.id}">Delete</button>`}
       </td>
     </tr>`;
-  }).join('') : `<tr><td colspan="15" class="empty-row">${regSearch
+  }).join('') : `<tr><td colspan="16" class="empty-row">${regSearch
       ? `Nothing in the register matches “${esc(regSearch)}”.`
       : 'No licences in the register. Add one below, or restore the worked example.'}</td></tr>`;
 
   $('p3RegTotals').innerHTML = licences.length ? `
     <tr class="totals">
-      <td colspan="3"><b>Total — ${active.length} active licence${active.length === 1 ? '' : 's'}${regSearch
+      <td colspan="4"><b>Total — ${active.length} active licence${active.length === 1 ? '' : 's'}${regSearch
         ? ` <span class="muted">matching, of ${all.filter((l) => l.active !== false).length}</span>` : ''}</b></td>
       <td class="num"><b>${nf(active.reduce((t, l) => t + (l.flow || 0), 0))}</b></td>
       <td colspan="4" class="num muted">permitted concentration</td>
@@ -979,6 +985,10 @@ export function buildLicenceForm() {
   ['lRef', 'lPremises', 'lFlow', ...LOAD_PARAMS.map((p) => `l_${p}`)]
     .forEach((id) => $(id).addEventListener('input', previewLicence));
   $('lStd').addEventListener('change', previewLicence);
+  /* Which station the licence counts at: the nearest unless said otherwise */
+  $('lStation').innerHTML = '<option value="">Nearest station (automatic)</option>'
+    + DATA.stations.map((st) => `<option value="${st.code}">${esc(st.name)} · ${st.code}</option>`).join('');
+  $('lStation').addEventListener('change', previewLicence);
 
   $('p3Add').onclick = () => {
     const l = readForm();
@@ -1031,6 +1041,8 @@ function readForm() {
   const out = {
     ref, ...place,
     category: $('lCategory').value, standard: $('lStd').value, flow, conc,
+    /* Written always: updateLicence merges, and a cleared choice must clear */
+    station: $('lStation').value || null,
   };
   /* Always written, never omitted: updateLicence merges, so leaving the key
      out would let a stale `estimated: true` survive an edit. */
@@ -1069,6 +1081,7 @@ function clearForm() {
   ['lRef', 'lPremises', 'lFlow', 'lLat', 'lLon', ...LOAD_PARAMS.map((p) => `l_${p}`)]
     .forEach((id) => { $(id).value = ''; });
   $('lSource').value = '';
+  $('lStation').value = '';
   previewLicence();
 }
 
@@ -1089,6 +1102,7 @@ function loadIntoForm(l) {
   }
   $('lCategory').value = l.category ?? 'Industrial';
   $('lStd').value = l.standard ?? 'A';
+  $('lStation').value = l.station ?? '';
   $('lFlow').value = l.flow ?? '';
   for (const p of LOAD_PARAMS) $(`l_${p}`).value = l.conc?.[p] ?? '';
   setAddLabel();
@@ -1122,8 +1136,9 @@ function previewLicence() {
 
   const loads = licenceLoads(l);
   const tmdl = store.activeTmdl(DATA.focus.code);
-  const budgets = budgetAll(currentReading(), store.licences(), tmdl);
+  const budgets = budgetAll(currentReading(), licencesAt(DATA.focus.code), tmdl);
   const total = LOAD_PARAMS.reduce((t, p) => t + loads[p], 0);
+  const at = stationForLicence(l);
 
   $('p3Preview').innerHTML = `
     <div class="pv-head" style="background:linear-gradient(130deg,#2d2f7a,#16173f)">
@@ -1145,7 +1160,10 @@ function previewLicence() {
         </div>`;
       }).join('')}
     </div>
-    <div class="pv-foot">${tmdl
+    <div class="pv-foot">${at && at !== DATA.focus.code
+      ? `This licence counts at <b>${esc(at)}</b>, the nearest station to the premises, not at
+         ${esc(DATA.focus.code)}; pick that station to see it against its TMDL. `
+      : !at ? 'Without a position this licence counts at no station. ' : ''}${tmdl
       ? `Bars show how much of what is <b>left to licence</b> under ${esc(tmdl.ref)} this licence
          would take. Red means it would not fit within the ΣWLA.`
       : `No TMDL is written for ${esc(DATA.focus.name)}, so there is nothing to judge the fit

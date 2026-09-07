@@ -490,6 +490,14 @@ the ΣWLA as room to licence; where the river is already over capacity the ΣLA 
 so the diffuse reduction needed shows — to be edited, not accepted. The form opens as a dialog over
 the page. The records live in this browser, and go out with the JSON export.
 
+**Adding a location.** The picker's last entry, *Add a new location…*, opens a dialog for a code,
+a name, the kind of place, its river, district and reach, and coordinates — or the map centre.
+The station is drawn on the map at once and picked, so every page follows it. It has no official
+record: readings saved from the Station Assessment calculator become its series, one a month,
+and the month range every page walks grows to take them in. Until the first one it is drawn grey
+and every page says so. A location of your own can be edited or removed from the same picker.
+Kept in this browser; goes out with the JSON export.
+
 A licence is granted to a place, so the form asks **which place first**, then the reference and
 everything else. Two ways in:
 
@@ -523,9 +531,10 @@ the point is to be shown the place, not left near it. If its layer had been swit
 switched back on first. The register marks which rows
 are located and which are not, so a register of six against a map of two is not a puzzle.
 
-> ⚠️ The register is not partitioned by receiving water — every licence in it counts against
-> whichever water is selected. Tying a licence to the reach it discharges into is a change to the
-> record, not the interface.
+Each licence **counts at one station**: the nearest monitoring station to its premises, unless
+the form's *Counts at* says another. The register shows which, and each location's budget
+carries only its own share, so no two locations read the same. A licence with no position
+counts nowhere, and the register says so.
 
 | Term | Meaning | Where it comes from |
 |---|---|---|

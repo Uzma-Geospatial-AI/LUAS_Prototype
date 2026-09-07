@@ -1,15 +1,19 @@
 /* ============================================================
    phase1.js — Phase 1: Station assessment
 
-   Sungai Langat at Dengkil. Six parameters in, WQI out, and the verdict
-   that matters operationally: does this reach hold Class II?
+   Six parameters in, WQI out, and the verdict that matters operationally:
+   does this reach hold its target class? Written for whichever station is
+   picked in the app bar. A station added there has no official record, so
+   until a reading is saved for it from the calculator the page says so
+   rather than showing a number it does not have.
    ============================================================ */
-import { DATA, readingAt, latestIdx, fmtMonth, complianceRecord } from './data.js';
+import { DATA, readingAt, readingIn, latestIdx, fmtMonth, complianceRecord } from './data.js';
 import {
   computeWQI, wqiClass, PARAM_META, checkStandard, classCompliance,
   siColor, WEIGHTS, INWQS,
 } from './wqi.js';
 import { store } from './store.js';
+import { kindLabel } from './locations.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -20,6 +24,7 @@ let monthIdx = null, chart = null, calcInit = false;
 
 export function renderPhase1() {
   monthIdx ??= latestIdx();
+  monthIdx = Math.min(monthIdx, latestIdx());
   const s = DATA.focus;
   const target = store.conditions().targetClass;
 
@@ -40,16 +45,14 @@ export function renderPhase1() {
 
 /* ---------------- Station header + month stepper ---------------- */
 function renderHeader(s, target) {
-  const r = readingAt(s, monthIdx);
-  const cls = wqiClass(r.wqi);
-
+  const n = s.wqiSeries.length;
   $('p1Head').innerHTML = `
     <div class="stn-head">
       <div>
-        <div class="stn-code">${esc(s.code)} · ${esc(s.river)}</div>
+        <div class="stn-code">${esc(s.code)} · ${esc(s.river)}${s.user ? ` · ${esc(kindLabel(s.kind))}` : ''}</div>
         <h2>${esc(s.name)}</h2>
         <div class="stn-loc">${esc(s.district)} district · ${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}
-          · ${DATA.months.length} monthly records</div>
+          · ${n} monthly record${n === 1 ? '' : 's'}${s.user ? ' · added from the app bar' : ''}</div>
       </div>
       <div class="stn-month">
         <button class="btn btn-ghost" id="p1Prev" ${monthIdx === 0 ? 'disabled' : ''}>‹</button>
@@ -68,16 +71,49 @@ function renderHeader(s, target) {
   $('p1Latest').onclick = () => { monthIdx = latestIdx(); renderPhase1(); };
 }
 
-/* ---------------- The Class II verdict ---------------- */
+/* ---------------- The class verdict ---------------- */
 function renderVerdict(s, target) {
   const r = readingAt(s, monthIdx);
+  const rec = complianceRecord(s, target);
+  const month = fmtMonth(DATA.months[monthIdx]);
+
+  if (!r) {
+    $('p1Verdict').innerHTML = `
+      <div class="card verdict warn" style="grid-column:1/-1">
+        <div class="v-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg></div>
+        <div class="v-body">
+          <div class="v-lab">Class ${target} compliance · ${month}</div>
+          <div class="v-head">No reading at this station yet</div>
+          <div class="v-sub">Nothing has been sampled here at or before ${month}. Enter its six
+            parameters in the calculator below and save them; each saved month becomes this
+            station's record, and the map colours it once it has one.</div>
+        </div>
+      </div>
+      <div class="card kpi">
+        <div class="k-lab">Water Quality Index</div>
+        <div class="k-val" style="color:var(--muted-2)">—</div>
+        <div class="k-sub">No reading</div>
+      </div>
+      <div class="card kpi">
+        <div class="k-lab">Months meeting Class ${target}</div>
+        <div class="k-val" style="color:var(--muted-2)">—</div>
+        <div class="k-sub">${rec.passing} of ${rec.total} records</div>
+      </div>
+      <div class="card kpi">
+        <div class="k-lab">Binding parameter</div>
+        <div class="k-val" style="color:var(--muted-2);font-size:22px">—</div>
+        <div class="k-sub">Nothing to judge yet</div>
+      </div>`;
+    return;
+  }
+
   const cls = wqiClass(r.wqi);
   const comp = classCompliance(r.raw, target);
-  const rec = complianceRecord(s, target);
-
   const failing = Object.entries(comp.checks)
     .filter(([, c]) => c.pass === false)
     .map(([p]) => PARAM_META[p].short);
+  /* A reading carried forward from an earlier month says so */
+  const taken = r.t !== DATA.months[monthIdx] ? ` · reading of ${fmtMonth(r.t)}` : '';
 
   $('p1Verdict').innerHTML = `
     <div class="card verdict ${comp.pass ? 'ok' : 'bad'}">
@@ -85,7 +121,7 @@ function renderVerdict(s, target) {
         ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m20 6-11 11-5-5"/></svg>'
         : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 8v5M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>'}</div>
       <div class="v-body">
-        <div class="v-lab">Class ${target} compliance · ${fmtMonth(DATA.months[monthIdx])}</div>
+        <div class="v-lab">Class ${target} compliance · ${month}${taken}</div>
         <div class="v-head">${comp.pass
           ? `Meets Class ${target}`
           : `Does not meet Class ${target}`}</div>
@@ -107,7 +143,7 @@ function renderVerdict(s, target) {
       <div class="k-val" style="color:${rec.rate >= 0.5 ? '#17a04a' : rec.rate > 0 ? '#ef7d1a' : '#d92d20'}">
         ${(rec.rate * 100).toFixed(0)}<span class="k-unit">%</span></div>
       <div class="k-sub">${rec.passing} of ${rec.total} records</div>
-      <div class="k-note">${DATA.months[0]} – ${DATA.months[DATA.months.length - 1]}</div>
+      <div class="k-note">${rec.total ? `${rec.months[0].t} – ${rec.months[rec.total - 1].t}` : ''}</div>
     </div>
 
     <div class="card kpi">
@@ -133,6 +169,17 @@ function renderParamTable(s, target) {
   const r = readingAt(s, monthIdx);
   const rec = complianceRecord(s, target);
 
+  $('p1TargetNote').innerHTML =
+    `INWQS Class ${target} ambient standards · NH₃-N ≤ ${INWQS[target].an} · BOD ≤ ${INWQS[target].bod}
+     · COD ≤ ${INWQS[target].cod} · SS ≤ ${INWQS[target].ss} mg/L`;
+
+  if (!r) {
+    $('p1Params').innerHTML = `<tr><td colspan="8" class="empty-row">No reading at
+      ${esc(s.name)} for ${fmtMonth(DATA.months[monthIdx])} or before. Enter six values in the
+      calculator below and save them.</td></tr>`;
+    return;
+  }
+
   $('p1Params').innerHTML = Object.entries(PARAM_META).map(([p, m]) => {
     const v = r.raw[p];
     const chk = checkStandard(p, v, target);
@@ -157,30 +204,31 @@ function renderParamTable(s, target) {
       <td class="num">${rec.byParam[p].fails}/${rec.total}</td>
     </tr>`;
   }).join('');
-
-  $('p1TargetNote').innerHTML =
-    `INWQS Class ${target} ambient standards · NH₃-N ≤ ${INWQS[target].an} · BOD ≤ ${INWQS[target].bod}
-     · COD ≤ ${INWQS[target].cod} · SS ≤ ${INWQS[target].ss} mg/L`;
 }
 
 const fmtVal = (p, v) => (p === 'an' ? v.toFixed(3) : p === 'ph' || p === 'do' || p === 'bod'
   ? v.toFixed(2) : v.toFixed(1));
 
-/* ---------------- WQI trend with the class-II band ---------------- */
+/* ---------------- WQI trend with the class band ----------------
+   One point per month of the record. A station sampled in some months and
+   not others leaves gaps, and the line steps over them rather than
+   inventing a value between. */
 function renderTrend(s, target) {
   chart?.destroy();
-  const pts = s.wqiSeries.map((x) => x.wqi);
+  const pts = DATA.months.map((t) => readingIn(s, t)?.wqi ?? null);
   const rec = complianceRecord(s, target);
+  const byMonth = new Map(rec.months.map((m) => [m.t, m]));
+  const sparse = s.wqiSeries.length < DATA.months.length;
 
   chart = new Chart($('p1Chart'), {
     type: 'line',
     data: {
       labels: DATA.months.map(fmtMonth),
       datasets: [{
-        label: 'WQI', data: pts,
+        label: 'WQI', data: pts, spanGaps: true,
         borderColor: '#2d2f7a', borderWidth: 2, tension: 0.3,
-        pointRadius: DATA.months.map((_, i) => (i === monthIdx ? 5 : 0)),
-        pointBackgroundColor: pts.map((v) => wqiClass(v).color),
+        pointRadius: DATA.months.map((t, i) => (i === monthIdx ? 5 : sparse && pts[i] != null ? 3 : 0)),
+        pointBackgroundColor: pts.map((v) => (v == null ? '#fff' : wqiClass(v).color)),
         pointBorderColor: '#fff', pointBorderWidth: 2,
         fill: true,
         backgroundColor: (c) => {
@@ -216,11 +264,11 @@ function renderTrend(s, target) {
           backgroundColor: 'rgba(22,23,63,.96)', padding: 10, cornerRadius: 8,
           callbacks: {
             label: (c) => (c.datasetIndex === 0
-              ? ` WQI ${c.parsed.y.toFixed(1)} · ${wqiClass(c.parsed.y).status}`
+              ? (c.parsed.y == null ? ' No reading' : ` WQI ${c.parsed.y.toFixed(1)} · ${wqiClass(c.parsed.y).status}`)
               : ` Class ${target} threshold`),
             afterBody: (items) => {
-              const i = items[0].dataIndex;
-              const m = rec.months[i];
+              const m = byMonth.get(DATA.months[items[0].dataIndex]);
+              if (!m) return '';
               return m.compliance.pass
                 ? `Meets Class ${target}`
                 : `Fails: ${Object.entries(m.compliance.checks)
@@ -258,9 +306,10 @@ function buildCalculator() {
   $('cTemp').addEventListener('input', updateCalculator);
 
   $('p1Load').onclick = () => {
-    const r = readingAt(DATA.focus, monthIdx).raw;
-    for (const p of Object.keys(PARAM_META)) $(`c_${p}`).value = r[p];
-    $('cTemp').value = r.temp ?? 27;
+    const r = readingAt(DATA.focus, monthIdx);
+    for (const p of Object.keys(PARAM_META)) $(`c_${p}`).value = r ? r.raw[p] : '';
+    $('cTemp').value = r?.raw.temp ?? 27;
+    $('cMonth').value = DATA.months[monthIdx];
     updateCalculator();
   };
   $('p1Reset').onclick = () => {
@@ -271,14 +320,22 @@ function buildCalculator() {
     const vals = readCalc();
     if (!vals) return;
     const { wqi } = computeWQI(vals);
+    const s = DATA.focus;
+    const t = $('cMonth').value || DATA.months[monthIdx];
     store.addReading({
-      station: DATA.focus.code, stationName: DATA.focus.name,
-      t: $('cMonth').value || DATA.months[monthIdx],
-      ...vals, wqi, wqiClass: wqiClass(wqi).id,
+      station: s.code, stationName: s.name,
+      t, ...vals, wqi, wqiClass: wqiClass(wqi).id,
     });
-    $('p1Msg').innerHTML =
-      `<span class="saved-note">Saved · WQI ${wqi.toFixed(1)} · ${wqiClass(wqi).label}</span>`;
-    setTimeout(() => { $('p1Msg').innerHTML = ''; }, 5000);
+    /* For a location added here the saved reading IS its record, and the
+       store's change has already redrawn the page with it in; the page then
+       goes to that month, so the saving is seen */
+    if (s.user) {
+      const i = DATA.months.indexOf(t);
+      if (i >= 0) { monthIdx = i; renderPhase1(); }
+    }
+    $('p1Msg').innerHTML = `<span class="saved-note">Saved · WQI ${wqi.toFixed(1)} · ${wqiClass(wqi).label}`
+      + `${s.user ? ` · now on ${esc(s.code)}'s record for ${fmtMonth(t)}` : ''}</span>`;
+    setTimeout(() => { $('p1Msg').innerHTML = ''; }, 6000);
   };
 
   $('cMonth').value = DATA.months[DATA.months.length - 1];

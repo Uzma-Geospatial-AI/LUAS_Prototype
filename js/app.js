@@ -2,7 +2,7 @@
    app.js — Phase routing and bootstrap
    ============================================================ */
 import { DATA, loadAll, readingAt, latestIdx, complianceRecord, fmtMonth,
-         setFocus } from './data.js';
+         setFocus, refreshUserStations } from './data.js';
 import { wqiClass } from './wqi.js';
 import { sourceLabel } from './firebase.js';
 import { store, registerAsJson, registerAsCsv, download } from './store.js';
@@ -12,7 +12,9 @@ import { renderSesams, resizeSesams } from './sesams.js';
 import { renderPhase1, resizePhase1 } from './phase1.js';
 import { renderPhase2, renderNational, resizePhase2 } from './phase2.js';
 import { renderPhase3, buildLicenceForm, resizePhase3, buildRegisterControls } from './phase3.js';
-import { initMap, resizeMap, refreshMap, pauseMap, flyToPoint, showWqProduct, selectWaterBody } from './mapview.js';
+import { initMap, resizeMap, refreshMap, pauseMap, flyToPoint, showWqProduct, selectWaterBody,
+         showStation, mapStationsChanged, refreshTimeline } from './mapview.js';
+import { buildLocationDialog, openLocationDialog } from './locations.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -65,30 +67,47 @@ function updatePills() {
   const s = DATA.focus;
   const target = store.conditions().targetClass;
   const r = readingAt(s, latestIdx());
-  const cls = wqiClass(r.wqi);
   const rec = complianceRecord(s, target);
 
   $('stationPick').value = s.code;
-  $('pillWqi').textContent = r.wqi.toFixed(1);
-  $('pillWqi').style.color = cls.color;
-  $('pillClass').textContent = cls.id;
-  $('pillClass').style.background = cls.color;
+  /* A location with nothing sampled yet has no index to show */
+  $('pillWqi').textContent = r ? r.wqi.toFixed(1) : '—';
+  $('pillWqi').style.color = r ? wqiClass(r.wqi).color : 'var(--muted-2)';
+  $('pillClass').textContent = r ? wqiClass(r.wqi).id : '—';
+  $('pillClass').style.background = r ? wqiClass(r.wqi).color : '#8b93a8';
   $('pillTarget').textContent = `Class ${target}`;
   $('pillCompliance').textContent = `${(rec.rate * 100).toFixed(0)}%`;
 }
 
+/* The one location picker. Its last group is not a station but a door: add
+   a location, and — when the one picked was added here — edit it. */
+let pickerHadEdit = null;
 function buildStationPicker() {
   const byRiver = {};
   for (const st of DATA.stations) (byRiver[st.river] ??= []).push(st);
+  const own = !!DATA.focus?.user;
+  pickerHadEdit = own;
 
-  $('stationPick').innerHTML = Object.entries(byRiver).map(([river, list]) => `
+  const sel = $('stationPick');
+  sel.innerHTML = Object.entries(byRiver).map(([river, list]) => `
     <optgroup label="${esc(river)}">
-      ${list.map((st) => `<option value="${st.code}">${esc(st.name)} · ${st.code}</option>`).join('')}
-    </optgroup>`).join('');
+      ${list.map((st) => `<option value="${st.code}">${esc(st.name)} · ${st.code}${st.user ? ' · added' : ''}</option>`).join('')}
+    </optgroup>`).join('')
+    + `<optgroup label="Locations">
+        <option value="__add">＋ Add a new location…</option>
+        ${own ? '<option value="__edit">✎ Edit this location…</option>' : ''}
+      </optgroup>`;
+  sel.value = DATA.focus.code;
 
-  $('stationPick').onchange = (e) => {
+  sel.onchange = (e) => {
+    const v = e.target.value;
+    if (v === '__add' || v === '__edit') {
+      sel.value = DATA.focus.code;
+      openLocationDialog(v === '__edit' ? DATA.focus : null);
+      return;
+    }
     /* setFocus fires storechange, which re-renders whatever is built */
-    if (!setFocus(e.target.value)) return;
+    setFocus(v);
   };
 }
 
@@ -114,10 +133,16 @@ function buildStationPicker() {
      built until the sources are in. Before any phase renders. */
   store.setExamples(buildExamples());
   /* And a worked TMDL for every station, from the record and the register */
-  store.setTmdlExamples(buildTmdlExamples(store.licences()));
+  store.setTmdlExamples(buildTmdlExamples());
 
   buildStationPicker();
   updatePills();
+  buildLocationDialog();
+  /* A location added, edited or removed: the picker and the map follow */
+  document.addEventListener('stationschange', () => {
+    buildStationPicker();
+    if (ready.map) mapStationsChanged();
+  });
   document.querySelectorAll('#nav button[data-view]').forEach((b) => {
     b.onclick = () => show(b.dataset.view);
   });
@@ -142,6 +167,12 @@ function buildStationPicker() {
 
   /* A change to the store — the station, a licence, a TMDL — ripples through every phase */
   document.addEventListener('storechange', () => {
+    /* Readings saved for a location added here are its record, and can
+       stretch the month range every page walks */
+    const months = DATA.months.length;
+    refreshUserStations();
+    if (DATA.months.length !== months && ready.map) refreshTimeline();
+    if (!!DATA.focus.user !== pickerHadEdit) buildStationPicker();
     updatePills();
     if (ready.map) refreshMap();
     if (ready.quality) renderPhase2();
@@ -209,7 +240,9 @@ function buildStationPicker() {
      fly. */
   document.addEventListener('showonmap', (e) => {
     show('map');
-    if (e.detail.waterId != null) {
+    if (e.detail.station) {
+      showStation(e.detail.station);
+    } else if (e.detail.waterId != null) {
       /* A water body is shown as itself: fitted, picked out and named */
       selectWaterBody(e.detail.waterId);
     } else if (typeof e.detail.lat === 'number') {

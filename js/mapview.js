@@ -129,6 +129,7 @@ export function initMap() {
   applyVisibility();
   if (pendingWq) { setWq(pendingWq); pendingWq = null; }
   if (pendingWater) { const id = pendingWater; pendingWater = null; setTimeout(() => selectWaterBody(id), 300); }
+  if (pendingStation) { const c = pendingStation; pendingStation = null; setTimeout(() => showStation(c), 300); }
   if (pendingFly) {
     const [lat, lon, z, srcId] = pendingFly;
     pendingFly = null;
@@ -799,6 +800,7 @@ export function selectWaterBody(id) {
 /* Take the map to a premises. Called after the view has switched, so the map
    exists by then; if it does not, the target is held until it does. */
 let pendingFly = null;
+let pendingStation = null;
 
 /* Going to a premises means being shown it, not being left near it: the marker
    there is opened once the map has settled. */
@@ -852,25 +854,29 @@ function paintStations() {
   const target = store.conditions().targetClass;
 
   for (const st of DATA.stations) {
+    /* A station with nothing sampled at or before this month is drawn grey,
+       and says so; the class filter has nothing to filter it on */
     const r = readingAt(st, monthIdx);
-    const cls = wqiClass(r.wqi);
-    if (!visible.has(`wqi:${cls.id}`)) continue;      /* filtered out in the legend */
-    const comp = classCompliance(r.raw, target);
+    const cls = r ? wqiClass(r.wqi) : null;
+    if (cls && !visible.has(`wqi:${cls.id}`)) continue;      /* filtered out in the legend */
+    const comp = r ? classCompliance(r.raw, target) : null;
     const focus = st.code === DATA.focus.code;
 
     const marker = L.marker([st.lat, st.lon], {
       zIndexOffset: focus ? 600 : 300,
       icon: L.divIcon({
         className: '',
-        html: `<div class="map-stn${focus ? ' focus' : ''}" style="background:${cls.color}">
-          ${Math.round(r.wqi)}</div>`,
+        html: `<div class="map-stn${focus ? ' focus' : ''}${r ? '' : ' none'}" style="background:${r ? cls.color : '#8b93a8'}">
+          ${r ? Math.round(r.wqi) : '–'}</div>`,
         iconSize: focus ? [34, 34] : [26, 26],
         iconAnchor: focus ? [17, 17] : [13, 13],
       }),
     })
-      .bindTooltip(`<b>${esc(st.code)} — ${esc(st.name)}</b><br>WQI ${r.wqi.toFixed(1)} · ${cls.status}`,
+      .bindTooltip(`<b>${esc(st.code)} — ${esc(st.name)}</b><br>${r
+        ? `WQI ${r.wqi.toFixed(1)} · ${cls.status}${r.t !== DATA.months[monthIdx] ? ` · reading of ${fmtMonth(r.t)}` : ''}`
+        : 'No readings yet'}`,
         { direction: 'top', offset: [0, -14] })
-      .bindPopup(stationPopup(st, r, cls, comp, target), POPUP)
+      .bindPopup(r ? stationPopup(st, r, cls, comp, target) : noReadingPopup(st), POPUP)
       .addTo(stationLayer);
     stationMarkers.set(st.code, marker);
   }
@@ -886,7 +892,8 @@ function paintStations() {
 function paintKpis() {
   const counts = Object.fromEntries(WQI_CLASSES.map((c) => [c.id, 0]));
   for (const st of DATA.stations) {
-    counts[wqiClass(readingAt(st, monthIdx).wqi).id]++;
+    const r = readingAt(st, monthIdx);
+    if (r) counts[wqiClass(r.wqi).id]++;
   }
   const n = DATA.stations.length;
 
@@ -915,7 +922,7 @@ function stationPopup(st, r, cls, comp, target) {
   return `
     <div class="map-pop">
       <div class="pop-head" style="background:${cls.color}">
-        <div class="pop-code">${esc(st.code)} · ${esc(st.river)} · ${fmtMonth(DATA.months[monthIdx])}</div>
+        <div class="pop-code">${esc(st.code)} · ${esc(st.river)} · ${fmtMonth(r.t)}</div>
         <div class="pop-name">${esc(st.name)}</div>
       </div>
       <div class="pop-body">
@@ -939,6 +946,27 @@ function stationPopup(st, r, cls, comp, target) {
             </tr>`;
           }).join('')}
         </table>
+        <button class="pop-btn" data-goto="${esc(st.code)}">
+          ${st.code === DATA.focus.code
+            ? 'Open the assessment →'
+            : `Assess ${esc(st.name)} instead →`}</button>
+      </div>
+    </div>`;
+}
+
+/* A location added from the app bar, before its first reading */
+function noReadingPopup(st) {
+  return `
+    <div class="map-pop">
+      <div class="pop-head" style="background:#5f6880">
+        <div class="pop-code">${esc(st.code)} · ${esc(st.river)}</div>
+        <div class="pop-name">${esc(st.name)}</div>
+      </div>
+      <div class="pop-body">
+        <div class="pop-verdict warn">No readings yet at ${fmtMonth(DATA.months[monthIdx])}</div>
+        <div class="pop-pol">Added from the app bar. Enter its six parameters in the Station
+          Assessment calculator and save them; the marker takes the colour of its class from
+          the first one.</div>
         <button class="pop-btn" data-goto="${esc(st.code)}">
           ${st.code === DATA.focus.code
             ? 'Open the assessment →'
@@ -1435,7 +1463,7 @@ function riverPopup(r) {
    One index over everything drawn, built once. Names are what people have to
    go on: a station code, a river, a factory. Anything unnamed is left out —
    an entry reading "Pond" 600 times is a worse list than a shorter one. */
-function buildSearch() {
+function indexSearch() {
   const idx = [];
 
   for (const st of DATA.stations) {
@@ -1499,7 +1527,11 @@ function buildSearch() {
     });
   }
 
-  searchIndex = idx;
+  return idx;
+}
+
+function buildSearch() {
+  searchIndex = indexSearch();
 
   const box = $('mapSearch');
   const list = $('mapSearchList');
@@ -1578,8 +1610,9 @@ function locate(h) {
 
   if (h.kind === 'station') {
     const st = DATA.stations.find((x) => x.code === h.id);
-    const cls = wqiClass(readingAt(st, monthIdx).wqi);
-    if (!visible.has(`wqi:${cls.id}`)) { visible.add(`wqi:${cls.id}`); applyVisibility(); }
+    const r = readingAt(st, monthIdx);
+    const cls = r ? wqiClass(r.wqi) : null;
+    if (cls && !visible.has(`wqi:${cls.id}`)) { visible.add(`wqi:${cls.id}`); applyVisibility(); }
     map.flyTo(h.at, Math.max(map.getZoom(), 13), { duration: 0.7 });
     map.once('moveend', () => stationMarkers.get(h.id)?.openPopup());
     return;
@@ -1652,5 +1685,37 @@ function pause() {
 
 /* ---------------- API ---------------- */
 export function resizeMap() { map?.invalidateSize(); }
+
+/* Stations were added or removed from the app bar: the search knows them,
+   and the markers are redrawn */
+export function mapStationsChanged() {
+  if (!map) return;
+  searchIndex = indexSearch();
+  repaint();
+}
+
+/* The record grew a month: the slider and its years follow */
+export function refreshTimeline() {
+  if (!map) return;
+  /* A slider that stood at the end stays at the end */
+  const atEnd = monthIdx >= Number($('timeRange').max);
+  $('timeRange').max = String(DATA.months.length - 1);
+  const years = [...new Set(DATA.months.map((m) => m.slice(0, 4)))];
+  $('timeTicks').innerHTML = years.map((y) => `<span>${y}</span>`).join('');
+  setMonth(atEnd ? DATA.months.length - 1 : Math.min(monthIdx, DATA.months.length - 1));
+}
+
+/* Take the map to a station and open it, the way a search hit does. Held
+   until the map exists if it does not yet. */
+export function showStation(code) {
+  if (!map) { pendingStation = code; return; }
+  const st = DATA.stations.find((s) => s.code === code);
+  if (!st) return;
+  map.flyTo([st.lat, st.lon], Math.max(map.getZoom(), 14), { duration: 0.8 });
+  let opened = false;
+  const open = () => { if (opened) return; opened = true; stationMarkers.get(code)?.openPopup(); };
+  map.once('moveend', open);
+  setTimeout(open, 1200);
+}
 export function refreshMap() { repaint(); }
 export function pauseMap() { pause(); }

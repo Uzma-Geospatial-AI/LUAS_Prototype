@@ -34,7 +34,7 @@
    two were generated separately the register and the form would disagree
    about the same licence, which is worse than either number being invented.
    ============================================================ */
-import { DATA, designReading, sourceSummary } from './data.js';
+import { DATA, designReading, sourceSummary, licencesAt } from './data.js';
 import { LOAD_PARAMS } from './wqi.js';
 import { DEFAULT_CONDITIONS, EFFLUENT_STANDARDS, suggestAllocation } from './loads.js';
 import { estimatedLicensed } from './licenceStatus.js';
@@ -185,7 +185,9 @@ export function buildExamples() {
 /* ============================================================
    Worked TMDLs
 
-   One per station, so picking any location loads a record. Each is written
+   One per station, so picking any location loads a record. Each counts
+   only the licences that count at that station — the nearest one to each
+   premises — so no two locations read the same. Each is written
    to the Class II loading capacity at the estimated 4.5 m³/s low flow with
    10% held back, the way Write to capacity does it: the register is
    honoured in the ΣWLA, the background takes what the station's 12-month
@@ -195,7 +197,7 @@ export function buildExamples() {
    it for a decision. It cannot be edited; New TMDL starts a copy the user
    owns.
    ============================================================ */
-export function buildTmdlExamples(licences) {
+export function buildTmdlExamples() {
   const cond = {
     targetClass: DEFAULT_CONDITIONS.targetClass,
     designFlow: DEFAULT_CONDITIONS.designFlow,
@@ -210,7 +212,7 @@ export function buildTmdlExamples(licences) {
     targetClass: cond.targetClass,
     designFlow: cond.designFlow,
     flowVerified: false,
-    alloc: suggestAllocation(designReading(st, 12), licences, cond),
+    alloc: suggestAllocation(designReading(st, 12), licencesAt(st.code), cond),
     note: `Worked example. Written to the Class ${cond.targetClass} loading capacity at the `
       + `estimated ${cond.designFlow} m³/s low flow, with ${cond.mosPercent}% held back: the licences `
       + 'in the register are honoured in the ΣWLA, the background takes what the 12-month median at '

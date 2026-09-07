@@ -5,6 +5,7 @@
      · readings  — six-parameter sampling records entered in Phase 1
      · licences  — the effluent discharge licence register used in Phase 3
      · tmdls     — the TMDLs written in Phase 3, one or more per location
+     · stations  — monitoring locations added from the app bar
      · cond      — which station every page is written for
 
    There is no backend, so everything lives in localStorage and belongs to
@@ -13,7 +14,7 @@
 import { DEFAULT_CONDITIONS } from './loads.js';
 
 const KEY = 'luas-system-v2';
-const EMPTY = { readings: [], licences: [], tmdls: [], tmdlPick: {}, cond: null, examplesCleared: false };
+const EMPTY = { readings: [], licences: [], tmdls: [], tmdlPick: {}, stations: [], cond: null, examplesCleared: false };
 
 let cache = null;
 
@@ -28,6 +29,7 @@ function read() {
   /* Older stores predate these keys */
   cache.tmdls ??= [];
   cache.tmdlPick ??= {};
+  cache.stations ??= [];
   return cache;
 }
 
@@ -130,6 +132,26 @@ export const store = {
     write();
   },
 
+  /* ---------------- Locations added from the app bar ---------------- */
+  stations: () => read().stations,
+  addStation(st) {
+    read().stations.push({ ...st, added: new Date().toISOString() });
+    write();
+  },
+  updateStation(code, patch) {
+    const d = read();
+    const i = d.stations.findIndex((s) => s.code === code);
+    if (i < 0) return false;
+    d.stations[i] = { ...d.stations[i], ...patch, code };
+    write();
+    return true;
+  },
+  removeStation(code) {
+    const d = read();
+    d.stations = d.stations.filter((s) => s.code !== code);
+    write();
+  },
+
   /* ---------------- Licence register ---------------- */
   /* The worked examples are premises taken off the map, so they arrive once
      the point sources have loaded rather than being written in here. */
@@ -209,6 +231,14 @@ export const store = {
         n++;
       }
     }
+    if (Array.isArray(payload?.stations)) {
+      for (const st of payload.stations) {
+        if (!st || typeof st.code !== 'string' || typeof st.lat !== 'number' || typeof st.lon !== 'number') continue;
+        if (d.stations.some((x) => x.code === st.code)) continue;
+        d.stations.push({ ...st });
+        n++;
+      }
+    }
     if (Array.isArray(payload?.readings)) {
       for (const r of payload.readings) {
         if (!r || typeof r.t !== 'string') continue;
@@ -232,6 +262,7 @@ export function registerAsJson() {
         + 'tmdls holds the TMDLs written in this browser; each is TMDL = ΣWLA + ΣLA + MOS in kg/day per pollutant.',
       conditions: store.conditions(),
     },
+    stations: store.stations(),
     tmdls: store.userTmdls(),
     licences: store.licences(),
     readings: store.readings(),
