@@ -141,6 +141,10 @@ function buildStationPicker() {
   updatePills();
   buildLocationDialog();
   buildReportDialog();
+  /* The picker says which location; this takes you to it */
+  $('pickShow').onclick = () => document.dispatchEvent(new CustomEvent('showonmap', {
+    detail: { station: DATA.focus.code },
+  }));
   $('sbReport').onclick = openReportDialog;
   /* A location added, edited or removed: the picker and the map follow */
   document.addEventListener('stationschange', () => {

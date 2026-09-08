@@ -1448,3 +1448,10 @@ table.register col.c-at{width:72px}
   padding:2px 10px;font:600 10.5px var(--fm);color:var(--navy);
   box-shadow:0 2px 6px rgba(0,0,0,.2);
 }
+
+/* Beside the location picker: take me there */
+.pill-go{cursor:pointer;font-family:inherit;font-weight:600;color:var(--navy);white-space:nowrap}
+.pill-go svg{width:14px;height:14px;flex:none;color:var(--navy-2)}
+.pill-go:hover{border-color:var(--cyan);background:var(--surface);color:var(--navy)}
+.pill-go:active{transform:translateY(1px)}
+@media(max-width:1100px){.pill-go span{display:none}.pill-go{padding:5px 9px}}

@@ -543,6 +543,9 @@ field sheet later — the report prints them as a Flow gauging table. A gauging 
 same date on both readings but an earlier second time is read as the next morning. Leave the
 block empty to type the flow directly.
 
+**Show on map.** Beside the location picker in the app bar is a *Show on map* button: it opens the
+map on whichever location is picked and opens its popup, from wherever you were.
+
 **What is around a station.** The station page carries a surroundings panel with a distance picker —
 500 m, 1 km, 1.5 km, 2 km, 3 km, 5 km, 10 km. Within that distance it counts the surveyed premises
 by kind and says how
