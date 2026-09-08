@@ -13,7 +13,7 @@ import { renderPhase1, resizePhase1 } from './phase1.js';
 import { renderPhase2, renderNational, resizePhase2 } from './phase2.js';
 import { renderPhase3, buildLicenceForm, resizePhase3, buildRegisterControls } from './phase3.js';
 import { initMap, resizeMap, refreshMap, pauseMap, flyToPoint, showWqProduct, selectWaterBody,
-         showStation, showReach, dropPin, mapStationsChanged, refreshTimeline } from './mapview.js';
+         showStation, showReach, showAround, mapStationsChanged, refreshTimeline } from './mapview.js';
 import { buildLocationDialog, openLocationDialog } from './locations.js';
 import { buildReportDialog, openReportDialog } from './report.js';
 
@@ -244,9 +244,9 @@ function buildStationPicker() {
      fly. */
   document.addEventListener('showonmap', (e) => {
     show('map');
-    if (e.detail.pin) {
-      /* Somewhere looked up rather than surveyed: a pin, not a record */
-      dropPin(e.detail.pin);
+    if (e.detail.around) {
+      /* One place, inside the ring it was found within */
+      showAround(e.detail.around);
     } else if (e.detail.reach) {
       /* The water a TMDL is written for: the reach itself, flashed */
       showReach(e.detail.reach);

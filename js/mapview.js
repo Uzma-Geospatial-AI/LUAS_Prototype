@@ -129,6 +129,9 @@ export function initMap() {
   /* A 1 ha pond is sub-pixel across the whole basin, so the outline has to
      carry the colour itself until the zoom makes the shape readable. */
   map.on('zoomend', () => { restyleWater(); restyleRivers(); });
+  /* A click on the map itself, not on anything drawn on it, puts away the
+     ring and pin a lookup left behind */
+  map.on('click', clearLook);
 
   applyVisibility();
   applyFlowSpeed();
@@ -137,7 +140,7 @@ export function initMap() {
   if (pendingWater) { const id = pendingWater; pendingWater = null; setTimeout(() => selectWaterBody(id), 300); }
   if (pendingStation) { const c = pendingStation; pendingStation = null; setTimeout(() => showStation(c), 300); }
   if (pendingReach) { const t = pendingReach; pendingReach = null; setTimeout(() => showReach(t), 300); }
-  if (pendingPin) { const at = pendingPin; pendingPin = null; setTimeout(() => dropPin(at), 300); }
+  if (pendingLook) { const o = pendingLook; pendingLook = null; setTimeout(() => showAround(o), 300); }
   if (pendingFly) {
     const [lat, lon, z, srcId] = pendingFly;
     pendingFly = null;
@@ -920,20 +923,78 @@ export function selectWaterBody(id) {
    OpenStreetMap, say. It gets a pin and its name for as long as it is being
    looked at, and goes when the next one is dropped or the map is left.
    Nothing is added to the register by this. */
-let pinMarker = null;
-let pendingPin = null;
-export function dropPin(at) {
-  if (!map) { pendingPin = at; return; }
-  if (pinMarker) { map.removeLayer(pinMarker); pinMarker = null; }
-  pinMarker = L.marker([at.lat, at.lon], {
-    zIndexOffset: 900,
-    icon: L.divIcon({ className: '', html: '<div class="look-pin"></div>',
-      iconSize: [22, 22], iconAnchor: [11, 22] }),
-  })
-    .bindTooltip(`<b>${esc(at.label ?? 'Looked up')}</b><br><i>from OpenStreetMap</i>`,
-      { direction: 'top', offset: [0, -20], permanent: true, className: 'look-tip' })
-    .addTo(map);
-  map.flyTo([at.lat, at.lon], Math.max(map.getZoom(), 17), { duration: 0.8 });
+let lookLayer = null;
+let pendingLook = null;
+
+export function clearLook() {
+  if (lookLayer) { map.removeLayer(lookLayer); lookLayer = null; }
+}
+
+/* One place, shown against the distance it was found within: the ring the
+   search covered drawn from the station, a dashed line out to the place,
+   and the place itself pinned. The view fits the ring rather than the pin,
+   because the question being answered is how far out this thing sits, not
+   what its roof looks like.
+
+   A place from the bundled survey has a marker of its own already, so its
+   own popup is opened instead of a second pin being dropped on top of it.
+   A click on the map clears the lot. */
+export function showAround(o) {
+  if (!map) { pendingLook = o; return; }
+  clearLook();
+  map.closePopup();      /* whatever the last lookup opened is not this one */
+  lookLayer = L.layerGroup().addTo(map);
+  const { from, radius, at, srcId } = o;
+
+  let bounds = null;
+  if (from && radius > 0) {
+    const ring = L.circle([from.lat, from.lon], {
+      radius, interactive: false, pane: 'shadowPane',
+      color: '#00b4d8', weight: 2, dashArray: '8 7', opacity: 0.9,
+      fillColor: '#00b4d8', fillOpacity: 0.07,
+    }).addTo(lookLayer);
+    bounds = ring.getBounds();
+    /* The ring says what it is, at its northern edge where nothing else sits */
+    L.marker([from.lat + radius / 111320, from.lon], {
+      interactive: false, zIndexOffset: 850,
+      icon: L.divIcon({ className: '', iconSize: [0, 0],
+        html: `<div class="ring-lab">${esc(o.radiusLabel ?? '')} from ${esc(from.label ?? 'the station')}</div>` }),
+    }).addTo(lookLayer);
+  }
+
+  if (at && from) {
+    L.polyline([[from.lat, from.lon], [at.lat, at.lon]], {
+      interactive: false, color: '#16173f', weight: 1.7, dashArray: '5 6', opacity: 0.8,
+    }).addTo(lookLayer);
+  }
+
+  if (at && srcId == null) {
+    L.marker([at.lat, at.lon], {
+      zIndexOffset: 900,
+      icon: L.divIcon({ className: '', html: '<div class="look-pin"></div>',
+        iconSize: [22, 22], iconAnchor: [11, 22] }),
+    })
+      .bindTooltip(`<b>${esc(at.label ?? 'Looked up')}</b>`
+        + (at.note ? `<br>${esc(at.note)}` : '')
+        + '<br><i>from OpenStreetMap · click the map to clear</i>',
+        { direction: 'top', offset: [0, -20], permanent: true, className: 'look-tip' })
+      .addTo(lookLayer);
+  }
+
+  /* The ring first, so the place is seen in the context it was found in */
+  if (bounds) map.fitBounds(bounds.pad(0.08), { animate: true, duration: 0.8 });
+  else if (at) map.flyTo([at.lat, at.lon], Math.max(map.getZoom(), 17), { duration: 0.8 });
+
+  if (at && srcId != null) {
+    const src = sourceSummary().features.find((f) => f.properties.id === srcId);
+    if (src && !visible.has(`src:${src.properties.cat}`)) {
+      visible.add(`src:${src.properties.cat}`);
+      applyVisibility();
+    }
+    const open = () => sourceMarkers.get(srcId)?.openPopup();
+    map.once('moveend', open);
+    setTimeout(open, 1100);
+  }
 }
 
 /* Take the map to a reach of river and make it the one thing on the screen:

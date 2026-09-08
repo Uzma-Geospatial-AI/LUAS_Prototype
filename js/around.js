@@ -30,7 +30,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
 const nf = (n, d = 0) => Number(n).toLocaleString('en-MY',
   { minimumFractionDigits: d, maximumFractionDigits: d });
 
-export const RADII = [500, 1000, 2000, 5000];
+export const RADII = [500, 1000, 1500, 2000, 3000, 5000, 10000];
 let radius = 1000;
 let showAll = false;
 
@@ -53,6 +53,18 @@ export function compass(aLat, aLon, bLat, bLon) {
 }
 const fmtDist = (m) => (m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${Math.round(m)} m`);
 const fmtRadius = (m) => (m >= 1000 ? `${m / 1000} km` : `${m} m`);
+
+/* Whatever is opened from this panel is shown inside the ring it was found
+   within, so the distance that was asked for is on the map too. */
+const showOn = (st, at, srcId = null) => document.dispatchEvent(new CustomEvent('showonmap', {
+  detail: {
+    around: {
+      from: { lat: st.lat, lon: st.lon, label: st.name },
+      radius, radiusLabel: fmtRadius(radius), srcId,
+      at: { ...at, note: `${fmtDist(at.d)} ${at.dir} of ${st.name}` },
+    },
+  },
+}));
 
 /* ============================================================
    What the bundled map already carries, within the radius
@@ -188,8 +200,6 @@ export async function lookupPlaces(st, m) {
 /* ============================================================
    The panel
    ============================================================ */
-const goTo = (detail) => document.dispatchEvent(new CustomEvent('showonmap', { detail }));
-
 export function renderAround(st) {
   const box = $('p1Around');
   if (!box || !st) return;
@@ -259,7 +269,9 @@ export function renderAround(st) {
                 ? '<span class="pill-status st-pass">Licensed</span>'
                 : '<span class="pill-status st-fail">No licence</span>'}</td>
               <td class="act"><button class="mini" data-prem="${p.id}"
-                data-lat="${p.lat}" data-lon="${p.lon}">Map</button></td>
+                data-lat="${p.lat}" data-lon="${p.lon}" data-d="${Math.round(p.d)}" data-dir="${p.dir}"
+                data-label="${p.name ? esc(p.name) : `Unnamed ${esc(p.catLabel.toLowerCase())} site`}"
+                title="Show it on the map, inside the ${fmtRadius(radius)} ring">Map</button></td>
             </tr>`).join('')}</tbody>
         </table>
       </div>
@@ -278,7 +290,8 @@ export function renderAround(st) {
     <div class="card">
       <div class="btn-row" style="margin-top:0">
         <button class="btn btn-primary" id="arLookup">Look up what is within ${within}</button>
-        <span class="hint" id="arHint">OpenStreetMap, live. Shops, workshops, food, services and community places.</span>
+        <span class="hint" id="arHint">OpenStreetMap, live. Shops, workshops, food, services and
+          community places.${radius >= 5000 ? ' A wide search takes a few seconds.' : ''}</span>
       </div>
       <div id="arPlaces"></div>
     </div>`;
@@ -289,7 +302,10 @@ export function renderAround(st) {
   const more = $('arMore');
   if (more) more.onclick = () => { showAll = !showAll; renderAround(st); };
   box.querySelectorAll('[data-prem]').forEach((b) => {
-    b.onclick = () => goTo({ lat: Number(b.dataset.lat), lon: Number(b.dataset.lon), srcId: Number(b.dataset.prem) });
+    b.onclick = () => showOn(st, {
+      lat: Number(b.dataset.lat), lon: Number(b.dataset.lon),
+      label: b.dataset.label, d: Number(b.dataset.d), dir: b.dataset.dir,
+    }, Number(b.dataset.prem));
   });
   $('arLookup').onclick = () => runLookup(st);
 
@@ -341,8 +357,8 @@ function renderPlaces(st, list) {
       <div class="ar-places">
         ${g.list.slice(0, 40).map((p) => `
           <button class="ar-place" data-lat="${p.lat}" data-lon="${p.lon}"
-            data-label="${esc(p.name || p.kind)}"
-            title="${esc(p.name || p.kind)} · ${esc(p.kind)} · ${fmtDist(p.d)} ${p.dir} of the station — show on the map">
+            data-label="${esc(p.name || p.kind)}" data-d="${Math.round(p.d)}" data-dir="${p.dir}"
+            title="${esc(p.name || p.kind)} · ${esc(p.kind)} · ${fmtDist(p.d)} ${p.dir} of the station — show it on the map, inside the ${fmtRadius(radius)} ring">
             <span class="ar-dot" style="background:${g.colour}"></span>
             <span class="ar-place-n">${p.name ? esc(p.name) : `<i>${esc(p.kind)}</i>`}</span>
             <span class="ar-place-k">${esc(p.kind)}</span>
@@ -355,6 +371,9 @@ function renderPlaces(st, list) {
       licence register.</div>`;
 
   box.querySelectorAll('.ar-place').forEach((b) => {
-    b.onclick = () => goTo({ pin: { lat: Number(b.dataset.lat), lon: Number(b.dataset.lon), label: b.dataset.label } });
+    b.onclick = () => showOn(st, {
+      lat: Number(b.dataset.lat), lon: Number(b.dataset.lon),
+      label: b.dataset.label, d: Number(b.dataset.d), dir: b.dataset.dir,
+    });
   });
 }
