@@ -544,7 +544,8 @@ same date on both readings but an earlier second time is read as the next mornin
 block empty to type the flow directly.
 
 **What is around a station.** The station page carries a surroundings panel with a distance picker —
-500 m, 1 km, 2 km, 5 km. Within that distance it counts the surveyed premises by kind and says how
+500 m, 1 km, 1.5 km, 2 km, 3 km, 5 km, 10 km. Within that distance it counts the surveyed premises
+by kind and says how
 many hold a licence, the open water they could reach, and the next station that would see a
 discharge; the nearest premises are tabled with their distance, compass direction, distance to
 water, screening risk and licence status, each with a button to the map.
@@ -556,7 +557,13 @@ water, screening risk and licence status, each with a button to the map.
 > crafts, schools and clinics. It is behind a button because it is a network call to a service this
 > site does not control, and the page has to work without it. What comes back is labelled as looked
 > up rather than surveyed, is cached per station and distance, and is **never written into the
-> register**. Around Dengkil the survey has 2 premises within 1 km; OpenStreetMap has 116.
+> register**. Around Dengkil the survey has 2 premises within 1 km; OpenStreetMap has 116, and 1,653
+> within 10 km.
+
+Opening anything from the panel — a surveyed premises or a looked-up shop — draws the **ring the
+search covered** from the station, a dashed line out to the place, and pins it. The view fits the
+ring rather than the pin, because the question is how far out the thing sits. A surveyed premises
+opens its own popup instead of taking a second pin on top of it. A click on the map clears it.
 
 **Photographs.** A sampling round, a TMDL and a licence each take **attached photographs** —
 site pictures, a field sheet, a meter reading. They are read in the browser, drawn down to 1600 px
