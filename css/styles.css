@@ -1403,3 +1403,40 @@ table.register col.c-at{width:72px}
 .flash-reach{animation:flashReach .66s ease-in-out 5}
 .tc-ref .mini{margin-left:2px;font-weight:600}
 @media(prefers-reduced-motion:reduce){.flash-reach{animation:none}}
+
+/* ---------------- What is around a station ---------------- */
+.rad-pick{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
+.ar-kpis{margin-top:4px}
+.ar-cats{display:grid;grid-template-columns:repeat(auto-fit,minmax(224px,1fr));gap:10px;margin-top:12px}
+.ar-cat{
+  display:flex;align-items:center;gap:12px;padding:10px 13px;background:var(--surface);
+  border:1px solid var(--line);border-left:4px solid var(--ac,var(--navy-2));border-radius:var(--r);
+}
+.ar-cat-n{font:750 21px var(--fm);color:var(--ac,var(--navy));line-height:1;min-width:34px}
+.ar-cat-b b{display:block;font-size:12.5px;line-height:1.3}
+.ar-cat-b span{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.ar-dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:7px;vertical-align:0}
+.ar-h{font-size:12px;margin:16px 0 7px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.ar-h span{font-family:var(--fm);color:var(--muted-2);font-weight:600}
+.ar-places{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:6px}
+.ar-place{
+  display:flex;align-items:center;gap:8px;text-align:left;width:100%;cursor:pointer;
+  padding:7px 10px;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm);
+  font:inherit;font-size:12px;color:var(--text);
+}
+.ar-place:hover{border-color:var(--cyan);background:var(--surface)}
+.ar-place-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:550}
+.ar-place-n i{color:var(--muted);font-weight:400}
+.ar-place-k{font-size:10.5px;color:var(--muted-2);white-space:nowrap}
+.ar-place-d{font-family:var(--fm);font-size:10.5px;color:var(--muted);white-space:nowrap}
+
+/* A place looked up rather than surveyed, pinned on the map */
+.look-pin{
+  width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+  background:#8d6cd8;border:2.5px solid #fff;box-shadow:0 2px 7px rgba(0,0,0,.45);
+}
+.leaflet-tooltip.look-tip{font-size:11px;border-color:#8d6cd8}
+.leaflet-tooltip.look-tip i{color:var(--muted)}
+@media(max-width:760px){
+  .rad-pick{margin-left:0;width:100%}
+}

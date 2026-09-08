@@ -137,6 +137,7 @@ export function initMap() {
   if (pendingWater) { const id = pendingWater; pendingWater = null; setTimeout(() => selectWaterBody(id), 300); }
   if (pendingStation) { const c = pendingStation; pendingStation = null; setTimeout(() => showStation(c), 300); }
   if (pendingReach) { const t = pendingReach; pendingReach = null; setTimeout(() => showReach(t), 300); }
+  if (pendingPin) { const at = pendingPin; pendingPin = null; setTimeout(() => dropPin(at), 300); }
   if (pendingFly) {
     const [lat, lon, z, srcId] = pendingFly;
     pendingFly = null;
@@ -913,6 +914,26 @@ export function selectWaterBody(id) {
   };
   map.once('moveend', mark);
   setTimeout(mark, 1000);
+}
+
+/* Somewhere the map does not itself carry: a place looked up from
+   OpenStreetMap, say. It gets a pin and its name for as long as it is being
+   looked at, and goes when the next one is dropped or the map is left.
+   Nothing is added to the register by this. */
+let pinMarker = null;
+let pendingPin = null;
+export function dropPin(at) {
+  if (!map) { pendingPin = at; return; }
+  if (pinMarker) { map.removeLayer(pinMarker); pinMarker = null; }
+  pinMarker = L.marker([at.lat, at.lon], {
+    zIndexOffset: 900,
+    icon: L.divIcon({ className: '', html: '<div class="look-pin"></div>',
+      iconSize: [22, 22], iconAnchor: [11, 22] }),
+  })
+    .bindTooltip(`<b>${esc(at.label ?? 'Looked up')}</b><br><i>from OpenStreetMap</i>`,
+      { direction: 'top', offset: [0, -20], permanent: true, className: 'look-tip' })
+    .addTo(map);
+  map.flyTo([at.lat, at.lon], Math.max(map.getZoom(), 17), { duration: 0.8 });
 }
 
 /* Take the map to a reach of river and make it the one thing on the screen:

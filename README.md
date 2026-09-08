@@ -543,6 +543,21 @@ field sheet later — the report prints them as a Flow gauging table. A gauging 
 same date on both readings but an earlier second time is read as the next morning. Leave the
 block empty to type the flow directly.
 
+**What is around a station.** The station page carries a surroundings panel with a distance picker —
+500 m, 1 km, 2 km, 5 km. Within that distance it counts the surveyed premises by kind and says how
+many hold a licence, the open water they could reach, and the next station that would see a
+discharge; the nearest premises are tabled with their distance, compass direction, distance to
+water, screening risk and licence status, each with a button to the map.
+
+> The bundled survey is industry, sewage and water treatment, landfill and quarry, construction and
+> farms. **Shops, workshops, car washes and restaurants are not in it**, and they discharge to the
+> same drains. A second, opt-in lookup asks **OpenStreetMap** for them live, grouped by what they put
+> down a drain rather than by OSM's tagging: vehicles and fuel, food and markets, shops, services and
+> crafts, schools and clinics. It is behind a button because it is a network call to a service this
+> site does not control, and the page has to work without it. What comes back is labelled as looked
+> up rather than surveyed, is cached per station and distance, and is **never written into the
+> register**. Around Dengkil the survey has 2 premises within 1 km; OpenStreetMap has 116.
+
 **Photographs.** A sampling round, a TMDL and a licence each take **attached photographs** —
 site pictures, a field sheet, a meter reading. They are read in the browser, drawn down to 1600 px
 and re-encoded as JPEG so a record costs a few hundred KB rather than several MB, captioned, and

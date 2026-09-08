@@ -15,6 +15,7 @@ import {
 import { store } from './store.js';
 import { kindLabel } from './locations.js';
 import { mountAttach, attachGallery, wireGallery, saveWarning } from './attach.js';
+import { renderAround } from './around.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -39,6 +40,7 @@ export function renderPhase1() {
   }
 
   renderHeader(s, target);
+  renderAround(s);
   renderPhotos(s);
   renderVerdict(s, target);
   renderParamTable(s, target);
