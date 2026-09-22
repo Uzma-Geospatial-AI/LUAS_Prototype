@@ -585,6 +585,26 @@ needing attention sits on the **TMDL & Licences** nav entry from any page, amber
 red once something has lapsed. The location report carries it too, in its summary and as a column.
 The window is remembered between visits.
 
+**No date on record.** An entry with no expiry date is the one the register can say nothing about:
+it cannot be counted down or warned before. So it is not left blank — it is counted on its own
+amber tile, warned about in its own notice, and listed in a *No expiry date* table with an **Add the
+date** button that opens the licence form on that entry with the expiry field focused. The register
+shows `add a date` in the Expires column, a premises popup on the map says so, the nav badge counts
+it, and the report names the entries in its licence section. It is kept apart from **expired**
+throughout, because a gap in the record is not an allegation about a business.
+
+**Renewals.** A licence is renewed, not re-issued from nothing, so *Renew* — on the register row,
+in the expiry tables, or in the renewal log — opens a dialog that keeps the term being replaced.
+It shows the premises and the term on record, offers the next term (the day after the current one,
+or today if it has already lapsed, running a year on), takes a reference and a note, and refuses a
+term that does not run past the one it replaces. On save the old term is pushed onto the entry's
+`renewals` history, the new one is written over the top, and a suspended licence comes back into
+force. The register marks a renewed entry `renewed ×N`, the dialog lists the previous terms, and a
+**Renewals recorded** section shows what has been renewed lately — licence, premises, previous term,
+what it now runs to, when it was recorded and the note. The report carries the same table.
+Renewing an **estimated** entry adopts it as your own first, since an invented row cannot carry a
+history; the estimate for that premises drops out, as it always does when a real entry exists.
+
 > ⚠️ The dates on the **estimated** entries are invented like their figures, and every one of them is
 > deliberately set in the **future**. A date approaching asserts nothing; saying a named real
 > business's licence has lapsed is saying it discharges unlawfully, and a badge on the row does not
