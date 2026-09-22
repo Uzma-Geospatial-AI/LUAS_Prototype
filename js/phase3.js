@@ -23,6 +23,7 @@ import { prefillFor, CAT_LABEL } from './examples.js';
 import { mapCentre } from './mapview.js';
 import { mountAttach, attachGallery, wireGallery, saveWarning } from './attach.js';
 import { expiryOf, expirySummary, countdown, termProblem, todayISO, WARN_WINDOWS } from './expiry.js';
+import { buildRenewDialog, openRenewDialog, renewalLog, renewalsOf } from './renew.js';
 
 /* One premises, one licence. Picking a premises that already has one must load
    it, not offer a second — two licences on the same site would count its
@@ -31,10 +32,10 @@ function licenceForSource(srcId) {
   return store.licences().find((l) => l.srcId === srcId && !l.example);
 }
 
-/* A mapped premises is a record being updated; a new location is one being
-   added. The button says which. */
+/* The action follows the record being edited, including mapped premises. */
 function setAddLabel() {
-  $('p3Add').textContent = (editing || premMode === 'pick') ? 'Update licence' : 'Add licence';
+  $('p3Add').textContent = editing ? 'Save changes' : 'Add licence';
+  if ($('licenceEditorTitle')) $('licenceEditorTitle').textContent = editing ? 'Edit licence' : 'Add licence';
 }
 
 /* What the last prefill produced, so a licence saved untouched can be told
@@ -145,7 +146,7 @@ function buildSourcePicker() {
     const f = su.features.find((x) => String(x.properties.id) === $('lSource').value);
     if (!f) {
       prefilled = null;
-      $('lSourceNote').textContent = 'Choose one of the point sources already mapped.';
+      $('lSourceNote').textContent = 'Select a mapped premises.';
       $('lPrefill').hidden = true;
       $('lShowPick').disabled = true;
       previewLicence();
@@ -277,8 +278,7 @@ export function renderPhase3() {
     $('p3Tmdl').innerHTML = `
       <div class="notice info">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-        <div style="flex:1">No TMDL is written for <b>${esc(st.name)}</b> yet. Write one: it starts
-          written to the loading capacity, and every term can be changed.</div>
+        <div style="flex:1">No TMDL for <b>${esc(st.name)}</b>. Create one to assess available capacity.</div>
         <button class="btn btn-primary" id="p3NewTmdl2">+ New TMDL</button>
       </div>`;
     $('p3NewTmdl2').onclick = () => openForm(null);
@@ -301,15 +301,14 @@ export function renderPhase3() {
    ============================================================ */
 function renderBar(st, tmdl) {
   $('p3LocName').textContent = `${st.name} · ${st.code}`;
-  $('p3LocNote').textContent = `${st.river} · ${st.district} · in-river concentration is the `
-    + '12-month median measured at this station';
+  $('p3LocNote').textContent = `${st.river} · ${st.district}`;
 
   const list = store.tmdlsFor(st.code);
   const sel = $('p3Rec');
   sel.innerHTML = list.length
     ? list.map((t) => `<option value="${t.id}">${esc(t.ref)} · ${fmtDate(t.date)}`
       + `${t.example ? ' · worked example' : ''}</option>`).join('')
-    : '<option value="">No TMDL written for this location</option>';
+    : '<option value="">No TMDL yet</option>';
   sel.value = tmdl?.id ?? '';
   sel.disabled = !list.length;
   $('p3EditTmdl').disabled = !tmdl || !!tmdl.example;
@@ -317,11 +316,10 @@ function renderBar(st, tmdl) {
 
   const mine = list.filter((t) => !t.example).length;
   $('p3RecNote').textContent = !tmdl
-    ? 'Write one with New TMDL. It starts written to the loading capacity.'
+    ? 'Select New TMDL to start.'
     : tmdl.example
-      ? 'A worked example, written to capacity from the monitoring record and the register. '
-        + 'It cannot be edited; New TMDL starts a copy you own.'
-      : `Yours · ${mine} on record for this location · last saved ${fmtDate(tmdl.updated)}`;
+      ? 'Worked example · Select New TMDL to create an editable copy.'
+      : `${mine} saved record${mine === 1 ? '' : 's'} · Updated ${fmtDate(tmdl.updated)}`;
 }
 
 function buildTmdlControls() {
@@ -381,7 +379,7 @@ function buildTmdlControls() {
   $('tfFill').onclick = fillToCapacity;
   tfAtt = mountAttach('tfAttach', {
     label: 'Photographs',
-    hint: 'The reach, the gauge, the field sheet the flow was read off. Attached to this TMDL and carried into its report.',
+    hint: 'Optional: site, gauge or field-sheet photos. Included in the report.',
   });
   $('tfSave').onclick = saveForm;
   $('tfCancel').onclick = closeForm;
@@ -407,13 +405,13 @@ function readGauge(apply = false) {
   const out = $('tfGauge');
   const say = (msg, cls = '') => { out.textContent = msg; out.className = `hint${cls}`; };
 
-  if (!some) { say('Leave this empty to enter the design flow directly above.'); return null; }
+  if (!some) { say('Optional if you enter design flow directly.'); return null; }
   if (Number.isNaN(q0) || Number.isNaN(q1) || !t0 || !t1) {
-    say('Give both readings and both times, and the flow is worked out from them.');
+    say('Enter both readings and times to calculate flow.');
     return null;
   }
   const vol = q1 - q0;
-  if (vol < 0) { say('The final reading is below the initial one. A totaliser only counts up.', ' err'); return null; }
+  if (vol < 0) { say('Final reading must be higher than the initial reading.', ' err'); return null; }
   let hours = (new Date(t1) - new Date(t0)) / 3600000;
   let overnight = false;
   if (hours < 0 && hours > -24) { hours += 24; overnight = true; }
@@ -425,7 +423,7 @@ function readGauge(apply = false) {
     volume: Math.round(vol * 1000) / 1000, flow: Math.round(flow) };
   if (apply) $('tfFlow').value = g.flow;
   say(`${nf(vol, vol < 100 ? 2 : 0)} m³ over ${fmtPeriod(hours)}${overnight ? ' (read the next morning)' : ''}`
-    + ` = ${nf(g.flow)} m³/h${apply ? ' — written into the design flow above' : ''}`, ' ok');
+    + ` = ${nf(g.flow)} m³/h${apply ? ' · Design flow updated' : ''}`, ' ok');
   return g;
 }
 
@@ -548,14 +546,13 @@ function refreshFormCalc() {
   $('tfSave').disabled = !rec;
   const hint = $('tfHint');
   if (!rec) {
-    hint.textContent = 'A reference and a design flow above zero are needed; an allocation cannot be negative.';
+    hint.textContent = 'Enter a reference and flow above zero. Allocations must be zero or more.';
     hint.className = 'hint';
   } else if (overs.length) {
-    hint.textContent = `ΣWLA + ΣLA + MOS is more than the loading capacity on ${overs.join(', ')}. `
-      + 'It can be saved, and the page will say so.';
+    hint.textContent = `${overs.join(', ')} exceed loading capacity. You can save with this warning.`;
     hint.className = 'hint err';
   } else {
-    hint.textContent = 'Every pollutant fits within the loading capacity.';
+    hint.textContent = 'All pollutants are within loading capacity.';
     hint.className = 'hint ok';
   }
 }
@@ -665,15 +662,15 @@ function gaugeStrip(t) {
   const cell = (lab, sub, val, note) => `
     <div><span class="g-k">${lab}${sub ? ` <i>${sub}</i>` : ''}</span>
       <b>${val}</b>${note ? `<span class="g-n">${note}</span>` : ''}</div>`;
-  return `<div class="tc-gauge">
-    <div class="tc-att-h">Flow gauging · the design flow is worked out from these readings</div>
+  return `<details class="tc-gauge help-details">
+    <summary>Flow measurements</summary>
     <div class="g-row">
       ${cell('Initial reading', 'bacaan awal', `${nf(g.initial, 3)} m³`, fmtWhen(g.from))}
       ${cell('Final reading', 'bacaan akhir', `${nf(g.final, 3)} m³`, fmtWhen(g.to))}
       ${cell('Volume past the meter', '', `${nf(g.volume, g.volume < 100 ? 2 : 0)} m³`, `over ${fmtPeriod(g.hours)}`)}
       ${cell('Design flow', '', `${nf(g.flow)} m³/h`, `${nf(g.volume, 0)} ÷ ${nf(g.hours, 2)}`)}
     </div>
-  </div>`;
+  </details>`;
 }
 
 /* ============================================================
@@ -691,25 +688,21 @@ function renderHeadline(budgets, head, t) {
 
   let headline, sub;
   if (notFit.length) {
-    headline = `The TMDL does not fit the loading capacity on ${names(notFit)}`;
-    sub = `ΣWLA + ΣLA + MOS comes to more than Class ${esc(t.targetClass)} at ${nf(t.designFlow)} m³/h `
-      + `can carry, by <b>${fmtLoad(notFit.reduce((s, b) => s + b.excess, 0))}</b>. `
-      + 'Edit the record until every pollutant fits.';
+    headline = `Capacity exceeded: ${names(notFit)}`;
+    sub = `Reduce the allocation by <b>${fmtLoad(notFit.reduce((s, b) => s + b.excess, 0))}</b> `
+      + 'in total. Review the affected pollutants below.';
   } else if (over.length) {
-    headline = `Over-committed on ${names(over)}`;
-    sub = 'The licences in the register already permit more than the wasteload allocation. '
-      + `Nothing further can be licensed for ${over.length === 1 ? 'this pollutant' : 'these pollutants'} `
-      + `until <b>${fmtLoad(over.reduce((s, b) => s + b.reductionNeeded, 0))}</b> is taken back.`;
+    headline = `Licensed load exceeds allocation: ${names(over)}`;
+    sub = `Reduce licensed load by <b>${fmtLoad(over.reduce((s, b) => s + b.reductionNeeded, 0))}</b> `
+      + 'in total before adding licences for these pollutants.';
   } else if (laOver.length) {
-    headline = `Diffuse load beyond the ΣLA on ${names(laOver)}`;
-    sub = `The river carries <b>${fmtLoad(laOver.reduce((s, b) => s - b.laRemaining, 0))}</b> more `
-      + `background and diffuse load than the load allocation allows for, so the reach holds `
-      + `Class ${esc(t.targetClass)} only once that comes down. The licences sit inside the ΣWLA, `
-      + `with <b>${fmtVol(Math.max(0, head.volume))}</b> left to licence at ${esc(head.standard.label)}.`;
+    headline = `Background load exceeds allocation: ${names(laOver)}`;
+    sub = `Reduce background and diffuse load by <b>${fmtLoad(laOver.reduce((s, b) => s - b.laRemaining, 0))}</b> `
+      + `in total to meet Class ${esc(t.targetClass)}. Licensed load remains within its allocation.`;
   } else {
-    headline = `Within allocation — ${binding} is binding`;
-    sub = `<b>${fmtVol(head.volume)}</b> of new effluent could still be licensed at `
-      + `${esc(head.standard.label)} before the ΣWLA for ${binding} is used up.`;
+    headline = 'Within allocation';
+    sub = `<b>${fmtVol(head.volume)}</b> available at ${esc(head.standard.label)}. `
+      + `${binding} limits the remaining capacity.`;
   }
 
   const bb = head.binding ? budgets[head.binding.param] : null;
@@ -737,27 +730,21 @@ function renderHeadline(budgets, head, t) {
           `<option value="${k}"${k === stdKey ? ' selected' : ''}>${esc(v.label)}</option>`).join('')}
       </select></div>
       <div class="k-note">${bad
-        ? 'Nothing more until the record fits and the licences sit inside the ΣWLA.'
+        ? 'Resolve the capacity warning before adding licences.'
         : `≈ ${nf(headroomInPE(head.volume))} population equivalent`}</div>
     </div>
 
     <div class="card kpi">
-      <div class="k-lab">ΣWLA used</div>
+      <div class="k-lab">Licence allocation used ${tipmark('Share of the wasteload allocation (ΣWLA) used by the limiting pollutant. Above 100% exceeds its allocation.')}</div>
       <div class="k-val" style="font-size:25px">${used == null ? '—'
         : `${nf(Math.min(999, used))}<span class="k-unit">%</span>`}</div>
       <div class="k-sub">${bb ? `${binding}: ${nf(bb.licensed)} of ${nf(bb.wla)} kg/day` : '—'}</div>
-      <div class="k-note">The pollutant whose allocation runs out first ${tipmark('The licences '
-        + 'in the register, summed, as a share of the wasteload allocation written for this '
-        + 'pollutant. Over 100% means the licences already exceed it.')}</div>
     </div>
 
     <div class="card kpi">
-      <div class="k-lab">Licensed load committed</div>
+      <div class="k-lab">Total licensed load ${tipmark('BOD, COD, SS and NH₃-N from active licences assigned to this station.')}</div>
       <div class="k-val" style="font-size:25px">${nf(totalLicensed, 0)}<span class="k-unit">kg/day</span></div>
-      <div class="k-sub">${licencesAt(DATA.focus.code).filter((l) => l.active !== false).length} active licences count here</div>
-      <div class="k-note">Four pollutants ${tipmark('The wasteload permitted by every active '
-        + 'licence that counts at this station — the nearest station to each premises, unless '
-        + 'the register says another — summed across BOD, COD, SS and NH₃-N.')}</div>
+      <div class="k-sub">${licencesAt(DATA.focus.code).filter((l) => l.active !== false).length} active licences · 4 pollutants</div>
     </div>`;
 
   $('p3Std').onchange = () => { stdKey = $('p3Std').value; renderPhase3(); };
@@ -798,9 +785,8 @@ function renderBudgetTable(budgets, t, st) {
   }).join('');
 
   $('p3BudgetNote').innerHTML =
-    `Allocation from ${esc(t.ref)} · loading capacity = Class ${esc(t.targetClass)} standard × `
-    + `${nf(t.designFlow)} m³/h × ${RIVER_FACTOR} · in-river concentration is the 12-month median at ${esc(st.name)}`
-    + ` · ${licencesAt(st.code).length} licences count at this station`;
+    `12-month median · ${licencesAt(st.code).length} licences at this station `
+    + tipmark(`Allocation: ${t.ref}. Loading capacity = Class ${t.targetClass} standard × ${nf(t.designFlow)} m³/h × ${RIVER_FACTOR}. River readings: ${st.name}.`);
 }
 
 /* ============================================================
@@ -856,6 +842,15 @@ function renderChart(budgets) {
   });
 }
 
+/* An estimated or worked-example entry, taken over as the user's own so it
+   can be edited. The register drops the estimate for that premises the
+   moment a real entry exists against it, so nothing is counted twice. */
+function adopt(l) {
+  const { id, example, bulk, estimated, ...rest } = l;
+  store.addLicence({ ...rest, example: false, active: l.active !== false });
+  return store.userLicences().at(-1);
+}
+
 /* ============================================================
    When the licences run out
    ============================================================ */
@@ -865,6 +860,7 @@ function renderExpiry(all) {
   const within = store.conditions().warnDays ?? 30;
   const sum = expirySummary(all, within);
   const rows = sum.attention.slice(0, 20);
+  const blank = sum.none.slice(0, 20);
 
   const tile = (lab, n, colour, sub) => `
     <div class="card kpi">
@@ -877,7 +873,7 @@ function renderExpiry(all) {
     <div class="section-title">
       <h2>Licence expiry</h2>
       <span class="st-sub">Warn me
-        <button type="button" class="tipmark" tabindex="0" data-tip="How much notice the register gives before a licence runs out. A month is enough to start a renewal; three months is enough to plan an inspection round. The choice is kept with the other design conditions." aria-label="How much notice the register gives before a licence runs out.">i</button></span>
+        <button type="button" class="tipmark" tabindex="0" data-tip="Choose how many days before expiry to flag a licence." aria-label="Choose the expiry warning period">i</button></span>
       <div class="rad-pick" role="group" aria-label="How much notice to give">
         ${WARN_WINDOWS.map((d) => `<button class="mc-btn sm${d === within ? ' active' : ''}" data-warn="${d}">${d} days</button>`).join('')}
       </div>
@@ -887,17 +883,24 @@ function renderExpiry(all) {
       <div class="notice ${sum.expired.length ? 'bad' : 'warn'}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
         <div style="flex:1">${sum.expired.length
-          ? `<b>${nf(sum.expired.length)} licence${sum.expired.length === 1 ? ' has' : 's have'} already expired</b>
-             — a premises discharging on a lapsed licence is discharging without one.
-             ${sum.soon.length ? `Another ${nf(sum.soon.length)} run out within ${within} days.` : ''}`
+          ? `<b>${nf(sum.expired.length)} expired licence${sum.expired.length === 1 ? '' : 's'}.</b> Review for renewal.
+             ${sum.soon.length ? `${nf(sum.soon.length)} more expire within ${within} days.` : ''}`
           : `<b>${nf(sum.soon.length)} licence${sum.soon.length === 1 ? '' : 's'} run${sum.soon.length === 1 ? 's' : ''} out within ${within} days.</b>
-             The soonest is ${esc(sum.soon[0].premises)}, ${esc(countdown(sum.soon[0].expiry.days))}.`}</div>
+             Next: ${esc(sum.soon[0].premises)} · ${esc(countdown(sum.soon[0].expiry.days))}.`}</div>
       </div>` : `
       <div class="notice info">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg>
-        <div style="flex:1">Nothing runs out within ${within} days.
-          ${sum.none.length ? `${nf(sum.none.length)} entr${sum.none.length === 1 ? 'y has' : 'ies have'} no date on record.` : ''}</div>
+        <div style="flex:1">Nothing with a date on it runs out within ${within} days.</div>
       </div>`}
+
+    ${sum.none.length ? `
+      <div class="notice warn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v5M12 16h.01"/><circle cx="12" cy="12" r="9"/></svg>
+        <div style="flex:1"><b>${nf(sum.none.length)} active licence${sum.none.length === 1 ? ' has' : 's have'} no expiry date.</b>
+          They cannot be counted down or warned about until a term is entered. Listed below —
+          add the dates from the permit.</div>
+      </div>` : ''}
+
 
     <div class="grid ex-kpis">
       ${tile('Expired', sum.expired.length, sum.expired.length ? '#d92d20' : '#8b93a8',
@@ -906,8 +909,8 @@ function renderExpiry(all) {
     sum.soon.length ? 'Renewal to be started' : 'Nothing due')}
       ${tile('Valid beyond that', sum.valid.length, '#17a04a',
     sum.valid.length ? `Next after the window: ${esc(countdown(sum.valid[0]?.expiry.days))}` : '—')}
-      ${tile('No date on record', sum.none.length, '#8b93a8',
-    sum.none.length ? 'Not the same as expired' : 'Every active entry has a term')}
+      ${tile('No date on record', sum.none.length, sum.none.length ? '#ef7d1a' : '#8b93a8',
+    sum.none.length ? 'To be filled in — not the same as expired' : 'Every active entry has a term')}
     </div>
 
     ${rows.length ? `
@@ -928,7 +931,7 @@ function renderExpiry(all) {
               <td class="num" style="color:${l.expiry.colour};font-weight:700">${esc(countdown(l.expiry.days))}</td>
               <td><span class="pill-status ${l.expiry.pill}">${l.expiry.state === 'expired' ? 'Expired' : 'Expiring'}</span></td>
               <td class="act">
-                ${l.example ? '' : `<button class="mini" data-exedit="${l.id}">Renew</button>`}
+                <button class="mini" data-exrenew="${l.id}">Renew</button>
                 ${typeof l.lat === 'number' ? `<button class="mini" data-exmap="${l.id}"
                   data-lat="${l.lat}" data-lon="${l.lon}"${l.srcId != null ? ` data-src="${l.srcId}"` : ''}>Map</button>` : ''}
               </td>
@@ -937,13 +940,85 @@ function renderExpiry(all) {
       </div>
       ${sum.attention.length > 20 ? `<div class="hint" style="margin-top:8px">and
         ${nf(sum.attention.length - 20)} more — the register below can be sorted by Expires.</div>` : ''}
-    ` : ''}`;
+    ` : ''}
+
+    ${blank.length ? `
+      <h4 class="ar-h" style="margin-top:20px">No expiry date <span>${nf(sum.none.length)}</span></h4>
+      <div class="card pad0 tbl-scroll">
+        <table class="data">
+          <thead><tr>
+            <th>Licence</th><th>Premises</th><th>Counts at</th><th class="num">Flow m³/day</th>
+            <th>Issued</th><th>Expires</th><th></th>
+          </tr></thead>
+          <tbody>${blank.map((l) => `
+            <tr>
+              <td><b>${esc(l.ref)}</b><span class="sub">${esc(l.category ?? '—')}${l.bulk ? ' · estimated'
+                : l.example ? ' · worked example' : ''}</span></td>
+              <td>${esc(l.premises)}</td>
+              <td class="mono">${esc(stationForLicence(l) ?? '—')}</td>
+              <td class="num">${nf(l.flow)}</td>
+              <td>${l.issued ? esc(l.issued) : '<span class="exp-ask">not recorded</span>'}</td>
+              <td><span class="exp-ask">to be filled in</span></td>
+              <td class="act">
+                <button class="mini warn" data-exfill="${l.id}">Add the date</button>
+                ${typeof l.lat === 'number' ? `<button class="mini" data-exmap="${l.id}"
+                  data-lat="${l.lat}" data-lon="${l.lon}"${l.srcId != null ? ` data-src="${l.srcId}"` : ''}>Map</button>` : ''}
+              </td>
+            </tr>`).join('')}</tbody>
+        </table>
+      </div>
+      ${sum.none.length > 20 ? `<div class="hint" style="margin-top:8px">and
+        ${nf(sum.none.length - 20)} more — the register below sorts them last under Expires.</div>` : ''}
+    ` : ''}
+
+    ${(() => {
+      const log = renewalLog(all);
+      if (!log.length) {
+        return `<h4 class="ar-h" style="margin-top:20px">Renewals recorded</h4>
+          <div class="card"><div class="empty-row">No renewal has been recorded yet. Renew any
+            licence above or in the register, and the term it replaces is kept here.</div></div>`;
+      }
+      return `<h4 class="ar-h" style="margin-top:20px">Renewals recorded <span>${nf(log.length)}</span></h4>
+        <div class="card pad0 tbl-scroll">
+          <table class="data">
+            <thead><tr>
+              <th>Licence</th><th>Premises</th><th>Previous term</th><th>Now runs to</th>
+              <th>Recorded</th><th>Note</th><th></th>
+            </tr></thead>
+            <tbody>${log.slice(0, 15).map((r) => `
+              <tr>
+                <td><b>${esc(r.licence.ref)}</b>${r.ref && r.ref !== r.licence.ref
+                  ? `<span class="sub">was ${esc(r.ref)}</span>` : ''}</td>
+                <td>${esc(r.licence.premises)}</td>
+                <td class="mono">${esc(r.from ?? '—')} → ${esc(r.to ?? '—')}</td>
+                <td class="mono"><b>${esc(r.licence.expires ?? '—')}</b></td>
+                <td class="mono">${esc(r.on ?? '—')}</td>
+                <td>${r.note ? esc(r.note) : '<span class="mut">—</span>'}</td>
+                <td class="act"><button class="mini" data-exrenew="${r.licence.id}">Renew again</button></td>
+              </tr>`).join('')}</tbody>
+          </table>
+        </div>
+        ${log.length > 15 ? `<div class="hint" style="margin-top:8px">and ${nf(log.length - 15)} earlier.</div>` : ''}`;
+    })()}`;
 
   box.querySelectorAll('[data-warn]').forEach((b) => {
     b.onclick = () => { store.setConditions({ warnDays: Number(b.dataset.warn) }); };
   });
   box.querySelectorAll('[data-exedit]').forEach((b) => {
     b.onclick = () => loadIntoForm(all.find((l) => l.id === b.dataset.exedit));
+  });
+  box.querySelectorAll('[data-exrenew]').forEach((b) => {
+    b.onclick = () => openRenewDialog(all.find((l) => l.id === b.dataset.exrenew));
+  });
+  box.querySelectorAll('[data-exfill]').forEach((b) => {
+    b.onclick = () => {
+      const l = all.find((x) => x.id === b.dataset.exfill);
+      /* An estimated entry is not the user's to edit, so filling in its term
+         adopts it first: the copy supersedes the estimate, as a real licence
+         entered against the same premises always does. */
+      loadIntoForm(l?.example ? adopt(l) : l);
+      $('lExpires').focus();
+    };
   });
   box.querySelectorAll('[data-exmap]').forEach((b) => {
     b.onclick = () => document.dispatchEvent(new CustomEvent('showonmap', {
@@ -1040,7 +1115,7 @@ function renderRegister(all, stdKey, budgets) {
       <td>
         <b>${esc(l.ref)}</b>
         <span class="sub">${esc(l.category ?? '—')}${l.bulk ? ' · estimated'
-          : l.example ? ' · worked example' : l.estimated ? ' · prefilled' : ''}</span>
+          : l.example ? ' · worked example' : l.estimated ? ' · estimated' : ''}</span>
       </td>
       <td>${esc(l.premises)}${typeof l.lat === 'number'
         ? '<span class="loc-pin" title="Located — drawn on the map">◉</span>'
@@ -1053,14 +1128,17 @@ function renderRegister(all, stdKey, budgets) {
       ${LOAD_PARAMS.map((p) => `<td class="num strong">${nf(loads[p], 1)}</td>`).join('')}
       <td>${(() => { const e = expiryOf(l);
         return e.has
-          ? `<span class="exp-d">${esc(e.iso)}</span><span class="exp-c" style="color:${e.colour}">${esc(countdown(e.days))}</span>`
-          : '<span class="mut">—</span>'; })()}</td>
+          ? `<span class="exp-d">${esc(e.iso)}</span><span class="exp-c" style="color:${e.colour}">${esc(countdown(e.days))}</span>${
+            renewalsOf(l).length ? `<span class="exp-r" title="Renewed ${renewalsOf(l).length} time(s); the previous terms are kept on the record">renewed ×${renewalsOf(l).length}</span>` : ''}`
+          : `<span class="exp-ask" title="No expiry date on record. Nothing can be counted down until one is entered.">${
+            inactive ? 'no date' : 'add a date'}</span>`; })()}</td>
       <td>${inactive
         ? '<span class="pill-status st-off">Inactive</span>'
         : comp.pass
           ? '<span class="pill-status st-pass">Within Std ' + stdKey + '</span>'
           : `<span class="pill-status st-fail">Exceeds Std ${stdKey}</span>`}</td>
       <td class="act">
+        <button class="mini" data-renew="${l.id}">Renew</button>
         <button class="mini" data-toggle="${l.id}">${inactive ? 'Activate' : 'Suspend'}</button>
         ${l.example ? '' : `<button class="mini" data-edit="${l.id}">Edit</button>
         <button class="mini danger" data-del="${l.id}">Delete</button>`}
@@ -1112,6 +1190,9 @@ function renderRegister(all, stdKey, budgets) {
       }
       renderPhase3();
     };
+  });
+  $('p3Register').querySelectorAll('[data-renew]').forEach((b) => {
+    b.onclick = () => openRenewDialog(licences.find((l) => l.id === b.dataset.renew));
   });
   $('p3Register').querySelectorAll('[data-del]').forEach((b) => {
     b.onclick = () => { store.removeLicence(b.dataset.del); renderPhase3(); };
@@ -1202,7 +1283,7 @@ export function buildLicenceForm() {
 
   lAtt = mountAttach('lAttach', {
     label: 'Photographs',
-    hint: 'The outfall, the premises, the permit. Attached to this licence and carried into the report for the station it counts at.',
+    hint: 'Optional: outfall, premises or permit photos. Included in the report.',
   });
   ['lRef', 'lPremises', 'lFlow', 'lIssued', 'lExpires', ...LOAD_PARAMS.map((p) => `l_${p}`)]
     .forEach((id) => $(id).addEventListener('input', previewLicence));
@@ -1223,9 +1304,22 @@ export function buildLicenceForm() {
     const w = saveWarning();
     if (w) alert(`Saved${w}`);
     clearForm();
+    if ($('licenceEditor')) {
+      $('licenceEditor').open = false;
+      $('licenceEditorTitle')?.focus();
+    }
+    $('p3SaveStatus').textContent = 'Licence saved.';
     renderPhase3();
   };
-  $('p3Cancel').onclick = () => { editing = null; clearForm(); renderPhase3(); };
+  $('p3Cancel').onclick = () => {
+    editing = null;
+    clearForm();
+    $('licenceEditor').open = false;
+    $('licenceEditorTitle').focus();
+    renderPhase3();
+  };
+
+  buildRenewDialog({ adopt });
 
   $('p3ClearExamples').onclick = () => {
     if (confirm('Remove the worked example licences from the register?')) {
@@ -1319,6 +1413,8 @@ function clearForm() {
 
 function loadIntoForm(l) {
   if (!l) return;
+  $('p3SaveStatus').textContent = '';
+  if ($('licenceEditor')) $('licenceEditor').open = true;
   editing = l.id;
   $('lRef').value = l.ref ?? '';
   /* A licence taken from the map reopens on the map; one entered by hand
@@ -1357,7 +1453,7 @@ function previewLicence() {
   if (th) {
     const bad = termProblem($('lIssued').value, $('lExpires').value);
     const e = expiryOf({ expires: $('lExpires').value || null });
-    th.textContent = bad || (e.has ? e.label : 'Leave empty if the term is not to hand.');
+    th.textContent = bad || (e.has ? e.label : 'Dates are optional.');
     th.className = `hint${bad || e.state === 'expired' ? ' err' : e.state === 'soon' ? ' warn' : e.has ? ' ok' : ''}`;
   }
 
@@ -1375,8 +1471,7 @@ function previewLicence() {
   if (!l) {
     $('p3Preview').innerHTML = `<div class="pv-empty">
       <b>Load contribution</b>
-      Enter a licence reference, the premises and a permitted discharge flow.
-      The load each pollutant adds to the reach is computed here.</div>`;
+      Add a reference, premises and flow to preview the load.</div>`;
     return;
   }
 
@@ -1407,13 +1502,10 @@ function previewLicence() {
       }).join('')}
     </div>
     <div class="pv-foot">${at && at !== DATA.focus.code
-      ? `This licence counts at <b>${esc(at)}</b>, the nearest station to the premises, not at
-         ${esc(DATA.focus.code)}; pick that station to see it against its TMDL. `
-      : !at ? 'Without a position this licence counts at no station. ' : ''}${tmdl
-      ? `Bars show how much of what is <b>left to licence</b> under ${esc(tmdl.ref)} this licence
-         would take. Red means it would not fit within the ΣWLA.`
-      : `No TMDL is written for ${esc(DATA.focus.name)}, so there is nothing to judge the fit
-         against. Write one on the TMDL tab.`}</div>`;
+      ? `Assigned to <b>${esc(at)}</b>. Select that station to check its capacity. `
+      : !at ? 'Add coordinates or assign a station to check capacity. ' : ''}${tmdl
+      ? `Share of available allocation under ${esc(tmdl.ref)}. Red means capacity exceeded.`
+      : `Create a TMDL for ${esc(DATA.focus.name)} to check capacity.`}</div>`;
 }
 
 export function resizePhase3() { chart?.resize(); }

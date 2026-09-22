@@ -59,15 +59,15 @@ function renderExceedance(s, target, rec) {
   }).sort((a, b) => b.rate - a.rate);
 
   $('p2Cards').innerHTML = rows.map(({ p, m, fails, rate, cur, chk }) => {
-    const col = rate >= 0.5 ? '#d92d20' : rate > 0.1 ? '#ef7d1a' : rate > 0 ? '#f2c40c' : '#17a04a';
+    const col = !rec.total ? '#8b93a8' : rate >= 0.5 ? '#d92d20' : rate > 0.1 ? '#ef7d1a' : rate > 0 ? '#f2c40c' : '#17a04a';
     return `<div class="card exc-card" style="--ec:${col}">
-      <div class="exc-h">${m.short}<span>${m.unit || ''}</span></div>
-      <div class="exc-v" style="color:${col}">${(rate * 100).toFixed(0)}<span>%</span></div>
-      <div class="exc-s">of months exceed Class ${target}</div>
+      <div class="exc-h" title="${esc(m.name)}">${m.short}<span>${m.unit || ''}</span></div>
+      <div class="exc-v" style="color:${col}">${rec.total ? `${(rate * 100).toFixed(0)}<span>%</span>` : '—'}</div>
+      <div class="exc-s">${rec.total ? `${fails} of ${rec.total} months outside Class ${target}` : 'No readings yet'}</div>
       <div class="exc-bar"><i style="width:${rate * 100}%;background:${col}"></i></div>
       <div class="exc-f">
         <span>Latest ${cur == null ? '—' : p === 'an' ? cur.toFixed(3) : cur.toFixed(2)}</span>
-        <b style="color:${chk?.pass === false ? '#d92d20' : '#17a04a'}">${chk ? chk.limitText : 'no reading yet'}</b>
+        <b style="color:${!chk ? '#8b93a8' : chk.pass === false ? '#d92d20' : '#17a04a'}">${chk ? `Limit ${chk.limitText}` : '—'}</b>
       </div>
     </div>`;
   }).join('');
@@ -91,8 +91,7 @@ function renderWaterBodies() {
   }).join('');
 
   $('p2WaterNote').textContent =
-    `${w.count.toLocaleString('en')} water bodies in the ${Math.round(w.basinKm2).toLocaleString('en')} km² catchment \u00b7 `
-    + `${km2(w.total)} km\u00b2 total open water surface`;
+    `${w.count.toLocaleString('en')} water bodies · ${km2(w.total)} km² of open water`;
 
 }
 
@@ -200,8 +199,8 @@ export function renderNational(measure = 'bod5') {
   });
   const last = years[years.length - 1];
   $('p2NatNote').innerHTML =
-    `Source: <b>data.gov.my</b> · <code>water_pollution_basin</code> · ${years[0]}–${last} · `
-    + `${byYear[last].monitored} basins monitored in ${last}.`;
+    `Source: <b>data.gov.my</b> · ${years[0]}–${last} · `
+    + `${byYear[last].monitored} basins in ${last}`;
 }
 
 export function resizePhase2() { Object.values(charts).forEach((c) => c.resize()); }

@@ -12,6 +12,13 @@
      expired   the date has passed
      soon      within the warning window — a month, unless changed
      valid     beyond it
+     none      no date on record
+
+   The last is not a clean bill of health. An entry with no expiry date
+   cannot be warned about, so it is the one state the register can do
+   nothing with, and it is the one most worth asking someone to fix. It is
+   counted as work outstanding — shown, listed and offered a form — while
+   being kept apart from `expired`, which is an allegation, not a gap.
 
    The window is the operator's choice, not a constant: a month is enough
    notice to start a renewal, three months is enough to plan an inspection
@@ -71,8 +78,9 @@ export function expiryOf(l, within = warnDays()) {
   const iso = l?.expires ?? null;
   const days = daysUntil(iso);
   if (days == null) {
-    return { has: false, iso: null, days: null, state: 'none', label: 'No date on record',
-      colour: '#8b93a8', pill: 'st-off' };
+    return { has: false, iso: null, days: null, state: 'none',
+      label: 'No expiry date on record — add one so it can be warned about',
+      colour: '#9a4b00', pill: 'st-warn' };
   }
   if (days < 0) {
     return { has: true, iso, days, state: 'expired', label: `Expired ${countdown(days)}`,
@@ -102,6 +110,8 @@ export function expirySummary(licences, within = warnDays()) {
   out.valid.sort(bySoonest);
   /* What wants attention: gone already, then going next */
   out.attention = [...out.expired, ...out.soon];
+  /* What wants doing, which includes the entries nothing can be said about */
+  out.outstanding = [...out.attention, ...out.none];
   return out;
 }
 

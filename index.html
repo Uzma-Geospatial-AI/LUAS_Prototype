@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LUAS System — WQI · Monitoring · TMDL | Sungai Langat, Dengkil</title>
+<title>LUAS · Sungai Langat</title>
 <meta name="description" content="Lembaga Urus Air Selangor system for Sungai Langat: Class II assessment at Dengkil, quality monitoring, LEDS/TMDL load accounting with the effluent discharge licence register, and SESAMS earth surface activity monitoring.">
 
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
@@ -21,7 +21,7 @@
     <svg class="logo" style="width:64px;height:64px" viewBox="0 0 100 140" aria-hidden="true">
       <use href="#luasmark"></use></svg>
     <div style="font-size:15px;font-weight:650;margin-top:14px">LUAS System</div>
-    <div style="font-size:11.5px;color:#9ea6d0;margin-top:3px">Sungai Langat · Water quality &amp; load management</div>
+    <div style="font-size:11.5px;color:#9ea6d0;margin-top:3px">Sungai Langat</div>
     <div class="l-bar"><i id="lbar"></i></div>
     <div class="l-txt" id="ltxt">Starting…</div>
   </div>
@@ -52,35 +52,38 @@
       <span>Sungai Langat</span>
     </div>
   </div>
-  <div class="sb-gov"><span class="dot"></span> Official Portal · Selangor State Government Agency</div>
+  <button type="button" class="nav-toggle" id="navToggle" aria-controls="nav" aria-expanded="false">Menu</button>
 
-  <nav class="sb-nav" id="nav">
+  <nav class="sb-nav" id="nav" aria-label="Main navigation">
     <div class="sb-sec">Monitoring</div>
     <button data-view="map" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3z"/><path d="M9 3v15M15 6v15"/></svg>
-      <span><b>Map</b><i>The catchment</i></span></button>
+      <span><b>Map</b></span></button>
     <button data-view="station"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-      <span><b>Station Assessment</b><i>WQI and class</i></span></button>
+      <span><b>Station assessment</b></span></button>
     <button data-view="quality"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 3-4 3 3 4-6"/></svg>
-      <span><b>Quality Monitoring</b><i>Exceedance and trend</i></span></button>
+      <span><b>Water quality trends</b></span></button>
     <button data-view="tmdl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 7h14"/><path d="m5 7-2 6a3 3 0 0 0 6 0z"/><path d="m19 7 2 6a3 3 0 0 1-6 0z"/></svg>
-      <span><b>TMDL &amp; Licences</b><i>Load accounting</i></span>
+      <span><b>TMDL &amp; licences</b></span>
       <i class="nav-warn" id="navWarn" hidden></i></button>
     <button data-view="sesams"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><path d="M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>
-      <span><b>Earth surface activity</b><i>SESAMS</i></span></button>
+      <span><b>Land activity</b></span></button>
 
     <div class="sb-sec">Tools</div>
     <button class="sb-tool" id="sbReport"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h5"/></svg>
-      <span><b>Export report</b><i>one location, with the map</i></span></button>
+      <span><b>Export report</b></span></button>
+    <details class="nav-downloads">
+      <summary>Download register</summary>
     <button class="sb-tool" id="sbExportJson"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 11l4 4 4-4"/><path d="M4 19h16"/></svg>
-      <span><b>Export register</b><i>JSON</i></span></button>
+      <span><b>Backup file (JSON)</b></span></button>
     <button class="sb-tool" id="sbExportCsv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 11l4 4 4-4"/><path d="M4 19h16"/></svg>
-      <span><b>Export register</b><i>CSV</i></span></button>
+      <span><b>Spreadsheet (CSV)</b></span></button>
+    </details>
   </nav>
 
   <div class="sb-foot">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
     <div><b>Sample readings</b>
-      <span>Station positions are real. The parameter values are not.</span></div>
+      <span>For demonstration only.</span></div>
   </div>
 </aside>
 
@@ -88,11 +91,11 @@
 <div class="main">
   <header class="appbar">
     <div class="ab-title">
-      <h1>LUAS System</h1>
-      <div class="ab-status"><span class="live-dot"></span> <span id="tbStatus">—</span></div>
+      <h1 id="viewTitle">Map</h1>
+      <div class="ab-status"><span id="tbStatus">Sungai Langat</span><span class="sample-badge">Sample data</span></div>
     </div>
     <div class="ab-meta">
-      <label class="pill pick" title="The location every page is written for. It is picked once, here.">
+      <label class="pill pick" title="Choose a location for all pages">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
           stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="2.8"/>
           <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/></svg>
@@ -108,8 +111,15 @@
       </button>
       <div class="pill">WQI <b id="pillWqi">—</b>
         <span class="pill-cls" id="pillClass">—</span></div>
-      <div class="pill">Target <b id="pillTarget">—</b> · met <b id="pillCompliance">—</b></div>
-      <span class="ab-clock" id="clock"></span>
+      <details class="data-info" id="dataInfo">
+        <summary>Data info</summary>
+        <div class="data-info-body">
+          <p><b>Demonstration data</b><br>Station readings and example licences are simulated. Do not use them for decisions.</p>
+          <p id="dataCoverage"></p>
+          <p>Selected station: target <b id="pillTarget">—</b>; met in <b id="pillCompliance">—</b> of sampled months.</p>
+          <details class="help-details"><summary>Data source</summary><p id="dataSource"></p></details>
+        </div>
+      </details>
     </div>
   </header>
 
@@ -132,7 +142,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>
             <input id="mapSearch" type="search" autocomplete="off" spellcheck="false"
-              placeholder="Search the map…">
+              placeholder="Search places or stations…" aria-label="Search the map">
           </label>
           <div class="ms-list" id="mapSearchList" hidden></div>
         </div>
@@ -151,18 +161,17 @@
         <div id="mapBaseInfo"></div>
         <div class="mc-group wq-group" id="mapWq"></div>
         <details class="mp-fold">
-          <summary>Spectral indices</summary>
-          <div class="mp-sub">How imagery maps onto the parameters in the load budget</div>
+          <summary>About satellite indices</summary>
           <div id="mapIndices"></div>
         </details>
       </div>
     </div>
 
     <!-- bottom left — layers -->
-    <div class="map-card map-bl" id="mapLayers">
-      <button class="card-min" id="layersMin" aria-expanded="true"
-        title="Minimise the layers"><span>Map layers</span></button>
-      <div class="card-body">
+    <div class="map-card map-bl min" id="mapLayers">
+      <button class="card-min" id="layersMin" aria-expanded="false" aria-controls="layersBody"
+        title="Show layers"><span>Map layers</span></button>
+      <div class="card-body" id="layersBody">
         <div class="lay-sec">Water</div>
         <label class="tog"><input type="checkbox" data-mapov="stations" checked>
           <span class="tog-sw"></span>
@@ -175,10 +184,10 @@
           <span class="tog-t">Water bodies <i id="ovWater"></i></span></label>
         <label class="tog"><input type="checkbox" data-mapov="rivers" checked>
           <span class="tog-sw"></span>
-          <span class="tog-t">Sungai Langat &amp; tributaries <i id="ovRivers"></i></span></label>
+          <span class="tog-t">Rivers <i id="ovRivers"></i></span></label>
         <label class="tog"><input type="checkbox" data-mapov="flow" checked>
           <span class="tog-sw"></span>
-          <span class="tog-t">Flow direction <i>by design flow</i></span></label>
+          <span class="tog-t">Flow direction</span></label>
 
         <div class="lay-sec">Activity</div>
         <label class="tog"><input type="checkbox" data-mapov="sources" checked>
@@ -186,7 +195,7 @@
           <span class="tog-t">Point sources <i id="ovSources"></i></span></label>
         <label class="tog"><input type="checkbox" data-mapov="licences" checked>
           <span class="tog-sw"></span>
-          <span class="tog-t">Licence register pins <i id="ovLicences"></i></span></label>
+          <span class="tog-t">Licences <i id="ovLicences"></i></span></label>
 
         <div class="lay-sec">Weather <i id="ovRain"></i></div>
         <div class="wx-row" id="mapWx"></div>
@@ -216,11 +225,13 @@
     </div>
 
     <!-- bottom right — legend -->
-    <div class="map-card map-br" id="mapLegend">
-      <button class="card-min" id="legendMin" aria-expanded="true"
-        title="Minimise the legend"><span>Legend</span></button>
-      <div class="card-body">
+    <div class="map-card map-br min" id="mapLegend">
+      <button class="card-min" id="legendMin" aria-expanded="false" aria-controls="legendBody"
+        title="Show legend"><span>Legend &amp; filters</span></button>
+      <div class="card-body" id="legendBody">
         <div id="mapLegendWx" hidden></div>
+        <h5 class="ml-head" id="mapLegendWqHead" hidden><span class="ml-ht">Satellite water quality</span></h5>
+        <div id="mapLegendWq" hidden></div>
         <h5 class="ml-head"><span class="ml-ht">WQI class · station colour</span>
           <input type="checkbox" class="ml-master" data-group="mapLegendWqi" aria-label="All WQI classes"></h5>
         <div id="mapLegendWqi"></div>
@@ -231,8 +242,6 @@
         <h5 class="sep ml-head"><span class="ml-ht">Point source</span>
           <input type="checkbox" class="ml-master" data-group="mapLegendSources" aria-label="All point sources"></h5>
         <div id="mapLegendSources"></div>
-        <h5 class="sep ml-head" id="mapLegendWqHead" hidden><span class="ml-ht">Satellite water quality</span></h5>
-        <div id="mapLegendWq" hidden></div>
         <h5 class="sep ml-head"><span class="ml-ht">Water body type</span>
           <input type="checkbox" class="ml-master" data-group="mapLegendWater" aria-label="All water body types"></h5>
         <div id="mapLegendWater"></div>
@@ -250,7 +259,7 @@
 
     <div class="page-head">
       <h2>Station assessment</h2>
-      <p id="p1Head2">Six parameters → WQI → does it hold Class II?</p>
+      <p id="p1Head2">Review water quality at the selected station.</p>
     </div>
 
     <div id="p1Head"></div>
@@ -258,16 +267,17 @@
     <div class="grid verdict-grid" id="p1Verdict"></div>
 
     <div class="section-title">
-      <h2>Six-Parameter Assessment</h2>
+      <h2>Water quality readings</h2>
       <span class="st-sub" id="p1TargetNote"></span>
+      <label class="detail-toggle"><input type="checkbox" id="p1Technical"> Calculation details</label>
     </div>
     <div class="card pad0 tbl-scroll">
-      <table class="data">
+      <table class="data assessment-table" id="p1AssessmentTable">
         <thead><tr>
           <th>Parameter</th><th>Reading</th><th>Standard</th><th>Verdict</th>
-          <th>% of limit <button type="button" class="tipmark" tabindex="0" data-tip="The reading as a percentage of its Class limit. Over 100%% means the parameter breaches the standard." aria-label="The reading as a percentage of its Class limit. Over 100%% means the parameter breaches the standard.">i</button></th>
-          <th>Sub-index <button type="button" class="tipmark" tabindex="0" data-tip="The DOE sub-index for this parameter, 0-100. The six sub-indices are combined by weight to give the WQI." aria-label="The DOE sub-index for this parameter, 0-100. The six sub-indices are combined by weight to give the WQI.">i</button></th>
-          <th>Weight <button type="button" class="tipmark" tabindex="0" data-tip="How much this parameter counts towards the WQI. The six weights sum to 1." aria-label="How much this parameter counts towards the WQI. The six weights sum to 1.">i</button></th>
+          <th class="technical-col">% of limit <button type="button" class="tipmark" tabindex="0" data-tip="For dissolved oxygen, below 100% is too low. For BOD, COD, solids and ammonia, over 100% exceeds the limit." aria-label="For dissolved oxygen, below 100% is too low. For BOD, COD, solids and ammonia, over 100% exceeds the limit.">i</button></th>
+          <th class="technical-col">Sub-index <button type="button" class="tipmark" tabindex="0" data-tip="Each parameter contributes a score from 0 to 100 to the WQI." aria-label="Each parameter contributes a score from 0 to 100 to the WQI.">i</button></th>
+          <th class="technical-col">Weight <button type="button" class="tipmark" tabindex="0" data-tip="This parameter's share of the WQI score." aria-label="This parameter's share of the WQI score.">i</button></th>
           <th>Months failed <button type="button" class="tipmark" tabindex="0" data-tip="How many months in the record this parameter has breached the target class at this station." aria-label="How many months in the record this parameter has breached the target class at this station.">i</button></th>
         </tr></thead>
         <tbody id="p1Params"></tbody>
@@ -275,7 +285,7 @@
     </div>
 
     <div class="section-title">
-      <h2>Index Record</h2>
+      <h2>WQI over time</h2>
       <span class="st-sub">Click any point to load that month</span>
     </div>
     <div class="card pad0">
@@ -284,11 +294,9 @@
 
     <div id="p1Photos" hidden></div>
 
-    <div id="p1Around"></div>
-
     <div class="section-title">
-      <h2>Class Identification Calculator</h2>
-      <span class="st-sub">Type six values, get the verdict</span>
+      <h2>Add a reading</h2>
+      <span class="st-sub">Enter six values to calculate WQI.</span>
     </div>
     <div class="split-grid">
       <div class="card">
@@ -309,11 +317,15 @@
           <button class="btn btn-primary" id="p1Save" disabled>Save reading</button>
           <button class="btn btn-ghost" id="p1Load">Load current month</button>
           <button class="btn btn-ghost" id="p1Reset">Clear</button>
-          <span id="p1Msg"></span>
+          <span id="p1Msg" role="status"></span>
         </div>
       </div>
       <div class="preview" id="p1Result"></div>
     </div>
+    <details class="section-fold">
+      <summary>Places near this station</summary>
+      <div id="p1Around"></div>
+    </details>
   </div>
 </section>
 
@@ -322,38 +334,36 @@
   <div class="page">
 
     <div class="page-head">
-      <h2>Quality monitoring</h2>
-      <p>How often each parameter breaches its standard, and how it trends.</p>
+      <h2>Water quality trends</h2>
+      <p>Track changes and readings outside the target standard.</p>
     </div>
 
     <div class="section-title">
-      <h2>Exceedance Frequency</h2>
-      <span class="st-sub">Share of months over the standard</span>
+      <h2>Months outside the standard</h2>
     </div>
     <div class="exc-grid" id="p2Cards"></div>
 
     <div class="section-title">
-      <h2>Receiving Water Bodies</h2>
-      <span class="st-sub" id="p2WaterNote"></span>
-    </div>
-    <div class="wb-grid" id="p2Water"></div>
-    <div class="section-title">
-      <h2>Parameter Trends</h2>
-      <span class="st-sub">Dashed line is the Class II standard</span>
+      <h2>Parameter trends</h2>
+      <span class="st-sub">Dashed lines show the target standard.</span>
     </div>
     <div class="grid three" id="p2Charts"></div>
 
-    <div class="section-title">
-      <h2>National Context</h2>
-      <span class="st-sub">data.gov.my</span>
-    </div>
+    <details class="section-fold">
+      <summary>Water bodies in the catchment</summary>
+      <p class="st-sub" id="p2WaterNote"></p>
+      <div class="wb-grid" id="p2Water"></div>
+    </details>
+
+    <details class="section-fold">
+    <summary>Compare with national trends</summary>
     <div class="card pad0">
       <div class="card-head" style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap">
         <div>
           <h3>Pollution status of Malaysian river basins</h3>
           <div class="card-sub" id="p2NatNote"></div>
         </div>
-        <select id="p2Measure">
+        <select id="p2Measure" aria-label="National trend parameter">
           <option value="bod5">Parameter: BOD₅</option>
           <option value="nh3n">Parameter: NH₃-N</option>
           <option value="ss">Parameter: Suspended Solids (SS)</option>
@@ -361,6 +371,7 @@
       </div>
       <div class="chart-box lg"><canvas id="p2National"></canvas></div>
     </div>
+    </details>
   </div>
 </section>
 
@@ -370,15 +381,14 @@
 
     <div class="page-head">
       <h2>Total Maximum Daily Load <button type="button" class="tipmark" tabindex="0" data-tip="The mass of a pollutant this reach can receive per day and still hold its class. It splits into ΣWLA, the wasteload allocated to licensed point sources; ΣLA, the load allocation for background and non-point sources; and MOS, the margin of safety." aria-label="The mass of a pollutant this reach can receive per day and still hold its class. It splits into ΣWLA, the wasteload allocated to licensed point sources; ΣLA, the load allocation for background and non-point sources; and MOS, the margin of safety.">i</button></h2>
-      <p>What is written for the reach — ΣWLA, ΣLA and MOS — against what it can carry, what it carries now, and how much is left to licence.</p>
-      <div class="formula">TMDL = ΣWLA + ΣLA + MOS</div>
+      <p>Review the river's load capacity and manage discharge licences.</p>
     </div>
 
     <div class="tabs" role="tablist">
       <button class="tab active" data-tab="capacity" role="tab" aria-selected="true">
-        <b>TMDL</b><span>What is written for this water, and how much of it is used</span></button>
+        <b>Load capacity</b></button>
       <button class="tab" data-tab="licences" role="tab" aria-selected="false">
-        <b>Licences</b><span>What is permitted to discharge into it</span></button>
+        <b>Licences</b></button>
     </div>
 
     <div class="tabpane active" id="tab-capacity">
@@ -386,11 +396,11 @@
          it. This bar names it and lists the TMDLs on record for it. -->
     <div class="card tmdl-bar">
       <div class="tb-loc">
-        <div class="tb-lab">Written for</div>
+        <div class="tb-lab">Location</div>
         <div class="tb-name" id="p3LocName">—</div>
         <div class="tb-sub" id="p3LocNote"></div>
         <button type="button" class="tb-change" id="p3ChangeLoc"
-          title="The location is picked once, in the bar at the top, and every page follows it">Change the location in the bar above ↑</button>
+          title="Choose another location">Change location</button>
       </div>
       <div class="tb-rec">
         <div class="tb-lab">TMDL on record for this location <button type="button" class="tipmark" tabindex="0" data-tip="A location can hold more than one TMDL — a revision a year, say. Pick one and it loads; New TMDL writes another, starting from the one on screen. A worked example is written for every station so a pick always loads something." aria-label="A location can hold more than one TMDL. Pick one and it loads; New TMDL writes another, starting from the one on screen.">i</button></div>
@@ -440,7 +450,7 @@
           </label>
         </div>
         <div class="field tf-gauge" style="grid-column:1/-1">
-          <label>Meter reading <span class="unit">optional · the flow is worked out from it</span>
+          <label>Meter readings <span class="unit">optional</span>
             <button type="button" class="tipmark" tabindex="0" data-tip="A totalising meter counts the volume that has passed it. Take the reading at the start of the gauging and again at the end: the volume between them, over the hours between them, is the flow in m³/h. Filling all four writes the flow into the field above and keeps the readings with the record, so the figure can be checked later." aria-label="A totalising meter counts the volume that has passed it. Take the reading at the start of the gauging and again at the end: the volume between them, over the hours between them, is the flow in m³/h. Filling all four writes the flow into the field above and keeps the readings with the record, so the figure can be checked later.">i</button></label>
           <div class="gauge-grid">
             <div><span class="g-lab">Initial reading <i>bacaan awal</i></span>
@@ -481,7 +491,7 @@
       <div class="btn-row">
         <button class="btn btn-primary" id="tfSave" disabled>Save TMDL</button>
         <button class="btn btn-ghost" id="tfCancel">Cancel</button>
-        <span class="hint" id="tfHint"></span>
+        <span class="hint" id="tfHint" role="status"></span>
       </div>
       </div>
       </div>
@@ -494,7 +504,7 @@
     <div class="grid verdict-grid" id="p3Headline" style="margin-top:14px"></div>
 
     <div class="section-title">
-      <h2>Load now against the allocation <button type="button" class="tipmark" tabindex="0" data-tip="River load = mg/L × m³/h × 0.024. Licence wasteload = mg/L × m³/day ÷ 1000. The in-river concentration is the 12-month median at the selected station, which is steadier than any single sample. Licensed is the register summed; diffuse is whatever the river carries that the licences do not account for. Each is set against the term of the TMDL written for it." aria-label="River load = mg/L × m³/h × 0.024. Licence wasteload = mg/L × m³/day ÷ 1000. Licensed is the register summed; diffuse is whatever the river carries that the licences do not account for. Each is set against the term of the TMDL written for it.">i</button></h2>
+      <h2>Current load and remaining capacity <button type="button" class="tipmark" tabindex="0" data-tip="River load uses the 12-month median concentration. Licensed load is the total in the register; diffuse load is the remaining river load." aria-label="River load uses the 12-month median concentration. Licensed load is the total in the register; diffuse load is the remaining river load.">i</button></h2>
       <span class="st-sub" id="p3BudgetNote"></span>
     </div>
     <div class="card pad0 tbl-scroll">
@@ -506,7 +516,7 @@
             <th colspan="2">Allocated (kg/day)</th>
             <th colspan="2">Load now (kg/day)</th>
             <th rowspan="2">Left to<br>licence <button type="button" class="tipmark" tabindex="0" data-tip="ΣWLA minus the licensed load. Positive: room for more licences. Negative: the licences already exceed the wasteload allocation and nothing further can be licensed." aria-label="ΣWLA minus the licensed load. Positive: room for more licences. Negative: the licences already exceed the wasteload allocation.">i</button></th>
-            <th rowspan="2">ΣWLA used <button type="button" class="tipmark" tabindex="0" data-tip="The licensed load as a percentage of the wasteload allocation. Over 100%% means the licences exceed it." aria-label="The licensed load as a percentage of the wasteload allocation. Over 100%% means the licences exceed it.">i</button></th>
+            <th rowspan="2">ΣWLA used <button type="button" class="tipmark" tabindex="0" data-tip="Over 100% means licensed load exceeds the allocation." aria-label="Over 100% means licensed load exceeds the allocation.">i</button></th>
           </tr>
           <tr>
             <th>Standard</th><th>In river</th>
@@ -522,8 +532,8 @@
 
     <div class="card pad0" style="margin-top:14px">
       <div class="card-head">
-        <h3>Where the capacity goes</h3>
-        <div class="card-sub">The TMDL by term, with the loading capacity marked <button type="button" class="tipmark" tabindex="0" data-tip="Each bar is the TMDL for one pollutant as written: the licensed load inside the ΣWLA, any licensed load beyond it, what is left of the ΣWLA to licence, the ΣLA and the MOS. The line across is the loading capacity the whole bar has to fit under." aria-label="Each bar is the TMDL for one pollutant as written. The line across is the loading capacity the whole bar has to fit under.">i</button></div>
+        <h3>Capacity breakdown</h3>
+        <div class="card-sub">The line marks the loading capacity.</div>
       </div>
       <div class="chart-box lg"><canvas id="p3Chart"></canvas></div>
     </div>
@@ -533,10 +543,8 @@
     <div class="tabpane" id="tab-licences">
     <div id="p3Expiry"></div>
 
-    <div class="section-title">
-      <h2>Add a Licence</h2>
-      <span class="st-sub">Does it fit the remaining capacity?</span>
-    </div>
+    <details class="section-fold licence-editor" id="licenceEditor">
+    <summary id="licenceEditorTitle">Add licence</summary>
     <div class="split-grid">
       <div class="card">
         <div class="form-grid">
@@ -551,24 +559,24 @@
 
             <div class="prem-mode active" id="premPick">
               <div class="prem-row">
-                <select id="lSource"></select>
+                <select id="lSource" aria-label="Choose premises"></select>
                 <button type="button" class="btn btn-ghost locate" id="lShowPick" disabled
                   title="Open the map at this premises">Show on map</button>
               </div>
-              <div class="hint" id="lSourceNote">Choose one of the point sources already mapped.</div>
+              <div class="hint" id="lSourceNote">Select premises to continue.</div>
             </div>
 
             <div class="prem-mode" id="premNew">
-              <input id="lPremises" placeholder="Name of the premises">
+              <input id="lPremises" placeholder="Name of the premises" aria-label="Premises name">
               <div class="latlon">
-                <input id="lLat" type="number" step="0.00001" placeholder="Latitude · 2.85971">
-                <input id="lLon" type="number" step="0.00001" placeholder="Longitude · 101.68380">
+                <input id="lLat" type="number" step="0.00001" placeholder="Latitude · 2.85971" aria-label="Premises latitude">
+                <input id="lLon" type="number" step="0.00001" placeholder="Longitude · 101.68380" aria-label="Premises longitude">
                 <button type="button" class="btn btn-ghost" id="lPickOnMap"
                   title="Take the coordinates from the middle of the map">Use map centre</button>
                 <button type="button" class="btn btn-ghost locate" id="lShowNew" disabled
                   title="Open the map at these coordinates">Show on map</button>
               </div>
-              <div class="hint" id="lLatLonNote">It will be drawn on the map once the licence is added.</div>
+              <div class="hint" id="lLatLonNote">Enter coordinates or use the map centre.</div>
             </div>
           </div>
           <div class="field">
@@ -587,8 +595,7 @@
             </select>
           </div>
           <div class="prefill-note" id="lPrefill" hidden style="grid-column:1/-1">
-            <b>Prefilled from the category.</b> These are placeholders shaped by the discharge
-            standard, not permit values — replace them with the figures on the licence.
+            <b>Example values.</b> Replace these with the figures on the licence.
           </div>
           <div class="field">
             <label for="lFlow">Permitted discharge flow <span class="unit">m³/day</span></label>
@@ -602,7 +609,7 @@
             </select>
           </div>
           <div class="field">
-            <label for="lStation">Counts at <button type="button" class="tipmark" tabindex="0" data-tip="The station whose TMDL this licence is set against. Left automatic, it is the nearest monitoring station to the premises; choose one to say otherwise." aria-label="The station whose TMDL this licence is set against. Left automatic, it is the nearest monitoring station to the premises.">i</button></label>
+            <label for="lStation">Receiving station <button type="button" class="tipmark" tabindex="0" data-tip="The station whose load budget includes this licence. Defaults to the nearest station." aria-label="The station whose load budget includes this licence. Defaults to the nearest station.">i</button></label>
             <select id="lStation"></select>
           </div>
           <div class="field">
@@ -629,12 +636,13 @@
       </div>
       <div class="preview" id="p3Preview"></div>
     </div>
+    </details>
+    <div class="saved-note licence-status" id="p3SaveStatus" role="status"></div>
 
 
     <!-- Licence register -->
     <div class="section-title">
-      <h2>Licence Register</h2>
-      <span class="st-sub">Licensed premises and their permitted wasteload</span>
+      <h2>Licence register</h2>
       <label class="reg-search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input type="search" id="p3Search" placeholder="Search licence, premises, category…" aria-label="Search the register" autocomplete="off">
@@ -643,8 +651,8 @@
 
     <div class="notice info" id="p3RestoreBar" style="display:none">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-      <div style="flex:1">The register holds only your own entries.</div>
-      <button class="btn btn-ghost" id="p3RestoreExamples">Restore worked examples</button>
+      <div style="flex:1">Example licences are hidden.</div>
+      <button class="btn btn-ghost" id="p3RestoreExamples">Show examples</button>
     </div>
 
     <div class="card pad0 tbl-scroll" style="margin-top:12px">
@@ -662,7 +670,7 @@
           <tr>
             <th rowspan="2" class="sortable" data-sort="ref">Licence</th>
             <th rowspan="2" class="sortable" data-sort="premises">Premises</th>
-            <th rowspan="2" class="sortable" data-sort="at" title="The station this licence counts at">Counts at</th>
+            <th rowspan="2" class="sortable" data-sort="at" title="Receiving station">Station</th>
             <th rowspan="2" class="sortable" data-sort="standard">Std</th>
             <th rowspan="2" class="sortable" data-sort="flow">Flow<br>m³/day</th>
             <th colspan="4">Permitted concentration (mg/L)</th>
@@ -684,11 +692,11 @@
     <div class="pager" id="p3Pager"></div>
 
     <div class="btn-row" style="margin-top:12px">
-      <button class="btn btn-primary" id="p3ExportJson">Export register (JSON)</button>
-      <button class="btn btn-ghost" id="p3ExportCsv">Export register (CSV)</button>
+      <button class="btn btn-ghost" id="p3ExportJson">Download backup (JSON)</button>
+      <button class="btn btn-ghost" id="p3ExportCsv">Download spreadsheet (CSV)</button>
       <label class="btn btn-ghost" style="cursor:pointer">
-        Import JSON<input type="file" id="p3Import" accept=".json" hidden></label>
-      <button class="btn btn-ghost" id="p3ClearExamples" style="margin-left:auto">Clear examples</button>
+        Import backup<input type="file" id="p3Import" accept=".json" hidden></label>
+      <button class="btn btn-ghost" id="p3ClearExamples" style="margin-left:auto">Hide examples</button>
     </div>
     </div>
   </div>
@@ -699,26 +707,23 @@
   <div class="page">
 
     <div class="page-head">
-      <h2>Earth surface activity <span class="badge soft" style="vertical-align:3px">SESAMS</span></h2>
-      <p>Selangor Earth Surface Activity Monitoring System — the application MYSA (Agensi Angkasa Malaysia)
-        built for LUAS to monitor land-use activity, above all on and around water bodies and wherever it could
-        put a load into the state's water. Here it runs on the Langat catchment: every mapped land-use site,
-        how close it sits to water, whether it holds a licence, and the quarterly satellite view of the water beside it.</p>
+      <h2>Land activity <span class="badge soft" style="vertical-align:3px">SESAMS</span></h2>
+      <p>Find activity near water and compare satellite images over time.</p>
     </div>
 
     <div class="grid three" id="ssKpis"></div>
 
     <div class="section-title">
-      <h2>Earth surface change</h2>
-      <span class="st-sub">Sentinel-2, one quarter against another — what SESAMS watches for <button type="button" class="tipmark" tabindex="0" data-tip="Reads the two quarters' tiles at zoom 13 (about 19 m per pixel) and compares every water body of half a hectare or more: the water itself, and the 250 m ring of land around it. More bare ground in the land ring means ground newly exposed — clearing, earthworks, mining; rising in the water means the activity is reaching it. Values are the product's colour ramp read back as 0–100, so a change is in points of that scale, not in physical units." aria-label="How the scan works">i</button></span>
+      <h2>Compare satellite images</h2>
+      <span class="st-sub">Choose two quarters. <button type="button" class="tipmark" tabindex="0" data-tip="Compares water bodies and surrounding land using Sentinel-2 imagery. Results are relative changes on a 0–100 image scale, not measured concentrations." aria-label="How the comparison works">i</button></span>
     </div>
     <div class="card ss-scan">
       <div class="ss-scan-row">
         <label>Product <select id="scanProduct"></select></label>
         <label>From <select id="scanFrom"></select></label>
         <label>To <select id="scanTo"></select></label>
-        <button class="btn btn-primary" id="scanRun">Scan the catchment</button>
-        <span class="ss-scan-note" id="scanNote">Two quarters of tiles, about 5 MB, read once and kept.</span>
+        <button class="btn btn-primary" id="scanRun">Compare quarters</button>
+        <span class="ss-scan-note" id="scanNote" role="status"></span>
       </div>
       <div class="ss-scan-prog" id="scanProg" hidden><div class="bar"><i></i></div><span></span></div>
       <div id="scanOut" hidden>
@@ -732,7 +737,7 @@
             <thead><tr>
               <th>Water body</th><th>Type</th><th class="num">Area</th>
               <th>Bare ground around it <span class="sub-inline">250 m ring</span></th>
-              <th>The water</th><th>What changed</th><th></th>
+              <th>Water quality</th><th>Change</th><th></th>
             </tr></thead>
             <tbody></tbody>
           </table>
@@ -743,14 +748,14 @@
 
     <div class="section-title">
       <h2>Activity by zone</h2>
-      <span class="st-sub">How close each kind of activity sits to water <button type="button" class="tipmark" tabindex="0" data-tip="Zones are a screening rule: within 50 m of mapped water counts as the river reserve, within 250 m as riparian, and the rest of the 1.5 km buffer the sites were clipped to. River reserves under the Selangor Waters Management Enactment 1999 vary with river width; 50 m is used as one width for every reach." aria-label="Zone rule">i</button></span>
+      <span class="st-sub">50 m screening zone · estimated <button type="button" class="tipmark" tabindex="0" data-tip="Screening zones use 50 m, 250 m and 1.5 km distances from mapped water. They are not surveyed legal boundaries." aria-label="Screening zones use 50 m, 250 m and 1.5 km distances from mapped water. They are not surveyed legal boundaries.">i</button></span>
     </div>
     <div class="card"><div class="chart-box"><canvas id="ssZoneChart"></canvas></div></div>
 
     <div class="section-title">
-      <h2>Activity watch list</h2>
-      <span class="st-sub">Closest to water first · click a row to open it on the map</span>
-      <select id="ssZone" style="margin-left:auto">
+      <h2>Nearby activities</h2>
+      <span class="st-sub">Closest to water first</span>
+      <select id="ssZone" style="margin-left:auto" aria-label="Filter activities by zone">
         <option value="all">All zones</option>
         <option value="reserve">River reserve · ≤ 50 m</option>
         <option value="riparian">Riparian · 50 – 250 m</option>
@@ -796,26 +801,20 @@
           <span class="st-sub">Sentinel-2, quarterly · opens on the map</span>
         </div>
         <div class="ss-sat-list" id="ssSat"></div>
-        <p class="ss-foot">An activity that clears land or opens ground shows up in the water beside it first:
-          turbidity rises with the run-off, chlorophyll with the nutrients. Compare quarters to see whether it is
-          getting worse.</p>
       </div>
     </div>
   </div>
 </section>
 
 <footer class="footer">
-  <div class="footer-col">
-    <b>Lembaga Urus Air Selangor (LUAS)</b><br>
-    Sungai Langat water quality and discharge load management system.
-    Map · Phase 1 station assessment · Phase 2 quality monitoring · Phase 3 TMDL.
-  </div>
-  <div class="footer-col" style="text-align:right">
+  <div class="footer-col"><b>Lembaga Urus Air Selangor (LUAS)</b></div>
+  <details class="footer-col">
+    <summary>Sources &amp; credits</summary>
     WQI formula and INWQS: Department of Environment Malaysia (DOE)<br>
     Effluent standards: EQ (Industrial Effluent) Regulations 2009<br>
     National basin data: <a href="https://data.gov.my" target="_blank" rel="noopener">data.gov.my</a><br>
     Water bodies: Digital Earth &middot; Imagery: Esri, Google, EOX Sentinel-2 cloudless, NASA GIBS
-  </div>
+  </details>
 </footer>
 
   </div><!-- /.content -->
@@ -829,7 +828,6 @@
   <div class="modal-card loc-form">
     <div class="cond-head">
       <h3 id="lcHead">New location</h3>
-      <span class="formula-inline">Drawn on the map at its coordinates</span>
       <button type="button" class="gl-close" id="lcClose" aria-label="Close">×</button>
     </div>
     <div class="modal-body">
@@ -864,12 +862,12 @@
       <div class="field" style="margin-top:14px">
         <label>Position</label>
         <div class="latlon">
-          <input id="lcLat" type="number" step="0.00001" placeholder="Latitude · 2.85971">
-          <input id="lcLon" type="number" step="0.00001" placeholder="Longitude · 101.68380">
+          <input id="lcLat" type="number" step="0.00001" placeholder="Latitude · 2.85971" aria-label="Location latitude">
+          <input id="lcLon" type="number" step="0.00001" placeholder="Longitude · 101.68380" aria-label="Location longitude">
           <button type="button" class="btn btn-ghost" id="lcCentre"
             title="Take the coordinates from the middle of the map">Use map centre</button>
         </div>
-        <div class="hint" id="lcPosHint">Decimal degrees. The station is drawn on the map here, and every page follows it once picked.</div>
+        <div class="hint" id="lcPosHint">Enter coordinates or use the map centre.</div>
       </div>
       <div class="field" style="margin-top:12px">
         <label for="lcNote">Notes</label>
@@ -877,16 +875,14 @@
       </div>
       <div class="notice info" style="margin-top:12px">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-        <div>A new location starts with no readings. Enter its six parameters in the Station Assessment
-          calculator and save them; each saved month becomes its record, and the map colours it once
-          it has one. It is kept in this browser and goes out with the JSON export.</div>
+        <div>Saved in this browser. Add readings in Station assessment. Download a backup to keep a copy.</div>
       </div>
       <div class="btn-row">
         <button class="btn btn-primary" id="lcSave" disabled>Save location</button>
         <button class="btn btn-ghost" id="lcSaveShow" disabled>Save &amp; show on map</button>
         <button class="btn btn-ghost" id="lcCancel">Cancel</button>
         <button class="btn btn-ghost danger" id="lcRemove" hidden>Remove location</button>
-        <span class="hint" id="lcHint"></span>
+        <span class="hint" id="lcHint" role="status"></span>
       </div>
     </div>
   </div>
@@ -898,7 +894,6 @@
   <div class="modal-card rpt-form">
     <div class="cond-head">
       <h3 id="rptHead">Export a location report</h3>
-      <span class="formula-inline">Data + map, for one location</span>
       <button type="button" class="gl-close" id="rptClose" aria-label="Close">×</button>
     </div>
     <div class="modal-body">
@@ -919,29 +914,29 @@
         <div class="field">
           <label for="rptZoom">Map zoom</label>
           <select id="rptZoom">
-            <option value="12">12 · the reach and its surroundings</option>
-            <option value="13">13 · a few kilometres around</option>
-            <option value="14" selected>14 · the station and its premises</option>
-            <option value="15">15 · close in</option>
-            <option value="16">16 · closest</option>
+            <option value="12">Wide area</option>
+            <option value="13">Surrounding area</option>
+            <option value="14" selected>Station and nearby premises</option>
+            <option value="15">Close-up</option>
+            <option value="16">Detailed close-up</option>
           </select>
         </div>
       </div>
       <div class="field" style="margin-top:14px">
         <label>What to include</label>
         <div class="rpt-secs">
-          <label><input type="checkbox" id="rptSecMap" checked> Map captured around the station</label>
-          <label><input type="checkbox" id="rptSecStation" checked> Station assessment · WQI, verdict, six parameters, last 12 months</label>
-          <label><input type="checkbox" id="rptSecQuality" checked> Quality monitoring · exceedance over the record</label>
-          <label><input type="checkbox" id="rptSecTmdl" checked> TMDL on record · allocation and load budget</label>
-          <label><input type="checkbox" id="rptSecLicences" checked> Licences counting at this location</label>
-          <label><input type="checkbox" id="rptSecPhotos" checked> Photographs attached to the records</label>
+          <label><input type="checkbox" id="rptSecMap" checked> Location map</label>
+          <label><input type="checkbox" id="rptSecStation" checked> Station assessment</label>
+          <label><input type="checkbox" id="rptSecQuality" checked> Water quality trends</label>
+          <label><input type="checkbox" id="rptSecTmdl" checked> TMDL and load budget</label>
+          <label><input type="checkbox" id="rptSecLicences" checked> Discharge licences</label>
+          <label><input type="checkbox" id="rptSecPhotos" checked> Attached photos</label>
         </div>
       </div>
       <div class="btn-row">
         <button class="btn btn-primary" id="rptGo">Generate report</button>
         <button class="btn btn-ghost" id="rptCancel">Close</button>
-        <span class="hint" id="rptHint"></span>
+        <span class="hint" id="rptHint" role="status"></span>
       </div>
       <div class="rpt-result" id="rptResult" hidden>
         <div><b>Report ready</b> <span id="rptResultText"></span></div>
@@ -950,7 +945,51 @@
           <button class="btn btn-ghost" id="rptDl">Download report (.html)</button>
           <button class="btn btn-ghost" id="rptJson">Download data (.json)</button>
         </div>
-        <div class="hint" style="margin-top:6px">The report is one self-contained file with the map inside it. Open it and use Print to save it as a PDF.</div>
+        <div class="hint" style="margin-top:6px">To save as PDF, open the report and choose Print.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recording a renewal: the term it replaces is kept, the new one written
+     over the top. Opened from the licence register and the expiry panel. -->
+<div class="modal" id="renewDialog" hidden role="dialog" aria-modal="true" aria-labelledby="rnHead">
+  <div class="modal-back" id="rnBack"></div>
+  <div class="modal-card rn-form">
+    <div class="cond-head">
+      <h3 id="rnHead">Renew licence</h3>
+      <span class="formula-inline">The previous term is kept on the record</span>
+      <button type="button" class="gl-close" id="rnClose" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="rn-who" id="rnWho"></div>
+      <div class="rn-now" id="rnNow"></div>
+      <div class="form-grid" style="margin-top:14px">
+        <div class="field">
+          <label for="rnRef">Licence reference</label>
+          <input id="rnRef" placeholder="LUAS/EL/2026/0001">
+          <div class="hint">A renewal sometimes brings a new one. The old rows keep the old.</div>
+        </div>
+        <div class="field">
+          <label for="rnIssued">Renewed from</label>
+          <input id="rnIssued" type="date">
+          <div class="hint">The day after the current term, or today if it has lapsed.</div>
+        </div>
+        <div class="field">
+          <label for="rnExpires">Renewed to</label>
+          <input id="rnExpires" type="date">
+          <div class="hint">One year on, unless the permit says otherwise.</div>
+        </div>
+      </div>
+      <div class="field" style="margin-top:12px">
+        <label for="rnNote">Note</label>
+        <textarea id="rnNote" rows="2" placeholder="The renewal letter, conditions attached, who approved it…"></textarea>
+      </div>
+      <div id="rnHist"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="rnSave" disabled>Record the renewal</button>
+        <button class="btn btn-ghost" id="rnCancel">Cancel</button>
+        <span class="hint" id="rnHint"></span>
       </div>
     </div>
   </div>

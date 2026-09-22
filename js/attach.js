@@ -67,20 +67,20 @@ function shrink(file) {
 export function mountAttach(hostId, opts = {}) {
   const host = document.getElementById(hostId);
   if (!host) return { get: () => [], set: () => {}, clear: () => {} };
-  const label = opts.label ?? 'Photographs';
-  const hint = opts.hint ?? 'Site photographs, a field sheet, a meter reading. Kept in this browser with the record.';
+  const label = opts.label ?? 'Photos (optional)';
+  const hint = opts.hint ?? 'Up to 8 photos. Saved with this record in this browser.';
   let list = [];
 
   host.classList.add('att');
   host.innerHTML = `
     <label>${esc(label)}</label>
-    <div class="att-drop" tabindex="0" role="button" aria-label="Add photographs">
+    <div class="att-drop" tabindex="0" role="button" aria-label="Add photos">
       <input type="file" accept="image/*" multiple hidden>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L8 6H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-4z"/><circle cx="12" cy="13" r="3.5"/></svg>
-      <div><b>Add photographs</b><span>or drop them here</span></div>
+      <div><b>Add photos</b><span>or drag them here</span></div>
     </div>
     <div class="att-list"></div>
-    <div class="hint att-hint">${esc(hint)}</div>`;
+    <div class="hint att-hint" role="status">${esc(hint)}</div>`;
 
   const input = host.querySelector('input');
   const drop = host.querySelector('.att-drop');
@@ -97,25 +97,27 @@ export function mountAttach(hostId, opts = {}) {
       <figure class="att-item" data-id="${a.id}">
         <img src="${a.url}" alt="${esc(a.caption || a.name)}" loading="lazy">
         <div class="att-body">
-          <input class="att-cap" value="${esc(a.caption)}" placeholder="Caption — what this shows, where, when"
+          <input class="att-cap" value="${esc(a.caption)}" placeholder="Add a caption (optional)"
             aria-label="Caption for ${esc(a.name)}">
-          <div class="att-meta">${esc(a.name)} · ${a.w}×${a.h} · ${fmtBytes(a.bytes)}</div>
+          <div class="att-meta" title="${a.w}×${a.h} · ${fmtBytes(a.bytes)}">${esc(a.name)}</div>
         </div>
-        <button type="button" class="att-x" title="Remove this photograph" aria-label="Remove">×</button>
+        <button type="button" class="att-x" title="Remove photo" aria-label="Remove ${esc(a.name)}">×</button>
       </figure>`).join('');
     if (list.length) {
-      const used = list.reduce((t, a) => t + a.bytes, 0);
-      say(`${list.length} photograph${list.length === 1 ? '' : 's'} · ${fmtBytes(used)} · ${hint}`);
+      say(`${list.length} of ${MAX_PER_RECORD} photos · ${hint}`);
     } else say(null);
     opts.onchange?.(list);
   };
 
   const add = async (files) => {
     const room = MAX_PER_RECORD - list.length;
-    if (room <= 0) { say(`A record holds at most ${MAX_PER_RECORD} photographs.`, true); return; }
-    const take = [...files].filter((f) => f.type.startsWith('image/')).slice(0, room);
+    if (room <= 0) { say(`Limit: ${MAX_PER_RECORD} photos. Remove one to add another.`, true); return; }
+    const candidates = [...files].filter((f) => f.type.startsWith('image/'));
+    const take = candidates.slice(0, room);
     if (!take.length) { say('Only image files can be attached.', true); return; }
-    say(`Reading ${take.length} photograph${take.length === 1 ? '' : 's'}…`);
+    const errors = [];
+    if (candidates.length > room) errors.push(`Limit: ${MAX_PER_RECORD} photos. Extra files were skipped.`);
+    say(`Adding ${take.length} photo${take.length === 1 ? '' : 's'}…`);
     for (const f of take) {
       try {
         const a = await shrink(f);
@@ -123,13 +125,14 @@ export function mountAttach(hostId, opts = {}) {
            form is holding but has not saved */
         const pending = list.reduce((t, x) => t + x.bytes, 0) * 1.37;
         if (storageBytes() + pending + a.bytes * 1.37 > BUDGET) {
-          say('This browser\'s storage is nearly full. Remove a photograph, or export and clear some records first.', true);
-          return;
+          errors.push('Browser storage is nearly full. Remove a photo, or export and clear older records.');
+          break;
         }
         list.push(a);
-      } catch (e) { say(`${f.name} ${e.message}.`, true); }
+      } catch (e) { errors.push(`${f.name} ${e.message}.`); }
     }
     render();
+    if (errors.length) say(errors.join(' '), true);
   };
 
   drop.onclick = () => input.click();
@@ -180,7 +183,7 @@ export function attachGallery(list, opts = {}) {
   if (!list?.length) return '';
   return `<div class="att-gal${opts.small ? ' sm' : ''}">
     ${list.map((a, i) => `
-      <figure data-gal="${i}" title="${esc(a.caption || a.name)}">
+      <figure data-gal="${i}" tabindex="0" role="button" aria-label="View ${esc(a.caption || a.name)}" title="${esc(a.caption || a.name)}">
         <img src="${a.url}" alt="${esc(a.caption || a.name)}" loading="lazy">
         ${a.caption ? `<figcaption>${esc(a.caption)}</figcaption>` : ''}
       </figure>`).join('')}
@@ -192,6 +195,9 @@ export function wireGallery(root, list) {
   const el = typeof root === 'string' ? document.getElementById(root) : root;
   el?.querySelectorAll('[data-gal]').forEach((f) => {
     f.onclick = () => openLightbox(list, Number(f.dataset.gal));
+    f.onkeydown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); f.click(); }
+    };
   });
 }
 

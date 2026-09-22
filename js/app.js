@@ -23,17 +23,11 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 const VIEWS = ['map', 'station', 'quality', 'tmdl', 'sesams'];
+const VIEW_TITLES = {
+  map: 'Map', station: 'Station assessment', quality: 'Water quality trends',
+  tmdl: 'TMDL & licences', sesams: 'Land activity',
+};
 const ready = { map: false, quality: false, tmdl: false, sesams: false };
-
-/* ---------------- Clock ---------------- */
-function tick() {
-  const d = new Date();
-  const day = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d.getDay()];
-  const month = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
-    'August', 'September', 'October', 'November', 'December'][d.getMonth()];
-  $('clock').textContent = `${day}, ${d.getDate()} ${month} ${d.getFullYear()} · `
-    + `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
 
 /* ---------------- Navigation ---------------- */
 function show(view) {
@@ -42,9 +36,20 @@ function show(view) {
   document.querySelectorAll('#nav button').forEach((b) => b.classList.remove('active'));
   $(`v-${view}`).classList.add('active');
   document.querySelector(`#nav button[data-view="${view}"]`).classList.add('active');
+  document.querySelectorAll('#nav button[data-view]').forEach((button) => {
+    if (button.dataset.view === view) button.setAttribute('aria-current', 'page');
+    else button.removeAttribute('aria-current');
+  });
+  $('viewTitle').textContent = VIEW_TITLES[view];
+  document.title = `${VIEW_TITLES[view]} · LUAS`;
+  closeNavigation();
+  $('dataInfo').open = false;
   if (location.hash.slice(1) !== view) location.hash = view;
   document.body.dataset.view = view;
   document.querySelector('.content')?.scrollTo({ top: 0, behavior: 'instant' });
+  if (window.matchMedia('(max-width:1080px)').matches) {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }
 
   if (view === 'map') {
     if (!ready.map) { initMap(); ready.map = true; } else resizeMap();
@@ -64,19 +69,30 @@ function show(view) {
   if (view === 'sesams') { renderSesams(); ready.sesams = true; resizeSesams(); }
 }
 
+function closeNavigation() {
+  const toggle = $('navToggle');
+  // Keep keyboard focus visible when a navigation item closes the mobile menu.
+  if (toggle.offsetParent && $('nav').contains(document.activeElement)) toggle.focus();
+  document.querySelector('.sidebar').classList.remove('nav-open');
+  toggle.setAttribute('aria-expanded', 'false');
+}
+
 /* A licence about to run out is worth seeing from any page, so the count
    sits on the nav entry that leads to the register. */
 function updateWarnBadge() {
   const el = $('navWarn');
   if (!el) return;
   const sum = expirySummary(store.licences());
-  const n = sum.attention.length;
+  const n = sum.outstanding.length;
   el.hidden = n === 0;
   el.textContent = n > 99 ? '99+' : String(n);
   el.classList.toggle('bad', sum.expired.length > 0);
-  el.title = sum.expired.length
-    ? `${sum.expired.length} licence(s) expired, ${sum.soon.length} running out within ${sum.within} days`
-    : `${n} licence(s) run out within ${sum.within} days`;
+  /* Three different jobs, so the tooltip names each rather than one total */
+  el.title = [
+    sum.expired.length ? `${sum.expired.length} expired` : '',
+    sum.soon.length ? `${sum.soon.length} running out within ${sum.within} days` : '',
+    sum.none.length ? `${sum.none.length} with no expiry date` : '',
+  ].filter(Boolean).join(' · ');
 }
 
 /* ---------------- App bar ---------------- */
@@ -93,7 +109,8 @@ function updatePills() {
   $('pillClass').textContent = r ? wqiClass(r.wqi).id : '—';
   $('pillClass').style.background = r ? wqiClass(r.wqi).color : '#8b93a8';
   $('pillTarget').textContent = `Class ${target}`;
-  $('pillCompliance').textContent = `${(rec.rate * 100).toFixed(0)}%`;
+  $('pillCompliance').textContent = rec.total ? `${(rec.rate * 100).toFixed(0)}%` : '—';
+  $('dataCoverage').textContent = `${DATA.stations.length} locations · ${fmtMonth(DATA.months[0])} – ${fmtMonth(DATA.months[latestIdx()])}`;
 }
 
 /* The one location picker. Its last group is not a station but a door: add
@@ -131,19 +148,20 @@ function buildStationPicker() {
 
 /* ---------------- Bootstrap ---------------- */
 (async function boot() {
-  tick();
-  setInterval(tick, 30000);
-
   const bar = $('lbar');
   const txt = $('ltxt');
   try {
-    await loadAll((p, msg) => {
+    await loadAll((p) => {
       bar.style.width = `${(p * 100).toFixed(0)}%`;
-      txt.textContent = msg;
+      txt.textContent = `Loading data… ${Math.round(p * 100)}%`;
     });
   } catch (e) {
-    txt.innerHTML = `<span style="color:#ffb4a8">Could not load data:<br>${esc(e.message)}<br><br>
-      Serve this site over HTTP (run <b>python serve.py</b>)<br>rather than opening the file directly.</span>`;
+    console.error('Could not load LUAS data:', e);
+    txt.innerHTML = `<span style="color:#ffb4a8">Unable to load the data. Please try again.</span>
+      <div class="btn-row" style="justify-content:center"><button type="button" class="btn btn-primary" id="retryLoad">Try again</button></div>
+      <details class="help-details"><summary>Technical details</summary><p>${esc(e.message)}</p>
+      ${location.protocol === 'file:' ? '<p>Open this site through a local web server, not directly from a file.</p>' : ''}</details>`;
+    $('retryLoad').onclick = () => location.reload();
     return;
   }
 
@@ -171,23 +189,39 @@ function buildStationPicker() {
   document.querySelectorAll('#nav button[data-view]').forEach((b) => {
     b.onclick = () => show(b.dataset.view);
   });
+  $('navToggle').onclick = () => {
+    const open = document.querySelector('.sidebar').classList.toggle('nav-open');
+    $('navToggle').setAttribute('aria-expanded', String(open));
+  };
+  $('p1Technical').onchange = (e) => {
+    $('p1AssessmentTable').classList.toggle('show-technical', e.target.checked);
+  };
+  // Charts initialise in their existing panels; resize when details become visible.
+  document.addEventListener('toggle', (event) => {
+    if (event.target.matches?.('details.section-fold') && event.target.open) {
+      requestAnimationFrame(() => { resizePhase2(); resizePhase3(); });
+    }
+  }, true);
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      closeNavigation();
+      if ($('dataInfo').open) {
+        $('dataInfo').open = false;
+        $('dataInfo').querySelector('summary').focus();
+      }
+    }
+  });
+  document.addEventListener('click', (event) => {
+    if (!$('dataInfo').contains(event.target)) $('dataInfo').open = false;
+  });
 
   $('sbExportJson').onclick = () =>
     download('luas-sesams-register.json', JSON.stringify(registerAsJson(), null, 2));
   $('sbExportCsv').onclick = () =>
     download('luas-sesams-register.csv', registerAsCsv(), 'text/csv');
 
-  /* What the app is actually running on, said once, at the top */
-  const basin = DATA.catchment?.features?.[0]?.properties ?? {};
-  $('tbStatus').innerHTML =
-    `Sungai Langat catchment · ${Math.round(basin.area_km2 ?? 0).toLocaleString('en')} km² · `
-    + `${DATA.stations.length} stations · `
-    + `record ${fmtMonth(DATA.months[0])} – ${fmtMonth(DATA.months[latestIdx()])} · `
-    + `${(DATA.water?.bodies?.length ?? 0)} water bodies · data.gov.my &amp; Digital Earth`
-    /* Where the numbers were actually served from. It earns a clause in the
-       status line: which of the two sources answered is not something a
-       reader should have to open the network tab to find out. */
-    + ` · served from ${esc(sourceLabel())}`;
+  // Connection diagnostics stay available without filling the page header.
+  $('dataSource').textContent = `Served from ${sourceLabel()}. Map sources: data.gov.my, Digital Earth and OpenStreetMap.`;
   $('p2Measure').onchange = (e) => renderNational(e.target.value);
 
   /* A change to the store — the station, a licence, a TMDL — ripples through every phase */

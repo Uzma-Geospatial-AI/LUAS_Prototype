@@ -49,7 +49,7 @@ export function buildLocationDialog() {
   $('lcCentre').onclick = () => {
     const c = mapCentre();
     if (!c) {
-      $('lcPosHint').textContent = 'Open the map first, so there is a centre to take.';
+      $('lcPosHint').textContent = 'Open the map first, then try again.';
       return;
     }
     $('lcLat').value = c[0].toFixed(5);
@@ -88,12 +88,12 @@ export function openLocationDialog(st = null) {
   $('lcLon').value = st?.lon ?? '';
   $('lcNote').value = st?.note ?? '';
   $('lcRemove').hidden = !st;
-  $('lcPosHint').textContent = 'Decimal degrees. The station is drawn on the map here, and every page follows it once picked.';
+  $('lcPosHint').textContent = 'Enter coordinates or use the current map centre.';
 
   $('locDialog').hidden = false;
   document.body.classList.add('modal-open');
   check();
-  $(st ? 'lcName' : 'lcCode').focus();
+  $('lcName').focus();
 }
 
 function close() {
@@ -118,13 +118,13 @@ function read() {
   const lat = num($('lcLat').value);
   const lon = num($('lcLon').value);
 
-  if (!/^[A-Z0-9][A-Z0-9_-]{1,11}$/.test(code)) return { why: 'A code of 2–12 letters and digits is needed.' };
-  if (!editing && DATA.stations.some((s) => s.code === code)) return { why: `${code} is already a station.` };
-  if (!name) return { why: 'A name is needed.' };
-  if (!river) return { why: 'The river or water it sits on is needed.' };
-  if (!district) return { why: 'A district is needed.' };
+  if (!/^[A-Z0-9][A-Z0-9_-]{1,11}$/.test(code)) return { why: 'Use a 2–12 character code: letters, numbers, hyphens or underscores.' };
+  if (!editing && DATA.stations.some((s) => s.code === code)) return { why: `${code} already exists. Choose another code.` };
+  if (!name) return { why: 'Enter a location name.' };
+  if (!river) return { why: 'Enter the river or water body.' };
+  if (!district) return { why: 'Enter a district.' };
   if (!(lat >= -90 && lat <= 90) || !(lon >= -180 && lon <= 180)) {
-    return { why: 'A latitude and a longitude are needed, in decimal degrees.' };
+    return { why: 'Enter latitude (−90 to 90) and longitude (−180 to 180).' };
   }
   const rec = {
     code, name, kind: $('lcKind').value, river, district, segment: $('lcSegment').value,
@@ -133,7 +133,7 @@ function read() {
   /* Selangor, roughly. Outside it the coordinates are more likely wrong
      than the station is, but it is a warning, not a bar. */
   const outside = lat < 2.5 || lat > 3.95 || lon < 100.7 || lon > 102.1;
-  return { rec, warn: outside, why: outside ? 'Outside Selangor — check the coordinates. It can still be saved.' : '' };
+  return { rec, warn: outside, why: outside ? 'Outside Selangor. Check coordinates before saving.' : '' };
 }
 
 function check() {
@@ -141,7 +141,7 @@ function check() {
   $('lcSave').disabled = !r.rec;
   $('lcSaveShow').disabled = !r.rec;
   const h = $('lcHint');
-  h.textContent = r.why || (r.rec ? 'Ready to save.' : '');
+  h.textContent = r.why || '';
   h.className = `hint${r.rec ? (r.warn ? ' err' : ' ok') : ''}`;
 }
 
@@ -166,8 +166,8 @@ function remove() {
   const st = DATA.stations.find((s) => s.code === editing);
   if (!st) return;
   const n = store.readings().filter((r) => r.station === st.code).length;
-  const kept = n ? ` Its ${n} saved reading${n === 1 ? '' : 's'} stay in this browser's records.` : '';
-  if (!confirm(`Remove ${st.code} · ${st.name} from the map and the picker?${kept}`)) return;
+  const kept = n ? ` ${n} saved reading${n === 1 ? '' : 's'} will be kept.` : '';
+  if (!confirm(`Remove ${st.name} (${st.code}) from your locations?${kept}`)) return;
   close();
   store.removeStation(st.code);
   refreshUserStations();

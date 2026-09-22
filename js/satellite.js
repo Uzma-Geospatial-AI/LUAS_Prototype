@@ -11,30 +11,27 @@ export const IMAGERY = {
   esri: {
     label: 'Esri World Imagery', res: '≈ 0.3 – 1 m',
     src: 'Esri · Maxar · Earthstar Geographics',
-    use: 'The sharpest openly available mosaic. Individual oxidation ponds, factory roofs and '
-       + 'the river bank are all resolvable.',
+    use: 'Detailed imagery for viewing ponds, buildings and river banks.',
     make: () => L.tileLayer(
       'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
       { maxZoom: 19, attribution: 'Imagery: Esri, Maxar, Earthstar Geographics' }),
   },
   google: {
     label: 'Google Satellite', res: '≈ 0.15 – 1 m', src: 'Google',
-    use: 'Often the most recent high-resolution coverage of the Klang Valley — useful for '
-       + 'confirming new development in the catchment.',
+    use: 'Detailed satellite imagery for exploring the catchment.',
     make: () => L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
       subdomains: ['0', '1', '2', '3'], maxZoom: 21, attribution: 'Imagery: © Google' }),
   },
   ghyb: {
     label: 'Google Hybrid', res: '≈ 0.15 – 1 m', src: 'Google',
-    use: 'The same imagery with place and road names, for locating a specific premises.',
+    use: 'Satellite imagery with road and place names.',
     make: () => L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
       subdomains: ['0', '1', '2', '3'], maxZoom: 21, attribution: 'Imagery: © Google' }),
   },
   s2: {
     label: 'Sentinel-2 Cloudless', res: '10 m',
     src: 'EOX IT Services · ESA Copernicus (CC BY-NC-SA 4.0)',
-    use: 'A cloud-free annual mosaic. Coarser, but radiometrically consistent — the correct '
-       + 'base for computing the spectral indices below.',
+    use: 'Cloud-free Sentinel-2 imagery from 2021.',
     make: () => L.tileLayer(
       'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2021_3857/default/g/{z}/{y}/{x}.jpg',
       { maxZoom: 16, attribution: 'Sentinel-2 cloudless 2021 by EOX (modified Copernicus Sentinel data)' }),
@@ -42,15 +39,13 @@ export const IMAGERY = {
   viirs: {
     label: 'VIIRS — daily', res: '250 m', daily: true,
     src: 'NASA EOSDIS GIBS · NOAA-20, daily',
-    use: 'A same-week look at the reach. Too coarse for a single channel, but this is the layer '
-       + 'that shows sediment plumes and flooding after heavy rain.',
+    use: 'Daily regional imagery. Too coarse to show individual river channels.',
     id: 'VIIRS_NOAA20_CorrectedReflectance_TrueColor', max: 9, ext: 'jpg',
   },
   bands721: {
     label: 'False colour 7-2-1 — daily', res: '250 m', daily: true,
     src: 'NASA EOSDIS GIBS · MODIS Terra, daily',
-    use: 'Shortwave infrared composite. Water reads dark, which separates open water from land '
-       + 'cleanly and exposes flooding and bare soil in the catchment.',
+    use: 'Daily false-colour imagery. Water appears dark; useful for viewing floods and bare soil.',
     id: 'MODIS_Terra_CorrectedReflectance_Bands721', max: 9, ext: 'jpg',
   },
 };
@@ -82,19 +77,19 @@ const ramp = (cols) => `linear-gradient(90deg,${cols.join(',')})`;
 
 export const WQ_PRODUCTS = {
   ndti: {
-    label: 'NDTI', long: 'Turbidity index', file: 'NDTI', quantity: 'turbidity',
+    label: 'NDTI', control: 'Turbidity', long: 'Turbidity index', file: 'NDTI', quantity: 'turbidity',
     stops: RDYLGN, ramp: ramp(RDYLGN), lo: 'Clear', hi: 'Turbid',
-    note: 'Suspended sediment: plumes after rain, construction and dredging run-off, bank erosion.',
+    note: 'Highlights possible sediment in the water.',
   },
   ndci: {
-    label: 'NDCI', long: 'Chlorophyll-a index', file: 'NDCI', quantity: 'chlorophyll',
+    label: 'NDCI', control: 'Algae', long: 'Chlorophyll-a index', file: 'NDCI', quantity: 'chlorophyll',
     stops: RDYLGN, ramp: ramp(RDYLGN), lo: 'Low chlorophyll', hi: 'Bloom',
-    note: 'Algal biomass building in reservoirs and slow reaches — an early sign of a bloom.',
+    note: 'Highlights possible algae growth in slower water.',
   },
   ss: {
-    label: 'SS', long: 'Suspended solids, estimated', file: 'SS_mgL', unit: 'mg/L', quantity: 'sediment',
+    label: 'SS', control: 'Sediment (est.)', long: 'Suspended solids, estimated', file: 'SS_mgL', unit: 'mg/L', quantity: 'sediment',
     stops: ['#000000', '#ffffff'], ramp: ramp(['#000000', '#ffffff']), lo: 'Low', hi: 'High',
-    note: 'A regression on the Red/Green ratio, not yet fitted to these rivers: relative pattern only.',
+    note: 'Uncalibrated estimate; compare relative patterns only.',
     caveat: true,
     /* Shown across the whole scene, never clipped to the mapped water: the
        sediment pattern reads as a surface, not as a set of outlines. */
@@ -108,42 +103,27 @@ export const wqUrl = (product, quarter) =>
 /* Spectral indices that relate imagery to the WQI parameters. The three
    with a `product` are on the map as quarterly layers. */
 export const WATER_INDICES = [
-  { name: 'NDWI — Normalised Difference Water Index', formula: '(Green − NIR) / (Green + NIR)',
+  { short: 'Open water · NDWI', name: 'NDWI — Normalised Difference Water Index', formula: '(Green − NIR) / (Green + NIR)',
     bands: 'Sentinel-2 B3, B8',
     ramp: 'linear-gradient(90deg,#8a6d3b,#e8e3d2,#45bfe0,#0a4a8a)', lo: 'Land (−1)', hi: 'Water (+1)',
-    body: 'Delineates open water. Tracks how pond and reservoir area changes between the dry '
-        + 'season and the monsoon — the storage that buffers load.' },
-  { name: 'NDTI — Normalised Difference Turbidity Index', formula: '(Red − Green) / (Red + Green)',
+    body: 'Shows open water and changes in pond or reservoir area.' },
+  { short: 'Turbidity · NDTI', name: 'NDTI — Normalised Difference Turbidity Index', formula: '(Red − Green) / (Red + Green)',
     bands: 'Sentinel-2 B4, B3', product: 'ndti',
     ramp: WQ_PRODUCTS.ndti.ramp, lo: 'Clear (≤ 0)', hi: 'Turbid (+)',
-    body: 'Clear water absorbs red and reflects green, so it sits at or below zero. Suspended '
-        + 'sediment scatters light broadly, but red climbs faster than green as it thickens, and '
-        + 'the ratio swings positive. Rising values flag sediment plumes after rain, construction '
-        + 'and dredging run-off, and bank erosion — the monsoon turbidity spikes on these rivers. '
-        + 'A proxy for the SS row of the load budget.' },
-  { name: 'NDCI — Normalised Difference Chlorophyll Index', formula: '(Red-Edge − Red) / (Red-Edge + Red)',
+    body: 'Higher values may indicate more suspended sediment, including runoff after rain.' },
+  { short: 'Algae · NDCI', name: 'NDCI — Normalised Difference Chlorophyll Index', formula: '(Red-Edge − Red) / (Red-Edge + Red)',
     bands: 'Sentinel-2 B5, B4', product: 'ndci',
     ramp: WQ_PRODUCTS.ndci.ramp, lo: 'Low chlorophyll (≤ 0)', hi: 'Bloom (+)',
-    body: 'Chlorophyll-a absorbs red at 665 nm for photosynthesis and reflects sharply just past '
-        + 'it at the 705 nm red edge — a bump only Sentinel-2 resolves, since Landsat has no '
-        + 'red-edge band. More algae, deeper red absorption, higher red-edge reflectance, larger '
-        + 'NDCI. An early warning for blooms in reservoirs and slow-moving reaches, before the '
-        + 'colour change is visible, and a trace of the nutrient load behind them.' },
-  { name: 'SS — Suspended solids, estimated', formula: 'SS (mg/L) = a × (Red ÷ Green) + b',
+    body: 'Higher values may indicate algae growth in reservoirs and slow-moving rivers.' },
+  { short: 'Sediment · SS estimate', name: 'SS — Suspended solids, estimated', formula: 'SS (mg/L) = a × (Red ÷ Green) + b',
     bands: 'Sentinel-2 B4 ÷ B3', product: 'ss',
     ramp: WQ_PRODUCTS.ss.ramp, lo: 'Low', hi: 'High mg/L',
-    body: 'Not an index but a concentration: no physical constant links a reflectance ratio to '
-        + 'mg/L, because it depends on the sediment, its grain size and the water depth, so the '
-        + 'Red/Green ratio is fitted by least squares to paired field samples. The slope and '
-        + 'intercept behind this layer are literature placeholders, not fitted to these rivers, '
-        + 'so it shows relative pattern only. It becomes a quantitative product once station '
-        + 'samples are used to refit.',
+    body: 'Compares sediment patterns. Local water samples are needed to calibrate concentration estimates.',
     caveat: 'Uncalibrated — qualitative only' },
-  { name: 'LST — Land Surface Temperature', formula: 'Thermal sensing (TIR bands)',
+  { short: 'Surface temperature · LST', name: 'LST — Land Surface Temperature', formula: 'Thermal sensing (TIR bands)',
     bands: 'Landsat 8/9 B10',
     ramp: 'linear-gradient(90deg,#2a78d6,#45bfe0,#f5e01c,#ef7d1a,#d92d20)', lo: 'Cool', hi: 'Hot',
-    body: 'Thermal discharge and the urban heat island both lower dissolved oxygen solubility, '
-        + 'which feeds straight back into the index.' },
+    body: 'Shows surface heat patterns that can help investigate warm-water discharges.' },
 ];
 
 

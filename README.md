@@ -20,8 +20,14 @@ is rather than for its position, so a renumbering cannot make the label and the 
 
 No build step and no API keys. The datasets are read from a **Firebase Realtime Database**,
 falling back to the copies bundled with the site when the database cannot answer — so the page
-still works with the database closed, empty or unreachable, and the app bar always says which of
-the two served it. Any station can be selected from the app bar and every phase follows it.
+still works with the database closed, empty or unreachable. Open **Data info → Data source** to
+check which source served it. Any station can be selected from the app bar and every phase follows it.
+
+The interface keeps the main tasks visible and opens extra detail on demand. Map layers and
+legend filters start collapsed. Calculation details, national comparisons and the licence entry
+form can be expanded when needed; editing a licence opens its form automatically. Sample and
+estimated data labels remain visible. On smaller screens, **Menu** opens navigation, and map
+search appears above the map.
 
 ---
 
@@ -82,9 +88,9 @@ LUAS_Prototype/
 ## On a phone
 
 Everything a desktop has, read by scrolling rather than by looking round the edges of the map.
-Below 700px the floating cards leave the overlay and stack under the map in the order they are
-needed — class counts, search, basemap, layers, month, legend — and the map keeps a workable
-56vh. The station picker moves to its own line in the app bar rather than being dropped: it
+Below 1080px, search and the basemap selector appear above the map. The month control, class
+counts, layers and legend stack below it, and the map keeps a workable 52vh. The station picker
+stays in the app bar rather than being dropped: it
 decides what every phase is written for, so a phone without it would be a different product.
 
 ---
@@ -143,7 +149,7 @@ closed database costs one round trip rather than eight timeouts.
 > the price of a single source of truth, accepted knowingly. Neither figure touches the 2,081 SVG
 > paths the map draws, which is the larger cost on a slow device and is the same either way.
 
-Which source actually answered is shown in the app bar — *served from Firebase · written …*, or
+Which source actually answered is shown under **Data info → Data source** — *served from Firebase · written …*, or
 *served from bundled files · database unavailable (rules closed)*. Where a number came from is not
 something a reader should have to open the network tab to find out.
 

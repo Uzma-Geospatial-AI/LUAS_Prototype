@@ -42,7 +42,7 @@ export const HEAT_MODES = {
   h3: { key: 'h3', label: '3 h', kind: 'rain', long: 'Rainfall · last 3 hours' },
   h6: { key: 'h6', label: '6 h', kind: 'rain', long: 'Rainfall · last 6 hours' },
   h24: { key: 'h24', label: '24 h', kind: 'rain', long: 'Rainfall · last 24 hours' },
-  humidity: { key: 'humidity', label: 'Humidity', kind: 'humidity', long: 'Relative humidity · simulated' },
+  humidity: { key: 'humidity', label: 'Humidity (simulated)', kind: 'humidity', long: 'Relative humidity' },
 };
 
 /* Rainfall against DID's bands, in mm: 0, 1, 11, 31, 61 and up. The stops

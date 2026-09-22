@@ -10,7 +10,7 @@
 import { DATA, readingAt, readingIn, latestIdx, fmtMonth, complianceRecord } from './data.js';
 import {
   computeWQI, wqiClass, PARAM_META, checkStandard, classCompliance,
-  siColor, WEIGHTS, INWQS,
+  siColor, WEIGHTS,
 } from './wqi.js';
 import { store } from './store.js';
 import { kindLabel } from './locations.js';
@@ -35,8 +35,7 @@ export function renderPhase1() {
   /* The page names whichever station is selected, not a fixed one */
   const head = document.getElementById('p1Head2');
   if (head) {
-    head.textContent = `${s.river} at ${s.name} · six parameters → WQI `
-      + `→ does it hold Class ${target}?`;
+    head.textContent = `Water quality and Class ${target} compliance.`;
   }
 
   renderHeader(s, target);
@@ -57,16 +56,15 @@ function renderHeader(s, target) {
       <div>
         <div class="stn-code">${esc(s.code)} · ${esc(s.river)}${s.user ? ` · ${esc(kindLabel(s.kind))}` : ''}</div>
         <h2>${esc(s.name)}</h2>
-        <div class="stn-loc">${esc(s.district)} district · ${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}
-          · ${n} monthly record${n === 1 ? '' : 's'}${s.user ? ' · added from the app bar' : ''}</div>
+        <div class="stn-loc" title="${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}">${esc(s.district)} · ${n} monthly record${n === 1 ? '' : 's'}</div>
       </div>
       <div class="stn-month">
-        <button class="btn btn-ghost" id="p1Prev" ${monthIdx === 0 ? 'disabled' : ''}>‹</button>
+        <button class="btn btn-ghost" id="p1Prev" aria-label="Previous month" ${monthIdx === 0 ? 'disabled' : ''}>‹</button>
         <div class="stn-month-val">
           <span>Sampling month</span>
           <b>${fmtMonth(DATA.months[monthIdx])}</b>
         </div>
-        <button class="btn btn-ghost" id="p1Next"
+        <button class="btn btn-ghost" id="p1Next" aria-label="Next month"
           ${monthIdx >= DATA.months.length - 1 ? 'disabled' : ''}>›</button>
         <button class="btn btn-ghost" id="p1Latest">Latest</button>
       </div>
@@ -89,8 +87,8 @@ function renderPhotos(s) {
   const all = rounds.flatMap((r) => r.attachments.map((a) => ({ ...a, t: r.t })));
   box.hidden = false;
   box.innerHTML = `
-    <div class="section-title"><h2>Photographs on record</h2>
-      <span class="st-sub">${all.length} attached to ${rounds.length} sampling round${rounds.length === 1 ? '' : 's'} at ${esc(s.name)}</span></div>
+    <div class="section-title"><h2>Saved photos</h2>
+      <span class="st-sub">${all.length} photos · ${rounds.length} sampling round${rounds.length === 1 ? '' : 's'}</span></div>
     <div class="card">${attachGallery(all)}</div>`;
   wireGallery(box, all);
 }
@@ -107,10 +105,8 @@ function renderVerdict(s, target) {
         <div class="v-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg></div>
         <div class="v-body">
           <div class="v-lab">Class ${target} compliance · ${month}</div>
-          <div class="v-head">No reading at this station yet</div>
-          <div class="v-sub">Nothing has been sampled here at or before ${month}. Enter its six
-            parameters in the calculator below and save them; each saved month becomes this
-            station's record, and the map colours it once it has one.</div>
+          <div class="v-head">No reading available</div>
+          <div class="v-sub">No reading on or before ${month}. Add six parameter values below to get started.</div>
         </div>
       </div>
       <div class="card kpi">
@@ -124,9 +120,9 @@ function renderVerdict(s, target) {
         <div class="k-sub">${rec.passing} of ${rec.total} records</div>
       </div>
       <div class="card kpi">
-        <div class="k-lab">Binding parameter</div>
+        <div class="k-lab">Most frequent issue</div>
         <div class="k-val" style="color:var(--muted-2);font-size:22px">—</div>
-        <div class="k-sub">Nothing to judge yet</div>
+        <div class="k-sub">No reading</div>
       </div>`;
     return;
   }
@@ -150,8 +146,8 @@ function renderVerdict(s, target) {
           ? `Meets Class ${target}`
           : `Does not meet Class ${target}`}</div>
         <div class="v-sub">${comp.pass
-          ? 'All six INWQS ambient standards are satisfied at this station.'
-          : `${comp.failed} of 6 parameters exceed the Class ${target} standard: <b>${failing.join(', ')}</b>.`}</div>
+          ? 'All six parameters meet the standard.'
+          : `Outside the standard: <b>${failing.join(', ')}</b>.`}</div>
       </div>
     </div>
 
@@ -171,7 +167,7 @@ function renderVerdict(s, target) {
     </div>
 
     <div class="card kpi">
-      <div class="k-lab">Binding parameter</div>
+      <div class="k-lab">Most frequent issue</div>
       ${bindingCard(rec)}
     </div>`;
 }
@@ -181,7 +177,7 @@ function bindingCard(rec) {
     .sort((a, b) => b[1].rate - a[1].rate)[0];
   if (!worst || worst[1].rate === 0) {
     return `<div class="k-val" style="color:#17a04a;font-size:22px">None</div>
-      <div class="k-sub">No parameter fails the standard</div>`;
+      <div class="k-sub">All parameters meet the standard</div>`;
   }
   const [p, v] = worst;
   return `<div class="k-val" style="color:#d92d20;font-size:26px">${PARAM_META[p].short}</div>
@@ -194,13 +190,10 @@ function renderParamTable(s, target) {
   const rec = complianceRecord(s, target);
 
   $('p1TargetNote').innerHTML =
-    `INWQS Class ${target} ambient standards · NH₃-N ≤ ${INWQS[target].an} · BOD ≤ ${INWQS[target].bod}
-     · COD ≤ ${INWQS[target].cod} · SS ≤ ${INWQS[target].ss} mg/L`;
+    `INWQS Class ${target} standards`;
 
   if (!r) {
-    $('p1Params').innerHTML = `<tr><td colspan="8" class="empty-row">No reading at
-      ${esc(s.name)} for ${fmtMonth(DATA.months[monthIdx])} or before. Enter six values in the
-      calculator below and save them.</td></tr>`;
+    $('p1Params').innerHTML = `<tr><td colspan="8" class="empty-row">No reading available. Add a reading below.</td></tr>`;
     return;
   }
 
@@ -215,16 +208,16 @@ function renderParamTable(s, target) {
       <td class="num">${chk.limitText}</td>
       <td>
         <span class="pill-status ${fail ? 'st-fail' : 'st-pass'}">
-          ${fail ? 'EXCEEDS' : 'MEETS'}</span>
+          ${fail ? 'Outside limit' : 'Meets'}</span>
       </td>
-      <td class="num">${chk.ratio != null
+      <td class="num technical-col">${chk.ratio != null
         ? `${(chk.ratio * 100).toFixed(0)}%`
         : (chk.margin === 0 ? 'in range' : 'out of range')}</td>
-      <td>
+      <td class="technical-col">
         <span class="num" style="color:${siColor(si)};font-weight:700">${si.toFixed(0)}</span>
         <div class="si-bar"><i style="width:${si}%;background:${siColor(si)}"></i></div>
       </td>
-      <td class="num">${(WEIGHTS[p] * 100).toFixed(0)}%</td>
+      <td class="num technical-col">${(WEIGHTS[p] * 100).toFixed(0)}%</td>
       <td class="num">${rec.byParam[p].fails}/${rec.total}</td>
     </tr>`;
   }).join('');
@@ -319,15 +312,15 @@ function renderTrend(s, target) {
 function buildCalculator() {
   $('p1Calc').innerHTML = Object.entries(PARAM_META).map(([p, m]) => `
     <div class="field">
-      <label for="c_${p}">${m.name} <span class="unit">${m.unit || '—'}</span></label>
+      <label for="c_${p}">${m.name} <span class="unit">${m.unit || ''}</span></label>
       <input id="c_${p}" type="number" step="${m.step}" min="${m.min}" max="${m.max}"
-             inputmode="decimal">
+             inputmode="decimal" aria-describedby="ch_${p}">
       <div class="hint" id="ch_${p}"></div>
     </div>`).join('');
 
   att = mountAttach('p1Attach', {
-    label: 'Photographs of this round',
-    hint: 'The sampling point, the field sheet, the meter. Attached to the reading and carried into the location report.',
+    label: 'Photos (optional)',
+    hint: 'Saved with this reading in this browser.',
   });
   Object.keys(PARAM_META).forEach((p) =>
     $(`c_${p}`).addEventListener('input', updateCalculator));
@@ -363,8 +356,7 @@ function buildCalculator() {
       const i = DATA.months.indexOf(t);
       if (i >= 0) { monthIdx = i; renderPhase1(); }
     }
-    $('p1Msg').innerHTML = `<span class="saved-note">Saved · WQI ${wqi.toFixed(1)} · ${wqiClass(wqi).label}`
-      + `${s.user ? ` · now on ${esc(s.code)}'s record for ${fmtMonth(t)}` : ''}${esc(saveWarning())}</span>`;
+    $('p1Msg').innerHTML = `<span class="saved-note">Saved · ${fmtMonth(t)} · WQI ${wqi.toFixed(1)}${esc(saveWarning())}</span>`;
     setTimeout(() => { $('p1Msg').innerHTML = ''; }, 6000);
   };
 
@@ -374,21 +366,24 @@ function buildCalculator() {
 
 function readCalc() {
   const vals = {};
+  let valid = true;
   for (const [p, m] of Object.entries(PARAM_META)) {
     const el = $(`c_${p}`);
     const v = num(el.value);
-    const bad = Number.isNaN(v) || v < m.min || v > m.max;
+    const bad = !Number.isFinite(v) || v < m.min || v > m.max;
     el.classList.toggle('bad', el.value !== '' && bad);
-    if (bad) return null;
+    el.setAttribute('aria-invalid', String(el.value !== '' && bad));
+    if (bad) valid = false;
     vals[p] = v;
   }
   const t = num($('cTemp').value);
   vals.temp = Number.isNaN(t) ? 27 : t;
-  return vals;
+  return valid ? vals : null;
 }
 
 function updateCalculator() {
   const target = store.conditions().targetClass;
+  const detailsOpen = $('p1Result').querySelector('.calc-details')?.open ?? false;
   const vals = readCalc();
   $('p1Save').disabled = !vals;
 
@@ -397,18 +392,22 @@ function updateCalculator() {
     const v = num($(`c_${p}`).value);
     const hint = $(`ch_${p}`);
     if (Number.isNaN(v)) { hint.textContent = ''; hint.className = 'hint'; continue; }
+    if (!Number.isFinite(v) || v < m.min || v > m.max) {
+      hint.textContent = `Enter ${m.min}–${m.max}${m.unit ? ` ${m.unit}` : ''}.`;
+      hint.className = 'hint err';
+      continue;
+    }
     const chk = checkStandard(p, v, target);
     hint.textContent = chk.pass
       ? `Meets Class ${target} (${chk.limitText})`
-      : `Exceeds Class ${target} (${chk.limitText})`;
+      : `Outside Class ${target} (${chk.limitText})`;
     hint.className = `hint ${chk.pass ? 'ok' : 'err'}`;
   }
 
   if (!vals) {
     $('p1Result').innerHTML = `<div class="pv-empty">
-      <b>Class identification</b>
-      Enter all six parameters. The index, its class, and the Class ${target}
-      verdict are computed as you type.</div>`;
+      <b>Your result will appear here</b>
+      Enter all six parameter values to calculate WQI.</div>`;
     return;
   }
 
@@ -424,10 +423,12 @@ function updateCalculator() {
     </div>
     <div class="pv-verdict ${comp.pass ? 'ok' : 'bad'}">
       ${comp.pass
-        ? `✓ Meets Class ${target} on all six INWQS standards`
-        : `✕ Fails Class ${target} on ${comp.failed}: ` + Object.entries(comp.checks)
+        ? `✓ Meets Class ${target}`
+        : `✕ Outside Class ${target}: ` + Object.entries(comp.checks)
             .filter(([, c]) => c.pass === false).map(([p]) => PARAM_META[p].short).join(', ')}
     </div>
+    <details class="calc-details"${detailsOpen ? ' open' : ''}>
+      <summary>Calculation details</summary>
     <div class="si-list">
       ${Object.keys(PARAM_META).map((p) => `
         <div class="si-item">
@@ -441,7 +442,8 @@ function updateCalculator() {
       DO saturation <b>${saturation.toFixed(1)}%</b> at ${vals.temp} °C.<br>
       WQI = 0.22·SI<sub>DO</sub> + 0.19·SI<sub>BOD</sub> + 0.16·SI<sub>COD</sub>
       + 0.15·SI<sub>NH₃-N</sub> + 0.16·SI<sub>SS</sub> + 0.12·SI<sub>pH</sub>
-    </div>`;
+    </div>
+    </details>`;
 }
 
 function shade(hex, p) {

@@ -35,7 +35,7 @@ export const GLOSSARY = [
       ['INWQS', 'National Water Quality Standards for Malaysia: the class limits for each parameter.',
         'The yardstick behind every class label in the portal.'],
       ['Target class', 'The class a reach is managed to hold; Class II by default.',
-        '"Met %" in the app bar is the share of months in the record that reached it.'],
+        'Data info shows the share of sampled months that met the target.'],
       ['12-month median', 'The middle value of the last twelve monthly readings at the selected station.',
         'What the load budget uses as the river’s current concentration: steadier than any single sample.'],
     ],
@@ -190,7 +190,7 @@ export const GLOSSARY = [
       ['JPS InfoBanjir', 'The Department of Irrigation and Drainage flood portal.',
         'Source of the river water-level gauges and their statuses.'],
       ['Firebase', 'The Realtime Database the deployed site reads its datasets from.',
-        'Falls back to the bundled files if the database cannot answer; the app bar says which one served.'],
+        'Falls back to bundled files if unavailable. Open Data info → Data source to check the source.'],
     ],
   },
 ];
@@ -207,9 +207,9 @@ export function buildGlossary() {
   const btn = document.createElement('button');
   btn.className = 'ab-icon';
   btn.id = 'glossaryBtn';
-  btn.title = 'Glossary — every term used here';
-  btn.setAttribute('aria-label', 'Glossary');
-  btn.innerHTML = BOOK;
+  btn.title = 'Help with terms';
+  btn.setAttribute('aria-label', 'Help with terms');
+  btn.innerHTML = `${BOOK}<span>Help</span>`;
   document.querySelector('.ab-meta').appendChild(btn);
 
   const wrap = document.createElement('div');
@@ -222,7 +222,7 @@ export function buildGlossary() {
       <div class="gl-head">
         <div>
           <h2 id="glTitle">${BOOK} Glossary</h2>
-          <div class="gl-sub">Every term the portal uses — what it is, and what it does here.</div>
+          <div class="gl-sub">Search water quality, map and licence terms.</div>
         </div>
         <label class="reg-search gl-search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>

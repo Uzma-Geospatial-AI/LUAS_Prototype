@@ -329,7 +329,7 @@ function buildWeather() {
   const r = DATA.rainfall;
   $('ovRain').textContent = r ? `${r.stations.length} gauges` : '';
   $('mapWxWhen').innerHTML = r
-    ? `JPS · InfoBanjir snapshot${r.latest ? ` · as at ${esc(r.latest)}` : ''}`
+    ? `JPS InfoBanjir snapshot${r.latest ? ` · ${esc(r.latest)}` : ''}`
     : 'Rainfall unavailable.';
 }
 
@@ -342,11 +342,15 @@ function setHeat(mode) {
     map.removeLayer(heatLayer);
   }
   syncWeather();
+  if (heatMode) setMapCardExpanded('mapLegend', 'legendMin', 'legend', true);
 }
 
 function syncWeather() {
-  document.querySelectorAll('[data-wx]').forEach((b) =>
-    b.classList.toggle('active', (b.dataset.wx || null) === heatMode));
+  document.querySelectorAll('[data-wx]').forEach((b) => {
+    const active = (b.dataset.wx || null) === heatMode;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-pressed', String(active));
+  });
 
   const box = $('mapLegendWx');
   if (!box) return;
@@ -368,12 +372,15 @@ function syncWeather() {
       <div class="idx-lab"><span>${lo} ${unit}</span><span>${hi}${rain ? '+' : ''} ${unit}</span></div>
       <div class="ml-wq-n">${rain
         ? (s.n
-          ? `${s.wet} of ${s.n} gauges recorded rain${s.wet ? `, most ${nf1(s.hi)} mm` : ''}${s.silent ? ` · ${s.silent} silent` : ''}.
-             Coloured against DID's bands, not against the day, so an empty map means a dry catchment.`
-          : 'No gauge reported this window.')
-        : `Simulated, not measured: DID publishes no humidity. ${s.n} gauge positions,
-           ${nf1(s.lo)}–${nf1(s.hi)}%.`}
-        Interpolated between gauges and clipped to the catchment.</div>
+          ? `${s.wet}/${s.n} gauges recorded rain${s.wet ? ` · Maximum ${nf1(s.hi)} mm` : ' · No rain reported'}${s.silent ? ` · ${s.silent} unavailable` : ''}.`
+          : 'No readings for this period.')
+        : s.n ? `Simulated readings: ${nf1(s.lo)}–${nf1(s.hi)}%.` : 'No simulated readings available.'}</div>
+      <details class="ui-details"><summary>About this layer</summary>
+        <div class="ml-wq-n">${rain
+          ? "Colours use a fixed DID rainfall scale. Values between gauges are estimated."
+          : 'Humidity is simulated, not measured. Values are estimated between gauge locations.'}
+          Shown within the catchment only.</div>
+      </details>
     </div>`;
 }
 
@@ -572,6 +579,7 @@ function levelPopup(st) {
           <span>${st.level == null ? esc(c.en) : esc(gap)}</span>
         </div>
         <div class="wl-ladder">${rungs}</div>
+        <details class="ui-details"><summary>Station details</summary>
         <table class="pop-tbl">
           <tr><td>Reading taken</td><td class="num">${esc(st.updated || '—')}</td></tr>
           ${st.trend ? `<tr><td>Trend</td><td class="num">${esc(st.trend)}</td></tr>` : ''}
@@ -579,9 +587,9 @@ function levelPopup(st) {
             <td class="num">${esc(st.sub)}</td></tr>
           <tr><td>JPS station</td><td class="num">${esc(st.id)}</td></tr>
         </table>
-        <div class="pop-hint">Snapshot from JPS InfoBanjir, not a live feed.${
-          st.inCatchment ? '' : ' JPS files this station under the Langat basin;'
-          + ' it sits outside the HydroSHEDS catchment this map is drawn to.'}</div>
+        </details>
+        <div class="pop-hint">JPS InfoBanjir · Saved reading, not live.<br>${esc(st.updated || 'Date unavailable')}.${
+          st.inCatchment ? '' : ' Outside the mapped catchment.'}</div>
       </div>
     </div>`;
 }
@@ -615,7 +623,7 @@ const nf1 = (n) => Number(n).toLocaleString('en-MY', { maximumFractionDigits: 1 
 /* A name the ETL gave a feature that had none — what it is and where it
    is, from the nearest locality. Said so wherever it is shown. */
 const given = (p) => (p?.name_src === 'given'
-  ? ' <span class="given" title="A given name: what this is and where it is, from the nearest locality. Not a recorded name.">nama diberi</span>' : '');
+  ? ' <span class="given" title="Descriptive name based on location; not an official recorded name.">nama diberi</span>' : '');
 
 const PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"'
   + ' stroke-linecap="round" stroke-linejoin="round">'
@@ -632,13 +640,12 @@ function sourcePopup(p, c) {
   let hint = '';
   if (!to) {
     hint = anyWaterVisible()
-      ? 'Nothing on the layers shown is within reach of this site.'
-      : `No water layer is switched on. The overall nearest is ${metres(p.dist)}.`;
+      ? 'No nearby water in the visible layers.'
+      : `Turn on a water layer to see nearby water. Nearest: ${metres(p.dist)}.`;
   } else if (hidden) {
-    hint = `Nearest among the layers shown. The overall nearest is `
-      + `${metres(p.dist)}, on a layer that is hidden.`;
+    hint = `A closer water body (${metres(p.dist)}) is on a hidden layer.`;
     if (to.d > buffer) {
-      hint += ` This one is beyond the ${metres(buffer)} riparian zone.`;
+      hint += ` Shown water is outside the ${metres(buffer)} river buffer.`;
     }
   }
 
@@ -656,7 +663,7 @@ function sourcePopup(p, c) {
               ${receiving.has(flashKey)
                 ? `<button class="pin-btn" data-flash="${flashKey}"
                      data-at="${p.at[1]},${p.at[0]}"
-                     title="Show ${esc(to.n)} on the map">${PIN}</button>` : ''}
+                     title="Show ${esc(to.n)} on the map" aria-label="Show ${esc(to.n)} on the map">${PIN}</button>` : ''}
             </td></tr>`
           : ''}
           <tr><td>Screening risk</td>
@@ -665,8 +672,10 @@ function sourcePopup(p, c) {
         </table>
         ${hint ? `<div class="pop-hint">${hint}</div>` : ''}
         ${licenceBlock(p.id)}
-        <div class="pop-pol"><b>Typically carries</b><br>${esc(c.pol)}</div>
-        <div class="pop-note">Screening only \u2014 no discharge here is metered</div>
+        <details class="ui-details"><summary>Typical pollutants</summary>
+          <div class="pop-pol">${esc(c.pol)}</div>
+        </details>
+        <div class="pop-note">Screening estimate · Discharge not measured</div>
       </div>
     </div>`;
 }
@@ -686,7 +695,7 @@ function licenceBlock(srcId) {
       <b>${st.licensed ? 'Licensed' : 'No discharge licence'}
         <span class="est-dot">${badge}</span></b>
       ${l ? `${esc(l.ref)} · ${(l.flow ?? 0).toLocaleString('en')} m³/day permitted${expiryLine(l)}`
-          : 'No licence register is published, so this status is an assumption, not a record.'}
+          : 'Estimated status · No published register available.'}
     </div>`;
   }
   const total = ['bod', 'cod', 'ss', 'an']
@@ -702,7 +711,11 @@ function licenceBlock(srcId) {
 /* When the licence runs out, said on the premises itself */
 function expiryLine(l) {
   const e = expiryOf(l);
-  if (!e.has) return '';
+  if (!e.has) {
+    /* Said, not omitted: a premises whose term nobody has recorded is the
+       one the register can say least about. */
+    return `<br><span class="pop-exp" style="color:${e.colour}">No expiry date on record</span>`;
+  }
   return `<br><span class="pop-exp" style="color:${e.colour}">Expires ${esc(e.iso)}`
     + ` · ${esc(countdown(e.days))}</span>`;
 }
@@ -1188,8 +1201,9 @@ function stationPopup(st, r, cls, comp, target) {
         <div class="pop-verdict ${comp.pass ? 'ok' : 'bad'}">
           ${comp.pass
             ? `Meets Class ${target}`
-            : `Fails Class ${target}: ${failing.join(', ')}`}
+            : `Outside Class ${target} limits: ${failing.join(', ')}`}
         </div>
+        <details class="ui-details"><summary>Parameter readings &amp; limits</summary>
         <table class="pop-tbl">
           ${Object.keys(PARAM_META).map((p) => {
             const chk = comp.checks[p];
@@ -1201,10 +1215,9 @@ function stationPopup(st, r, cls, comp, target) {
             </tr>`;
           }).join('')}
         </table>
+        </details>
         <button class="pop-btn" data-goto="${esc(st.code)}">
-          ${st.code === DATA.focus.code
-            ? 'Open the assessment →'
-            : `Assess ${esc(st.name)} instead →`}</button>
+          View station assessment →</button>
       </div>
     </div>`;
 }
@@ -1218,14 +1231,10 @@ function noReadingPopup(st) {
         <div class="pop-name">${esc(st.name)}</div>
       </div>
       <div class="pop-body">
-        <div class="pop-verdict warn">No readings yet at ${fmtMonth(DATA.months[monthIdx])}</div>
-        <div class="pop-pol">Added from the app bar. Enter its six parameters in the Station
-          Assessment calculator and save them; the marker takes the colour of its class from
-          the first one.</div>
+        <div class="pop-verdict warn">No readings for ${fmtMonth(DATA.months[monthIdx])}</div>
+        <div class="pop-pol">Add a reading in the station assessment to calculate water quality.</div>
         <button class="pop-btn" data-goto="${esc(st.code)}">
-          ${st.code === DATA.focus.code
-            ? 'Open the assessment →'
-            : `Assess ${esc(st.name)} instead →`}</button>
+          Add station reading →</button>
       </div>
     </div>`;
 }
@@ -1256,13 +1265,16 @@ function buildBasemaps() {
 
   $('mapIndices').innerHTML = WATER_INDICES.map((x) => `
     <div class="idx-item">
-      <div class="idx-h">${x.name}</div>
-      <code>${x.formula}</code>${x.bands ? `<span class="idx-bands">${esc(x.bands)}</span>` : ''}
+      <div class="idx-h">${x.short}</div>
       <div class="idx-ramp" style="background:${x.ramp}"></div>
       <div class="idx-lab"><span>${x.lo}</span><span>${x.hi}</span></div>
       <div class="idx-b">${x.body}</div>
       ${x.caveat ? `<div class="idx-caveat">${esc(x.caveat)}</div>` : ''}
-      ${x.product ? `<button class="mini idx-go" data-wq="${x.product}">Show on the map</button>` : ''}
+      <details class="ui-details"><summary>Formula &amp; source bands</summary>
+        <div class="idx-b">${x.name}</div>
+        <code>${x.formula}</code>${x.bands ? `<span class="idx-bands">${esc(x.bands)}</span>` : ''}
+      </details>
+      ${x.product ? `<button class="mini idx-go" data-wq="${x.product}">Show on map</button>` : ''}
     </div>`).join('');
   document.querySelectorAll('[data-wq]').forEach((b) => {
     b.onclick = () => setWq({ product: b.dataset.wq });
@@ -1316,8 +1328,11 @@ function wirePopup(popup) {
 function setBase(key) {
   current = key;
   const d = ALL[key];
-  document.querySelectorAll('[data-base]').forEach((b) =>
-    b.classList.toggle('active', b.dataset.base === key));
+  document.querySelectorAll('[data-base]').forEach((b) => {
+    const active = b.dataset.base === key;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-pressed', String(active));
+  });
 
   if (base) map.removeLayer(base);
   base = d.daily ? gibsLayer(d, $('mapDate').value) : d.make();
@@ -1338,24 +1353,28 @@ function buildWqControls() {
   const box = $('mapWq');
   const have = typeof pmtiles !== 'undefined';
   box.innerHTML = `
-    <h5>Satellite water quality <span class="mc-note">Sentinel-2 · quarterly</span></h5>
+    <h5>Water quality layers <span class="mc-note">Sentinel-2 · quarterly</span></h5>
     <div class="mc-btns" id="wqProducts">
       <button class="mc-btn active" data-wqp="">Off</button>
       ${Object.entries(WQ_PRODUCTS).map(([k, d]) =>
-        `<button class="mc-btn" data-wqp="${k}" title="${esc(d.long)}. ${esc(d.note)}">${d.label}</button>`).join('')}
+        `<button class="mc-btn" data-wqp="${k}" title="${esc(d.long)}. ${esc(d.note)}">${d.control}</button>`).join('')}
     </div>
     <div class="wq-row" id="wqQuarters">
       ${WQ_QUARTERS.map((q) => `<button class="mc-btn sm" data-wqq="${q.id}" title="${q.span}">${q.label}</button>`).join('')}
     </div>
-    <div class="wq-row wq-opts">
-      <label class="wq-opacity">Opacity
+    <div class="wq-row wq-opts" id="wqOptions">
+      <label class="wq-opacity">Layer opacity
         <input type="range" id="wqOpacity" min="20" max="100" value="${Math.round(wq.opacity * 100)}" aria-label="Overlay opacity"></label>
       <label class="wq-check"><input type="checkbox" id="wqWater" ${wq.waterOnly ? 'checked' : ''}>
         Water only</label>
     </div>
     <div class="wq-src">${have
-      ? 'Google Earth Engine · Digital Earth. The indices are clipped to the mapped rivers and water bodies; untick to see them whole. SS is always shown whole and unfiltered, at full opacity.'
-      : 'The tile reader did not load, so these layers are unavailable.'}</div>`;
+      ? 'Google Earth Engine · Digital Earth'
+      : 'Water quality layers could not load. Refresh to try again.'}</div>
+    ${have ? `<details class="ui-details"><summary>Layer guide</summary>
+      <div class="wq-src">Water only limits colours to mapped rivers and water bodies.
+        Sediment is an uncalibrated estimate shown across the full area.</div>
+    </details>` : ''}`;
   box.querySelectorAll('[data-wqp]').forEach((b) => {
     b.onclick = () => setWq({ product: b.dataset.wqp || null });
     b.disabled = !have && !!b.dataset.wqp;
@@ -1370,15 +1389,23 @@ function buildWqControls() {
 }
 
 function syncWqControls() {
-  document.querySelectorAll('[data-wqp]').forEach((b) =>
-    b.classList.toggle('active', (b.dataset.wqp || null) === wq.product));
-  document.querySelectorAll('[data-wqq]').forEach((b) =>
-    b.classList.toggle('active', b.dataset.wqq === wq.quarter));
+  document.querySelectorAll('[data-wqp]').forEach((b) => {
+    const active = (b.dataset.wqp || null) === wq.product;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-pressed', String(active));
+  });
+  document.querySelectorAll('[data-wqq]').forEach((b) => {
+    const active = b.dataset.wqq === wq.quarter;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-pressed', String(active));
+  });
   document.querySelectorAll('[data-wq]').forEach((b) =>
     b.classList.toggle('active', b.dataset.wq === wq.product));
 
   const d = wq.product ? WQ_PRODUCTS[wq.product] : null;
   const q = WQ_QUARTERS.find((x) => x.id === wq.quarter);
+  $('wqQuarters').hidden = !d;
+  $('wqOptions').hidden = !d;
   /* A whole-scene product takes the tick out of play, and says why */
   const op = $('wqOpacity');
   if (op) op.value = Math.round(wq.opacity * 100);
@@ -1396,7 +1423,7 @@ function syncWqControls() {
       <div class="ml-wq-t"><b>${d.label}</b> · ${esc(d.long)} <span class="ml-rng">${q.label}</span></div>
       <div class="idx-ramp" style="background:${d.ramp}"></div>
       <div class="idx-lab"><span>${esc(d.lo)}</span><span>${esc(d.hi)}${d.unit ? ` ${d.unit}` : ''}</span></div>
-      <div class="ml-wq-n">${d.caveat ? '<b>Uncalibrated</b> — relative pattern only. ' : ''}Sentinel-2, ${q.span}. Range not supplied; low → high.</div>
+      <div class="ml-wq-n">${d.caveat ? '<b>Uncalibrated estimate.</b> ' : ''}Relative colours only; numeric range unavailable.</div>
     </div>` : '';
 }
 
@@ -1448,6 +1475,8 @@ function setWq(patch) {
   restyleWater();
   restyleRivers();
   syncWqControls();
+  // Selecting a product reveals its scale; adjusting it preserves the user's panel choice.
+  if (patch.product) setMapCardExpanded('mapLegend', 'legendMin', 'legend', true);
 }
 
 /* The scene is clipped to water: every mapped water body as its outline,
@@ -1536,6 +1565,15 @@ function buildLayerToggles() {
 }
 
 /* ---------------- Bottom right: the legend, which is also the filter ------- */
+function setMapCardExpanded(cardId, btnId, label, expanded) {
+  const card = $(cardId), button = $(btnId);
+  if (!card || !button) return;
+  card.classList.toggle('min', !expanded);
+  button.setAttribute('aria-expanded', String(expanded));
+  button.title = `${expanded ? 'Hide' : 'Show'} ${label}`;
+  button.setAttribute('aria-label', button.title);
+}
+
 function buildLegend() {
   const row = (id, swatch, label, note, title = '') => `
     <button class="ml-row" data-vis="${id}" aria-pressed="true"${title ? ` title="${esc(title)}"` : ''}>
@@ -1566,10 +1604,10 @@ function buildLegend() {
     .filter(([k]) => su.groups[k]?.n)
     .map(([k, c]) => row(`src:${k}`, sourceSwatch(c.shape, '#5c6480', 16),
       esc(c.label), su.groups[k].n, c.pol)).join('')
-    + `<div class="ml-key" title="Where the register has an entry the colour follows it. Everywhere else it is an estimate: no licence register is published as open data.">
+    + `<div class="ml-key" title="Colours use register entries when available; other statuses are estimated.">
         <span><i class="ml-dot lic-on"></i>Licensed <b id="legLicN">0</b></span>
         <span><i class="ml-dot lic-off"></i>No licence <b id="legNoLicN">0</b></span>
-      </div>`;
+      </div><div class="ml-wq-n">Includes estimated licence status.</div>`;
 
   const w = waterSummary();
   $('mapLegendWater').innerHTML = Object.entries(WATER_GROUPS)
@@ -1587,12 +1625,9 @@ function buildLegend() {
     + row('river:main', line('#0aa3d9', true), 'Sungai Langat', 'main channel')
     + row('river:trib', line('#45bfe0', true), 'Tributaries',
       `${riverLayers.trib?.getLayers().length ?? 0} reaches`)
-    + row('flow:anim', '<span class="ml-line flowkey"></span>', 'Flow direction &amp; rate',
-      'dashes run downstream',
-      'The dashes run at the rate the design flow on the TMDL for the nearest station implies, '
-      + 'carried across by the channel length draining to each reach: quick on the trunk, slow on '
-      + 'a headwater. Change a design flow and the water changes with it. Hover a reach to see what '
-      + 'it carries.');
+    + row('flow:anim', '<span class="ml-line flowkey"></span>', 'Flow direction',
+      'estimated rate',
+      'Dashes move downstream. Speed is estimated from station design flows and upstream channel length.');
 
   countLicences();
 
@@ -1618,11 +1653,8 @@ function buildLegend() {
   for (const [cardId, btnId, what] of [['mapLegend', 'legendMin', 'legend'], ['mapLayers', 'layersMin', 'layers']]) {
     const card = $(cardId), btn = $(btnId);
     if (!card || !btn) continue;
-    btn.onclick = () => {
-      const min = card.classList.toggle('min');
-      btn.setAttribute('aria-expanded', String(!min));
-      btn.title = min ? `Show the ${what}` : `Minimise the ${what}`;
-    };
+    setMapCardExpanded(cardId, btnId, what, !card.classList.contains('min'));
+    btn.onclick = () => setMapCardExpanded(cardId, btnId, what, card.classList.contains('min'));
     L.DomEvent.disableClickPropagation(card);
     L.DomEvent.disableScrollPropagation(card);
   }
@@ -1705,18 +1737,22 @@ function riverPopup(r) {
         <table class="pop-tbl">
           <tr><td>This reach</td><td class="num">${(r.m / 1000).toFixed(1)} km</td></tr>
           <tr><td>Downstream</td><td class="num">${f.km.toFixed(1)} km</td></tr>
-          <tr><td>Reaches crossed</td><td class="num">${f.reaches}</td></tr>
-          <tr><td>Draining through here
-            <div class="pop-sub">line width is scaled from this</div></td>
-            <td class="num">${r.up < 1000 ? metres(r.up) : `${(r.up / 1000).toFixed(1)} km`}</td></tr>
         </table>
         ${down.length
           ? `<div class="pop-flow"><b>Flows into</b>
               <span>${down.map(esc).join(' → ')}</span></div>`
           : ''}
         <div class="pop-${f.toSea ? 'hint' : 'note'}">${f.toSea
-          ? 'Joins Sungai Langat and on to the Strait of Malacca.'
-          : 'The mapped network ends here — the reach below was not mapped, or falls outside the catchment.'}</div>
+          ? 'Flows via Sungai Langat to the Strait of Malacca.'
+          : 'Downstream mapping ends here; the next reach is unavailable.'}</div>
+        <details class="ui-details"><summary>River network details</summary>
+          <table class="pop-tbl">
+            <tr><td>Reaches crossed</td><td class="num">${f.reaches}</td></tr>
+            <tr><td>Upstream channel length</td>
+              <td class="num">${r.up < 1000 ? metres(r.up) : `${(r.up / 1000).toFixed(1)} km`}</td></tr>
+          </table>
+          <div class="pop-pol">Line width represents upstream channel length, not measured river width.</div>
+        </details>
       </div>
     </div>`;
 }
@@ -1804,7 +1840,7 @@ function buildSearch() {
 
   const render = () => {
     if (!hits.length) {
-      list.innerHTML = '<div class="ms-none">Nothing on the map matches that.</div>';
+      list.innerHTML = '<div class="ms-none">No matches. Try a station code, river or place name.</div>';
       list.hidden = false;
       return;
     }

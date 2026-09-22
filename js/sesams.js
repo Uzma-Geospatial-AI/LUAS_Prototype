@@ -31,11 +31,11 @@ const metres = (m) => `${nf(Math.round(m))} m`;
 /* The three zones a distance falls in */
 export const ZONES = [
   { id: 'reserve', label: 'River reserve', max: 50, color: '#d92d20',
-    note: 'Within 50 m of mapped water — the screening width for a river reserve.' },
+    note: 'Within 50 m of mapped water. Screening zone only.' },
   { id: 'riparian', label: 'Riparian', max: 250, color: '#ef7d1a',
-    note: 'Within 250 m — run-off reaches the water in one rain event.' },
+    note: '50–250 m from mapped water.' },
   { id: 'buffer', label: 'Buffer', max: 1500, color: '#f2c40c',
-    note: 'Within the 1.5 km riparian buffer the sources were clipped to.' },
+    note: '250 m–1.5 km from mapped water.' },
 ];
 const zoneOf = (d) => ZONES.find((z) => d <= z.max) ?? ZONES.at(-1);
 
@@ -69,7 +69,7 @@ function activities() {
       color: cat.color, act: ACTIVITY[p.cat] ?? { label: p.cat, en: p.cat },
       dist: p.dist, risk: p.risk, zone: zoneOf(p.dist),
       water: near?.n ?? 'water', waterId: near?.id ?? null, waterKey: near ? Object.keys(p.near)[0] : null,
-      licensed: st.licensed, lat, lon,
+      licensed: st.licensed, estimated: st.estimated, lat, lon,
     };
   });
 }
@@ -95,26 +95,22 @@ function renderKpis(list) {
     <div class="card kpi">
       <div class="k-lab">Activities monitored</div>
       <div class="k-val">${nf(list.length)}</div>
-      <div class="k-sub">land-use sites within 1.5 km of water</div>
-      <div class="k-note">Every mapped premises and cleared site in the Langat catchment, from OpenStreetMap.</div>
+      <div class="k-sub">within 1.5 km of water · OpenStreetMap</div>
     </div>
     <div class="card kpi">
-      <div class="k-lab">Inside the river reserve</div>
+      <div class="k-lab">Within 50 m of water</div>
       <div class="k-val" style="color:#d92d20">${nf(inReserve.length)}</div>
-      <div class="k-sub">within 50 m of mapped water</div>
-      <div class="k-note">${nf(inReserve.filter((a) => a.cat === 'tanah').length)} of them are cleared or construction land, the activity a reserve exists to keep out.</div>
+      <div class="k-sub">${nf(inReserve.filter((a) => a.cat === 'tanah').length)} clearing or construction sites</div>
     </div>
     <div class="card kpi">
-      <div class="k-lab">Riparian, no licence</div>
+      <div class="k-lab">No active licence</div>
       <div class="k-val" style="color:#ef7d1a">${nf(unlic.length)}</div>
-      <div class="k-sub">of ${nf(near250.length)} within 250 m</div>
-      <div class="k-note">Close enough for run-off to reach the water in one storm, with no discharge licence in the register.</div>
+      <div class="k-sub">of ${nf(near250.length)} sites within 250 m of water</div>
     </div>
     <div class="card kpi">
-      <div class="k-lab">Water under pressure</div>
+      <div class="k-lab">Water bodies near activity</div>
       <div class="k-val">${nf(waters)}</div>
-      <div class="k-sub">rivers and water bodies with activity within 250 m</div>
-      <div class="k-note">Ranked below by how much sits beside each.</div>
+      <div class="k-sub">rivers and water bodies · activity within 250 m</div>
     </div>`;
 }
 
@@ -200,6 +196,8 @@ function renderWatchList(all) {
   document.querySelectorAll('#ssTable th.sortable').forEach((th) => {
     th.classList.toggle('asc', th.dataset.sort === sort.key && sort.dir === 1);
     th.classList.toggle('desc', th.dataset.sort === sort.key && sort.dir === -1);
+    th.setAttribute('aria-sort', th.dataset.sort !== sort.key ? 'none'
+      : sort.dir === 1 ? 'ascending' : 'descending');
   });
 
   const pages = Math.max(1, Math.ceil(list.length / PAGE));
@@ -208,18 +206,17 @@ function renderWatchList(all) {
 
   $('ssTable').querySelector('tbody').innerHTML = shown.length ? shown.map((a) => `
     <tr data-id="${a.id}" class="row-go" title="Open this site on the map">
-      <td><b>${a.name ? esc(a.name) : `Unnamed ${esc(a.catLabel.toLowerCase())} site`}</b>${a.given ? ' <span class="given">nama diberi</span>' : ''}
-        <span class="sub">${esc(a.act.label)}</span></td>
+      <td><b>${a.name ? esc(a.name) : `Unnamed ${esc(a.catLabel.toLowerCase())} site`}</b>${a.given ? ' <span class="given">nama diberi</span>' : ''}</td>
       <td><span class="ss-cat" style="--c:${a.color}"></span>${esc(a.act.en)}</td>
       <td>${esc(a.water)}<span class="sub">${a.waterKey?.startsWith('river') ? 'river' : 'water body'}</span></td>
       <td class="num">${metres(a.dist)}</td>
-      <td><span class="ss-zone" style="--c:${a.zone.color}">${a.zone.label}</span></td>
-      <td><span class="pill-status ${a.licensed ? 'st-pass' : 'st-fail'}">${a.licensed ? 'Licensed' : 'No licence'}</span></td>
+      <td><span class="ss-zone" style="--c:${a.zone.color}" title="${esc(a.zone.note)}">${a.zone.label}</span></td>
+      <td><span class="pill-status ${a.licensed ? 'st-pass' : 'st-fail'}">${a.licensed ? 'Licensed' : 'No active licence'}</span>${a.estimated ? '<span class="sub">Estimated</span>' : ''}</td>
       <td class="num">${a.risk.toFixed(2)}</td>
       <td class="act"><button class="mini" data-go="map">Map</button>
-        <button class="mini" data-go="ndti" title="Open the map here with the turbidity index on">NDTI</button></td>
+        <button class="mini" data-go="ndti" title="View satellite turbidity (NDTI)">Turbidity</button></td>
     </tr>`).join('')
-    : `<tr><td colspan="8" class="empty-row">No activity matches.</td></tr>`;
+    : `<tr><td colspan="8" class="empty-row">No matching sites. Try another search or select All zones.</td></tr>`;
 
   const pg = $('ssPager');
   if (list.length <= PAGE) { pg.innerHTML = ''; return; }
@@ -265,9 +262,8 @@ function renderPressure(list) {
       <div class="ss-press-h"><b>${esc(e.water)}</b>
         <span class="ml-rng">${e.key.startsWith('river') ? 'river' : 'water body'}${/^(Pond|Lake or reservoir|Open water|Channel|Treatment pond)$/.test(e.water) ? ` · #${e.id}` : ''}</span></div>
       <div class="ss-press-n"><b>${e.n}</b> ${e.n === 1 ? 'activity' : 'activities'} within 250 m
-        · <span style="color:#d92d20">${e.reserve} in the reserve</span> · ${e.unlic} unlicensed</div>
-      <div class="ss-press-c">${[...e.cats].map(esc).join(' · ')}</div>
-    </button>`).join('') || '<div class="empty-row">Nothing within 250 m of any water.</div>';
+        · <span style="color:#d92d20">${e.reserve} within 50 m</span> · ${e.unlic} without an active licence</div>
+    </button>`).join('') || '<div class="empty-row">No activity within 250 m of mapped water.</div>';
   $('ssPressure').querySelectorAll('.ss-press').forEach((b) => {
     b.onclick = () => document.dispatchEvent(new CustomEvent('showonmap', {
       detail: b.dataset.water
@@ -280,11 +276,11 @@ function renderPressure(list) {
 /* ---------------- Satellite check ---------------- */
 function renderSatellite() {
   $('ssSat').innerHTML = Object.entries(WQ_PRODUCTS).map(([k, d]) => `
-    <button class="ss-sat" data-wq="${k}">
-      <div class="ss-sat-h"><b>${d.label}</b> · ${esc(d.long)}</div>
+    <button class="ss-sat" data-wq="${k}" title="${esc(d.note)}">
+      <div class="ss-sat-h"><b>${esc(d.long)}</b> · ${d.label}</div>
       <div class="idx-ramp" style="background:${d.ramp}"></div>
       <div class="idx-lab"><span>${esc(d.lo)}</span><span>${esc(d.hi)}</span></div>
-      <div class="ss-sat-n">${esc(d.note)}${d.caveat ? ' <b>Uncalibrated.</b>' : ''}</div>
+      ${d.caveat ? '<div class="ss-sat-n"><b>Uncalibrated · relative pattern only</b></div>' : ''}
     </button>`).join('');
   $('ssSat').querySelectorAll('[data-wq]').forEach((b) => {
     b.onclick = () => document.dispatchEvent(new CustomEvent('showonmap', { detail: { wq: b.dataset.wq } }));
@@ -327,7 +323,7 @@ function buildScan() {
   q('scanTo', WQ_QUARTERS.at(-1).id);
   if (typeof pmtiles === 'undefined') {
     $('scanRun').disabled = true;
-    $('scanNote').textContent = 'The tile reader did not load, so the scan is unavailable.';
+    $('scanNote').textContent = 'Satellite viewer unavailable. Reload the page to try again.';
   }
   $('scanRun').onclick = runScan;
   $('scanTable').querySelector('tbody').onclick = (e) => {
@@ -475,6 +471,7 @@ async function runScan() {
   const product = $('scanProduct').value, from = $('scanFrom').value, to = $('scanTo').value;
   const d = WQ_PRODUCTS[product];
   if (from === to) { $('scanNote').textContent = 'Pick two different quarters.'; return; }
+  $('scanNote').textContent = '';
   const btn = $('scanRun'); btn.disabled = true;
   const prog = $('scanProg'); prog.hidden = false;
   const bar = prog.querySelector('i'), lab = prog.querySelector('span');
@@ -507,8 +504,9 @@ async function runScan() {
     }
     scanResult = { product, from, to, rows };
     renderScan();
+    $('scanNote').textContent = 'Comparison complete.';
   } catch (e) {
-    $('scanNote').textContent = `The scan could not read the tiles: ${e.message}`;
+    $('scanNote').textContent = `Could not load satellite data. Try again. ${e.message}`;
   } finally {
     btn.disabled = false;
     prog.hidden = true;
@@ -519,11 +517,11 @@ function verdict(r, q) {
   const land = !Number.isNaN(r.dLand) && r.dLand >= FLAG_LAND;
   const water = !Number.isNaN(r.dWater) && r.dWater >= FLAG;
   const calmed = !Number.isNaN(r.dLand) && r.dLand <= -FLAG_LAND;
-  if (land && water) return { t: `Ground exposed, ${q} up in the water`, c: 'st-fail' };
-  if (land) return { t: 'Ground newly exposed around it', c: 'st-fail' };
-  if (water) return { t: `${q[0].toUpperCase()}${q.slice(1)} up in the water`, c: 'st-warn' };
-  if (calmed) return { t: 'Surroundings revegetated', c: 'st-pass' };
-  return { t: 'No change of note', c: 'st-off' };
+  if (land && water) return { t: `Bare ground & ${q} increased`, c: 'st-fail' };
+  if (land) return { t: 'Bare ground increased', c: 'st-fail' };
+  if (water) return { t: `${q[0].toUpperCase()}${q.slice(1)} increased`, c: 'st-warn' };
+  if (calmed) return { t: 'Bare ground decreased', c: 'st-pass' };
+  return { t: 'No flagged change', c: 'st-off' };
 }
 
 function renderScan() {
@@ -547,19 +545,16 @@ function renderScan() {
       <div class="k-lab">Water bodies compared</div>
       <div class="k-val">${nf(rows.length)}</div>
       <div class="k-sub">${d.label} · ${fromL} → ${toL}</div>
-      <div class="k-note">Half a hectare and up, with tiles on both dates.</div>
     </div>
     <div class="card kpi">
-      <div class="k-lab">Ground newly exposed</div>
+      <div class="k-lab">Bare ground increased</div>
       <div class="k-val" style="color:#b42318">${nf(landUp)}</div>
-      <div class="k-sub">bare ground around it up ${FLAG_LAND}+ points</div>
-      <div class="k-note">Clearing, earthworks or a pit opening within 250 m of the water.</div>
+      <div class="k-sub">up ${FLAG_LAND}+ points within 250 m</div>
     </div>
     <div class="card kpi">
-      <div class="k-lab">${q[0].toUpperCase()}${q.slice(1)} up in the water</div>
+      <div class="k-lab">${q[0].toUpperCase()}${q.slice(1)} increased</div>
       <div class="k-val" style="color:#ef7d1a">${nf(waterUp)}</div>
-      <div class="k-sub">water rose ${FLAG}+ points</div>
-      <div class="k-note">${flagged.length} bodies flagged on either count; the ${Math.min(40, ranked.length)} largest changes are listed.</div>
+      <div class="k-sub">satellite index up ${FLAG}+ points</div>
     </div>`;
 
   $('scanTable').querySelector('tbody').innerHTML = show.map((r) => {
@@ -574,11 +569,16 @@ function renderScan() {
       <td class="act"><button class="mini" data-show data-id="${r.id}" data-lat="${r.lat}" data-lon="${r.lon}"
         title="Show this water body on the map with ${d.label} ${toL} on">Map</button></td>
     </tr>`;
-  }).join('') || '<tr><td colspan="7" class="empty-row">Nothing could be compared: no tiles on both dates.</td></tr>';
+  }).join('') || '<tr><td colspan="7" class="empty-row">No satellite coverage to compare. Try a different period.</td></tr>';
 
-  $('scanFoot').innerHTML = `The water column is the ${d.label} colour ramp read back as 0–100 at 19 m per pixel; a
-    change is in points of that scale, not in physical units${d.caveat ? ', and this product is uncalibrated' : ''}.
-    The land column is the share of the 250 m ring that reads as bare ground — past the ramp's midpoint, where
-    vegetation never sits; up ${FLAG_LAND}+ points means ground that was covered in ${fromL} was open in ${toL}.
-    The map button opens the ${toL} layer there so the change can be seen against the imagery.`;
+  $('scanFoot').innerHTML = `
+    <p>${flagged.length} flagged · Showing ${show.length} largest changes. Relative satellite estimates${d.caveat ? ' · uncalibrated' : ''}.</p>
+    <details class="help-details">
+      <summary>How to read these results</summary>
+      <p>Water changes use a relative 0–100 colour scale at approximately 19 m per pixel, not physical units.
+        A rise of ${FLAG}+ points is flagged. Bare ground is the share of pixels above the colour ramp midpoint
+        in a 250 m ring; a rise of ${FLAG_LAND}+ percentage points is flagged.</p>
+      <p>The scan covers water bodies of at least 0.5 ha. Missing data appears as a dash.
+        Select Map to view ${toL} imagery.</p>
+    </details>`;
 }

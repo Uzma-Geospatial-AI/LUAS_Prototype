@@ -209,34 +209,31 @@ export function renderAround(st) {
 
   box.innerHTML = `
     <div class="section-title">
-      <h2>What is around this station</h2>
-      <span class="st-sub">Everything the map carries within <b>${within}</b> of ${esc(st.name)}
-        <button type="button" class="tipmark" tabindex="0" data-tip="Straight-line distance from the station. The premises are the bundled point-source survey: industry, sewage and water treatment, landfill and quarry, construction, farms. Shops and workshops are not in that survey — look them up separately below." aria-label="Straight-line distance from the station, over the bundled point-source survey.">i</button></span>
+      <h2>Nearby places</h2>
+      <span class="st-sub">Within <b>${within}</b>
+        <button type="button" class="tipmark" tabindex="0" data-tip="Straight-line distance. Premises come from the point-source survey. Search OpenStreetMap below for shops and businesses." aria-label="About nearby places">i</button></span>
       <div class="rad-pick" role="group" aria-label="Distance from the station">
-        ${RADII.map((r) => `<button class="mc-btn sm${r === radius ? ' active' : ''}" data-rad="${r}">${fmtRadius(r)}</button>`).join('')}
+        ${RADII.map((r) => `<button class="mc-btn sm${r === radius ? ' active' : ''}" data-rad="${r}" aria-pressed="${r === radius}">${fmtRadius(r)}</button>`).join('')}
       </div>
     </div>
 
     <div class="grid three ar-kpis">
       <div class="card kpi">
-        <div class="k-lab">Premises on the map</div>
+        <div class="k-lab">Surveyed premises</div>
         <div class="k-val">${nf(a.premises.length)}</div>
-        <div class="k-sub">${a.licensed} licensed · ${a.premises.length - a.licensed} without a licence</div>
-        <div class="k-note">Within ${within} of the station</div>
+        <div class="k-sub">${a.licensed} licensed · ${a.premises.length - a.licensed} with no licence on record</div>
       </div>
       <div class="card kpi">
-        <div class="k-lab">Water it can reach</div>
+        <div class="k-lab">Nearby water bodies</div>
         <div class="k-val">${nf(a.water.length)}</div>
         <div class="k-sub">${(a.waterArea / 1e4).toFixed(1)} ha of open water</div>
-        <div class="k-note">Ponds, basins and lakes within ${within}</div>
       </div>
       <div class="card kpi">
-        <div class="k-lab">Other stations near by</div>
+        <div class="k-lab">Nearby stations</div>
         <div class="k-val">${nf(a.stations.length)}</div>
         <div class="k-sub">${a.stations.length
           ? a.stations.slice(0, 2).map((x) => `${esc(x.s.code)} at ${fmtDist(x.d)}`).join(' · ')
           : 'None within ' + within}</div>
-        <div class="k-note">The next station that would see a discharge here</div>
       </div>
     </div>
 
@@ -255,7 +252,7 @@ export function renderAround(st) {
       <div class="card pad0 tbl-scroll" style="margin-top:12px">
         <table class="data">
           <thead><tr>
-            <th>Premises</th><th>Kind</th><th class="num">From the station</th>
+            <th>Premises</th><th>Type</th><th class="num">Distance</th>
             <th class="num">From water</th><th class="num">Screening risk</th><th>Licence</th><th></th>
           </tr></thead>
           <tbody>${shown.map((p) => `
@@ -267,31 +264,29 @@ export function renderAround(st) {
               <td class="num">${p.risk != null ? p.risk.toFixed(2) : '—'}</td>
               <td>${p.licensed
                 ? '<span class="pill-status st-pass">Licensed</span>'
-                : '<span class="pill-status st-fail">No licence</span>'}</td>
+                : '<span class="pill-status st-fail">None on record</span>'}</td>
               <td class="act"><button class="mini" data-prem="${p.id}"
                 data-lat="${p.lat}" data-lon="${p.lon}" data-d="${Math.round(p.d)}" data-dir="${p.dir}"
                 data-label="${p.name ? esc(p.name) : `Unnamed ${esc(p.catLabel.toLowerCase())} site`}"
-                title="Show it on the map, inside the ${fmtRadius(radius)} ring">Map</button></td>
+                title="Show on map">Map</button></td>
             </tr>`).join('')}</tbody>
         </table>
       </div>
       ${a.premises.length > 12 ? `<div class="btn-row" style="margin-top:10px">
         <button class="btn btn-ghost" id="arMore">${showAll
-          ? 'Show the twelve nearest only'
-          : `Show all ${a.premises.length} within ${within}`}</button></div>` : ''}
+          ? 'Show nearest 12'
+          : `Show all ${a.premises.length}`}</button></div>` : ''}
     ` : `<div class="card" style="margin-top:12px"><div class="empty-row">
-        No surveyed premises within ${within} of this station. Try a wider distance.</div></div>`}
+        No surveyed premises within ${within}. Try a wider distance.</div></div>`}
 
     <div class="section-title" style="margin-top:22px">
       <h2>Shops and businesses</h2>
-      <span class="st-sub">Not in the survey — looked up from OpenStreetMap when you ask
-        <button type="button" class="tipmark" tabindex="0" data-tip="The bundled survey covers industry, sewage, waste, construction and farms. Shops, workshops, car washes and restaurants are not in it, and they discharge to the same drains. This asks OpenStreetMap for them live. It is a lookup, not a record: nothing here is written into the register." aria-label="A live lookup from OpenStreetMap. It is not part of the record and is never written into the register.">i</button></span>
+      <span class="st-sub">OpenStreetMap · live search · not saved to the register</span>
     </div>
     <div class="card">
       <div class="btn-row" style="margin-top:0">
-        <button class="btn btn-primary" id="arLookup">Look up what is within ${within}</button>
-        <span class="hint" id="arHint">OpenStreetMap, live. Shops, workshops, food, services and
-          community places.${radius >= 5000 ? ' A wide search takes a few seconds.' : ''}</span>
+        <button class="btn btn-primary" id="arLookup">Search within ${within}</button>
+        <span class="hint" id="arHint" role="status">${radius >= 5000 ? 'Larger searches may take a moment.' : ''}</span>
       </div>
       <div id="arPlaces"></div>
     </div>`;
@@ -318,7 +313,7 @@ async function runLookup(st) {
   const btn = $('arLookup');
   const hint = $('arHint');
   btn.disabled = true;
-  hint.textContent = 'Asking OpenStreetMap…';
+  hint.textContent = 'Searching OpenStreetMap…';
   hint.className = 'hint';
   try {
     const list = await lookupPlaces(st, radius);
@@ -327,8 +322,8 @@ async function runLookup(st) {
     renderPlaces(st, list);
   } catch (e) {
     hint.textContent = e.name === 'AbortError'
-      ? 'OpenStreetMap did not answer in time. It is a public service and can be busy; try again in a moment.'
-      : `Could not look it up: ${e.message}.`;
+      ? 'Search timed out. Try again or choose a smaller distance.'
+      : `Search failed: ${e.message}. Try again.`;
     hint.className = 'hint err';
   } finally { btn.disabled = false; }
 }
@@ -337,8 +332,7 @@ function renderPlaces(st, list) {
   const box = $('arPlaces');
   if (!box) return;
   if (!list.length) {
-    box.innerHTML = `<div class="empty-row">OpenStreetMap has nothing mapped within
-      ${fmtRadius(radius)} of this station.</div>`;
+    box.innerHTML = `<div class="empty-row">No places mapped on OpenStreetMap within ${fmtRadius(radius)}.</div>`;
     return;
   }
   const byGroup = GROUPS.map((g) => ({ ...g, list: list.filter((p) => p.group === g.id) }))
@@ -366,9 +360,7 @@ function renderPlaces(st, list) {
           </button>`).join('')}
       </div>
       ${g.list.length > 40 ? `<div class="hint">and ${g.list.length - 40} more</div>` : ''}`).join('')}
-    <div class="hint" style="margin-top:10px">Looked up from OpenStreetMap, © OpenStreetMap
-      contributors, ODbL. A lookup, not part of the record: nothing here is written into the
-      licence register.</div>`;
+    <div class="hint" style="margin-top:10px">© OpenStreetMap contributors · ODbL · Not saved to the register.</div>`;
 
   box.querySelectorAll('.ar-place').forEach((b) => {
     b.onclick = () => showOn(st, {
