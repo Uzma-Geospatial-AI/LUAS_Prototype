@@ -568,6 +568,23 @@ search covered** from the station, a dashed line out to the place, and pins it. 
 ring rather than the pin, because the question is how far out the thing sits. A surveyed premises
 opens its own popup instead of taking a second pin on top of it. A click on the map clears it.
 
+**When a licence runs out.** Every register entry carries an **issue date** and an **expiry date**,
+and the Licences tab opens with a *Licence expiry* panel: a warning window of 30, 60 or 90 days,
+counts of what has expired, what runs out inside the window, what is valid beyond it, and what has
+no date on record — which is not the same as expired and is not coloured as if it were. Under them,
+the soonest expiries with a countdown, sorted, each with a button to the map and a Renew button that
+loads the entry into the form. The register gains an **Expires** column with the same countdown and
+sorts by it; a premises popup on the map says when its licence runs out; and the count of licences
+needing attention sits on the **TMDL & Licences** nav entry from any page, amber for expiring and
+red once something has lapsed. The location report carries it too, in its summary and as a column.
+The window is remembered between visits.
+
+> ⚠️ The dates on the **estimated** entries are invented like their figures, and every one of them is
+> deliberately set in the **future**. A date approaching asserts nothing; saying a named real
+> business's licence has lapsed is saying it discharges unlawfully, and a badge on the row does not
+> undo that. So the panel demonstrates the warning without alleging anything: at the time of writing
+> 15 of 291 active entries fall inside a 30-day window and none has expired.
+
 **Photographs.** A sampling round, a TMDL and a licence each take **attached photographs** —
 site pictures, a field sheet, a meter reading. They are read in the browser, drawn down to 1600 px
 and re-encoded as JPEG so a record costs a few hundred KB rather than several MB, captioned, and

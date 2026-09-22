@@ -1455,3 +1455,21 @@ table.register col.c-at{width:72px}
 .pill-go:hover{border-color:var(--cyan);background:var(--surface);color:var(--navy)}
 .pill-go:active{transform:translateY(1px)}
 @media(max-width:1100px){.pill-go span{display:none}.pill-go{padding:5px 9px}}
+
+/* ---------------- When a licence runs out ---------------- */
+table.register col.c-exp{width:104px}
+.exp-d{display:block;font-family:var(--fm);font-size:11px;color:var(--text)}
+.exp-c{display:block;font-size:10.5px;font-weight:600;margin-top:1px}
+.pop-exp{font-weight:600}
+.notice.bad{background:#fdeceb;border-color:#f5c9c5;color:#8a1e22}
+.hint.warn{color:#9a4b00;font-weight:550}
+
+/* A count on the nav entry that leads to the register */
+#nav button{position:relative}
+.nav-warn{
+  position:absolute;top:9px;right:10px;min-width:19px;height:19px;padding:0 5px;
+  display:grid;place-items:center;border-radius:999px;background:#ef7d1a;color:#fff;
+  font:700 10.5px var(--fm);font-style:normal;box-shadow:0 1px 4px rgba(0,0,0,.35);
+}
+.nav-warn.bad{background:#d92d20}
+.ex-kpis{grid-template-columns:repeat(auto-fit,minmax(196px,1fr));margin-top:4px}

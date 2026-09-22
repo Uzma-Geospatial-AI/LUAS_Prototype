@@ -63,7 +63,8 @@
     <button data-view="quality"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 3-4 3 3 4-6"/></svg>
       <span><b>Quality Monitoring</b><i>Exceedance and trend</i></span></button>
     <button data-view="tmdl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 7h14"/><path d="m5 7-2 6a3 3 0 0 0 6 0z"/><path d="m19 7 2 6a3 3 0 0 1-6 0z"/></svg>
-      <span><b>TMDL &amp; Licences</b><i>Load accounting</i></span></button>
+      <span><b>TMDL &amp; Licences</b><i>Load accounting</i></span>
+      <i class="nav-warn" id="navWarn" hidden></i></button>
     <button data-view="sesams"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><path d="M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>
       <span><b>Earth surface activity</b><i>SESAMS</i></span></button>
 
@@ -530,6 +531,8 @@
     </div>
 
     <div class="tabpane" id="tab-licences">
+    <div id="p3Expiry"></div>
+
     <div class="section-title">
       <h2>Add a Licence</h2>
       <span class="st-sub">Does it fit the remaining capacity?</span>
@@ -602,6 +605,15 @@
             <label for="lStation">Counts at <button type="button" class="tipmark" tabindex="0" data-tip="The station whose TMDL this licence is set against. Left automatic, it is the nearest monitoring station to the premises; choose one to say otherwise." aria-label="The station whose TMDL this licence is set against. Left automatic, it is the nearest monitoring station to the premises.">i</button></label>
             <select id="lStation"></select>
           </div>
+          <div class="field">
+            <label for="lIssued">Licence issued</label>
+            <input id="lIssued" type="date">
+          </div>
+          <div class="field">
+            <label for="lExpires">Expires <button type="button" class="tipmark" tabindex="0" data-tip="A discharge licence is granted for a term and renewed. The register counts down to the expiry and warns before it, so a renewal is chased before the date rather than after it." aria-label="A discharge licence is granted for a term and renewed. The register counts down to the expiry and warns before it, so a renewal is chased before the date rather than after it.">i</button></label>
+            <input id="lExpires" type="date">
+            <div class="hint" id="lTermHint"></div>
+          </div>
         </div>
 
         <div style="margin:18px 0 10px;font-size:10.5px;text-transform:uppercase;
@@ -644,7 +656,7 @@
           <col class="c-ref"><col class="c-prem"><col class="c-at"><col class="c-std"><col class="c-flow">
           <col class="c-conc"><col class="c-conc"><col class="c-conc"><col class="c-conc">
           <col class="c-load"><col class="c-load"><col class="c-load"><col class="c-load">
-          <col class="c-stat"><col class="c-act">
+          <col class="c-exp"><col class="c-stat"><col class="c-act">
         </colgroup>
         <thead>
           <tr>
@@ -655,6 +667,7 @@
             <th rowspan="2" class="sortable" data-sort="flow">Flow<br>m³/day</th>
             <th colspan="4">Permitted concentration (mg/L)</th>
             <th colspan="4">Wasteload (kg/day)</th>
+            <th rowspan="2" class="sortable" data-sort="expires" title="When the licence runs out">Expires</th>
             <th rowspan="2" class="sortable" data-sort="status">Status</th><th rowspan="2"></th>
           </tr>
           <tr>

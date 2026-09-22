@@ -93,7 +93,12 @@ export const store = {
      about what the water is being held to. Without a record, the defaults. */
   conditions() {
     const stored = read().cond ?? {};
-    const base = { ...DEFAULT_CONDITIONS, focusStation: stored.focusStation ?? DEFAULT_CONDITIONS.focusStation };
+    const base = {
+      ...DEFAULT_CONDITIONS,
+      focusStation: stored.focusStation ?? DEFAULT_CONDITIONS.focusStation,
+      /* The licence warning window is the operator's, not the record's */
+      warnDays: stored.warnDays ?? DEFAULT_CONDITIONS.warnDays,
+    };
     const t = store.activeTmdl(base.focusStation);
     if (t) {
       base.targetClass = t.targetClass ?? base.targetClass;

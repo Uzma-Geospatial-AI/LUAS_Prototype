@@ -47,6 +47,10 @@ export const DEFAULT_CONDITIONS = {
   flowLabel: 'MAM7 low-flow estimate',
   flowVerified: false,
   mosPercent: 10,
+  /* How much notice the register gives before a licence runs out, in days.
+     A month is enough to start a renewal; three months is enough to plan an
+     inspection round. See js/expiry.js. */
+  warnDays: 30,
 };
 
 /* ---- Malaysian effluent discharge standards ----

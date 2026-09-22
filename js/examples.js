@@ -119,10 +119,38 @@ export function prefillFor(props, stdKey) {
     conc[param] = Math.round(std[param] * (0.55 + 0.4 * hash(props.id, i + 2)) * 10) / 10;
   });
   /* A reference too, so the record is complete on arrival. The year is the
-     record's, not today's, so a reference does not change with the calendar. */
+     record's, not today's, so a reference does not change with the calendar.
+     A licence renewed annually keeps the reference it was first allocated. */
   const year = 2020 + Math.floor(hash(props.id, 9) * 6);
   const serial = String(1 + Math.floor(hash(props.id, 10) * 9998)).padStart(4, '0');
-  return { flow, conc, ref: `LUAS/EL/${year}/${serial}` };
+  return { flow, conc, ref: `LUAS/EL/${year}/${serial}`, ...term(props.id) };
+}
+
+/* ---- The term a licence runs for ----
+   Invented, like the figures, and disclosed the same way. Two rules hold it
+   honest. It is spread over the next two years from the premises id, so the
+   register shows the whole range of a renewal cycle rather than one date
+   repeated. And it is always in the FUTURE: a date approaching asserts
+   nothing, but saying a named real business's licence has lapsed is saying
+   it discharges unlawfully, which no badge on the row undoes.
+
+   Being drawn from the id, it does not move between reloads — but it is
+   measured from today, so a register left open across a night still counts
+   down correctly the next morning. */
+function term(id) {
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const days = 8 + Math.floor(hash(id, 11) * 720);        /* 8 days to ~2 years out */
+  const expires = new Date();
+  expires.setHours(0, 0, 0, 0);
+  expires.setDate(expires.getDate() + days);
+  /* An annual term: issued a year before it runs out. Never later than
+     today, though — a licence cannot have been granted in the future, and
+     an expiry two years out simply means a longer term. */
+  const issued = new Date(expires);
+  issued.setFullYear(issued.getFullYear() - 1);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return { issued: iso(issued > now ? now : issued), expires: iso(expires) };
 }
 
 /* How many examples to take from each category.
@@ -143,7 +171,7 @@ export function buildExamples() {
   const row = (f, extra) => {
     const p = f.properties;
     const [lon, lat] = f.geometry.coordinates;
-    const { flow, conc, ref } = prefillFor(p, 'A');
+    const { flow, conc, ref, issued, expires } = prefillFor(p, 'A');
     return {
       id: `ex-${p.id}`,
       ref,
@@ -152,6 +180,8 @@ export function buildExamples() {
       standard: 'A',
       flow,
       conc,
+      issued,
+      expires,
       srcId: p.id,
       lat,
       lon,

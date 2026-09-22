@@ -22,6 +22,7 @@ import { store, registerAsJson, registerAsCsv, download } from './store.js';
 import { prefillFor, CAT_LABEL } from './examples.js';
 import { mapCentre } from './mapview.js';
 import { mountAttach, attachGallery, wireGallery, saveWarning } from './attach.js';
+import { expiryOf, expirySummary, countdown, termProblem, todayISO, WARN_WINDOWS } from './expiry.js';
 
 /* One premises, one licence. Picking a premises that already has one must load
    it, not offer a second — two licences on the same site would count its
@@ -175,6 +176,8 @@ function buildSourcePicker() {
     prefilled = prefillFor(q, $('lStd').value);
     $('lRef').value = prefilled.ref;
     $('lFlow').value = prefilled.flow;
+    $('lIssued').value = prefilled.issued ?? '';
+    $('lExpires').value = prefilled.expires ?? '';
     for (const param of LOAD_PARAMS) $(`l_${param}`).value = prefilled.conc[param];
     $('lPrefill').hidden = false;
     $('lShowPick').disabled = false;
@@ -287,6 +290,7 @@ export function renderPhase3() {
     renderBudgetTable(budgets, tmdl, st);
     renderChart(budgets);
   }
+  renderExpiry(store.licences());
   renderRegister(store.licences(), stdKey, budgets);
   if (formOpen) refreshFormCalc();
   previewLicence();
@@ -853,6 +857,105 @@ function renderChart(budgets) {
 }
 
 /* ============================================================
+   When the licences run out
+   ============================================================ */
+function renderExpiry(all) {
+  const box = $('p3Expiry');
+  if (!box) return;
+  const within = store.conditions().warnDays ?? 30;
+  const sum = expirySummary(all, within);
+  const rows = sum.attention.slice(0, 20);
+
+  const tile = (lab, n, colour, sub) => `
+    <div class="card kpi">
+      <div class="k-lab">${lab}</div>
+      <div class="k-val" style="color:${colour};font-size:26px">${nf(n)}</div>
+      <div class="k-sub">${sub}</div>
+    </div>`;
+
+  box.innerHTML = `
+    <div class="section-title">
+      <h2>Licence expiry</h2>
+      <span class="st-sub">Warn me
+        <button type="button" class="tipmark" tabindex="0" data-tip="How much notice the register gives before a licence runs out. A month is enough to start a renewal; three months is enough to plan an inspection round. The choice is kept with the other design conditions." aria-label="How much notice the register gives before a licence runs out.">i</button></span>
+      <div class="rad-pick" role="group" aria-label="How much notice to give">
+        ${WARN_WINDOWS.map((d) => `<button class="mc-btn sm${d === within ? ' active' : ''}" data-warn="${d}">${d} days</button>`).join('')}
+      </div>
+    </div>
+
+    ${sum.attention.length ? `
+      <div class="notice ${sum.expired.length ? 'bad' : 'warn'}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+        <div style="flex:1">${sum.expired.length
+          ? `<b>${nf(sum.expired.length)} licence${sum.expired.length === 1 ? ' has' : 's have'} already expired</b>
+             — a premises discharging on a lapsed licence is discharging without one.
+             ${sum.soon.length ? `Another ${nf(sum.soon.length)} run out within ${within} days.` : ''}`
+          : `<b>${nf(sum.soon.length)} licence${sum.soon.length === 1 ? '' : 's'} run${sum.soon.length === 1 ? 's' : ''} out within ${within} days.</b>
+             The soonest is ${esc(sum.soon[0].premises)}, ${esc(countdown(sum.soon[0].expiry.days))}.`}</div>
+      </div>` : `
+      <div class="notice info">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg>
+        <div style="flex:1">Nothing runs out within ${within} days.
+          ${sum.none.length ? `${nf(sum.none.length)} entr${sum.none.length === 1 ? 'y has' : 'ies have'} no date on record.` : ''}</div>
+      </div>`}
+
+    <div class="grid ex-kpis">
+      ${tile('Expired', sum.expired.length, sum.expired.length ? '#d92d20' : '#8b93a8',
+    sum.expired.length ? 'The term has passed' : 'None on record')}
+      ${tile(`Within ${within} days`, sum.soon.length, sum.soon.length ? '#ef7d1a' : '#8b93a8',
+    sum.soon.length ? 'Renewal to be started' : 'Nothing due')}
+      ${tile('Valid beyond that', sum.valid.length, '#17a04a',
+    sum.valid.length ? `Next after the window: ${esc(countdown(sum.valid[0]?.expiry.days))}` : '—')}
+      ${tile('No date on record', sum.none.length, '#8b93a8',
+    sum.none.length ? 'Not the same as expired' : 'Every active entry has a term')}
+    </div>
+
+    ${rows.length ? `
+      <div class="card pad0 tbl-scroll" style="margin-top:12px">
+        <table class="data">
+          <thead><tr>
+            <th>Licence</th><th>Premises</th><th>Counts at</th><th class="num">Flow m³/day</th>
+            <th>Term</th><th class="num">Countdown</th><th>Status</th><th></th>
+          </tr></thead>
+          <tbody>${rows.map((l) => `
+            <tr class="${l.expiry.state === 'expired' ? 'row-fail' : ''}">
+              <td><b>${esc(l.ref)}</b><span class="sub">${esc(l.category ?? '—')}${l.bulk ? ' · estimated'
+                : l.example ? ' · worked example' : ''}</span></td>
+              <td>${esc(l.premises)}</td>
+              <td class="mono">${esc(stationForLicence(l) ?? '—')}</td>
+              <td class="num">${nf(l.flow)}</td>
+              <td>${l.issued ? `${esc(l.issued)} →<br>` : ''}<b>${esc(l.expires)}</b></td>
+              <td class="num" style="color:${l.expiry.colour};font-weight:700">${esc(countdown(l.expiry.days))}</td>
+              <td><span class="pill-status ${l.expiry.pill}">${l.expiry.state === 'expired' ? 'Expired' : 'Expiring'}</span></td>
+              <td class="act">
+                ${l.example ? '' : `<button class="mini" data-exedit="${l.id}">Renew</button>`}
+                ${typeof l.lat === 'number' ? `<button class="mini" data-exmap="${l.id}"
+                  data-lat="${l.lat}" data-lon="${l.lon}"${l.srcId != null ? ` data-src="${l.srcId}"` : ''}>Map</button>` : ''}
+              </td>
+            </tr>`).join('')}</tbody>
+        </table>
+      </div>
+      ${sum.attention.length > 20 ? `<div class="hint" style="margin-top:8px">and
+        ${nf(sum.attention.length - 20)} more — the register below can be sorted by Expires.</div>` : ''}
+    ` : ''}`;
+
+  box.querySelectorAll('[data-warn]').forEach((b) => {
+    b.onclick = () => { store.setConditions({ warnDays: Number(b.dataset.warn) }); };
+  });
+  box.querySelectorAll('[data-exedit]').forEach((b) => {
+    b.onclick = () => loadIntoForm(all.find((l) => l.id === b.dataset.exedit));
+  });
+  box.querySelectorAll('[data-exmap]').forEach((b) => {
+    b.onclick = () => document.dispatchEvent(new CustomEvent('showonmap', {
+      detail: {
+        lat: Number(b.dataset.lat), lon: Number(b.dataset.lon),
+        srcId: b.dataset.src != null ? Number(b.dataset.src) : null,
+      },
+    }));
+  });
+}
+
+/* ============================================================
    Licence register
    ============================================================ */
 /* The register runs to a few hundred rows, so it is read a page at a time.
@@ -870,6 +973,7 @@ function sortValue(l, key, stdKey) {
   if (key === 'ref') return l.ref ?? '';
   if (key === 'premises') return l.premises ?? '';
   if (key === 'at') return stationForLicence(l) ?? '';
+  if (key === 'expires') return l.expires ? Number(String(l.expires).replace(/-/g, '')) : 99999999;
   if (key === 'standard') return l.standard ?? '';
   if (key === 'flow') return l.flow ?? 0;
   if (key.startsWith('conc.')) return l.conc?.[key.slice(5)] ?? 0;
@@ -887,7 +991,8 @@ function sortValue(l, key, stdKey) {
 function arrangeRegister(licences, stdKey) {
   let list = licences;
   if (regSearch) {
-    list = list.filter((l) => [l.ref, l.premises, l.category, stationForLicence(l) ?? '', l.bulk ? 'estimated' : '',
+    list = list.filter((l) => [l.ref, l.premises, l.category, stationForLicence(l) ?? '',
+      l.expires ?? '', expiryOf(l).state, l.bulk ? 'estimated' : '',
       l.example && !l.bulk ? 'example' : '', l.active === false ? 'inactive suspended' : '']
       .join(' ').toLowerCase().includes(regSearch));
   }
@@ -946,6 +1051,10 @@ function renderRegister(all, stdKey, budgets) {
       ${LOAD_PARAMS.map((p) => `<td class="num${comp.breaches.includes(p) ? ' over' : ''}">
         ${l.conc?.[p] ?? 0}</td>`).join('')}
       ${LOAD_PARAMS.map((p) => `<td class="num strong">${nf(loads[p], 1)}</td>`).join('')}
+      <td>${(() => { const e = expiryOf(l);
+        return e.has
+          ? `<span class="exp-d">${esc(e.iso)}</span><span class="exp-c" style="color:${e.colour}">${esc(countdown(e.days))}</span>`
+          : '<span class="mut">—</span>'; })()}</td>
       <td>${inactive
         ? '<span class="pill-status st-off">Inactive</span>'
         : comp.pass
@@ -957,7 +1066,7 @@ function renderRegister(all, stdKey, budgets) {
         <button class="mini danger" data-del="${l.id}">Delete</button>`}
       </td>
     </tr>`;
-  }).join('') : `<tr><td colspan="16" class="empty-row">${regSearch
+  }).join('') : `<tr><td colspan="17" class="empty-row">${regSearch
       ? `Nothing in the register matches “${esc(regSearch)}”.`
       : 'No licences in the register. Add one below, or restore the worked example.'}</td></tr>`;
 
@@ -968,7 +1077,7 @@ function renderRegister(all, stdKey, budgets) {
       <td class="num"><b>${nf(active.reduce((t, l) => t + (l.flow || 0), 0))}</b></td>
       <td colspan="4" class="num muted">permitted concentration</td>
       ${LOAD_PARAMS.map((p) => `<td class="num strong">${nf(totals[p], 1)}</td>`).join('')}
-      <td colspan="2"></td>
+      <td colspan="3"></td>
     </tr>` : '';
 
   renderPager(licences.length, pages);
@@ -1095,7 +1204,7 @@ export function buildLicenceForm() {
     label: 'Photographs',
     hint: 'The outfall, the premises, the permit. Attached to this licence and carried into the report for the station it counts at.',
   });
-  ['lRef', 'lPremises', 'lFlow', ...LOAD_PARAMS.map((p) => `l_${p}`)]
+  ['lRef', 'lPremises', 'lFlow', 'lIssued', 'lExpires', ...LOAD_PARAMS.map((p) => `l_${p}`)]
     .forEach((id) => $(id).addEventListener('input', previewLicence));
   $('lStd').addEventListener('change', previewLicence);
   /* Which station the licence counts at: the nearest unless said otherwise */
@@ -1153,11 +1262,15 @@ function readForm() {
     const v = num($(`l_${p}`).value);
     conc[p] = Number.isNaN(v) ? 0 : v;
   }
+  /* A term that ends before it starts is a typo, not a record */
+  if (termProblem($('lIssued').value, $('lExpires').value)) return null;
   const out = {
     ref, ...place,
     category: $('lCategory').value, standard: $('lStd').value, flow, conc,
     /* Written always: updateLicence merges, and a cleared choice must clear */
     station: $('lStation').value || null,
+    issued: $('lIssued').value || null,
+    expires: $('lExpires').value || null,
     attachments: lAtt?.get() ?? [],
   };
   /* Always written, never omitted: updateLicence merges, so leaving the key
@@ -1198,6 +1311,8 @@ function clearForm() {
     .forEach((id) => { $(id).value = ''; });
   $('lSource').value = '';
   $('lStation').value = '';
+  $('lIssued').value = '';
+  $('lExpires').value = '';
   lAtt?.clear();
   previewLicence();
 }
@@ -1220,6 +1335,10 @@ function loadIntoForm(l) {
   $('lCategory').value = l.category ?? 'Industrial';
   $('lStd').value = l.standard ?? 'A';
   $('lStation').value = l.station ?? '';
+  $('lIssued').value = l.issued ?? '';
+  /* Renewing an expired licence starts from today, not from the date it ran
+     out, so a term is never written backwards by accident */
+  $('lExpires').value = l.expires ?? '';
   $('lFlow').value = l.flow ?? '';
   lAtt?.set(l.attachments ?? []);
   for (const p of LOAD_PARAMS) $(`l_${p}`).value = l.conc?.[p] ?? '';
@@ -1232,6 +1351,15 @@ function previewLicence() {
   if (!$('p3Preview')) return;
   const l = readForm();
   $('p3Add').disabled = !l;
+
+  /* What the dates say, under the field they are typed in */
+  const th = $('lTermHint');
+  if (th) {
+    const bad = termProblem($('lIssued').value, $('lExpires').value);
+    const e = expiryOf({ expires: $('lExpires').value || null });
+    th.textContent = bad || (e.has ? e.label : 'Leave empty if the term is not to hand.');
+    th.className = `hint${bad || e.state === 'expired' ? ' err' : e.state === 'soon' ? ' warn' : e.has ? ' ok' : ''}`;
+  }
 
   const lStd = $('lStd').value;
   const std = EFFLUENT_STANDARDS[lStd];

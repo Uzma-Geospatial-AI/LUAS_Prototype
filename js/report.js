@@ -25,6 +25,7 @@ import { store, download } from './store.js';
 import { licenceStatus } from './licenceStatus.js';
 import { kindLabel } from './locations.js';
 import { photosAt } from './attach.js';
+import { expiryOf, expirySummary, countdown } from './expiry.js';
 import { IMAGERY, REFERENCE_MAPS, gibsLayer } from './satellite.js';
 
 const $ = (id) => document.getElementById(id);
@@ -453,16 +454,22 @@ function sectionTmdl(g) {
 function sectionLicences(g) {
   const { here } = g;
   const active = here.filter((l) => l.active !== false);
+  const ex = expirySummary(here);
   const tot = {};
   for (const p of ['bod', 'cod', 'ss', 'an']) tot[p] = active.reduce((t, l) => t + licenceLoads(l)[p], 0);
   return `<h2>Licences counting at this location</h2>
     <div class="sub">${here.length} licence${here.length === 1 ? '' : 's'}, ${active.length} active · the nearest monitoring station to each premises, unless the register says another</div>
-    ${here.length ? `<table><thead><tr><th>Licence</th><th>Premises</th><th>Category</th><th>Std</th><th class="num">Flow m³/day</th><th class="num">BOD</th><th class="num">COD</th><th class="num">SS</th><th class="num">NH₃-N</th><th class="num">BOD kg/d</th><th class="num">COD kg/d</th><th class="num">SS kg/d</th><th class="num">NH₃-N kg/d</th><th>Status</th></tr></thead>
+    ${ex.attention.length ? `<div class="verdict ${ex.expired.length ? 'bad' : 'warn'}">
+      <b>${ex.expired.length ? `${ex.expired.length} expired, ${ex.soon.length} running out within ${ex.within} days`
+        : `${ex.soon.length} licence${ex.soon.length === 1 ? '' : 's'} run${ex.soon.length === 1 ? 's' : ''} out within ${ex.within} days`}</b>
+      ${esc(ex.attention.slice(0, 6).map((l) => `${l.ref} (${l.premises}) ${countdown(l.expiry.days)}`).join('; '))}${ex.attention.length > 6 ? ' …' : ''}</div>` : ''}
+    ${here.length ? `<table><thead><tr><th>Licence</th><th>Premises</th><th>Category</th><th>Std</th><th class="num">Flow m³/day</th><th class="num">BOD</th><th class="num">COD</th><th class="num">SS</th><th class="num">NH₃-N</th><th class="num">BOD kg/d</th><th class="num">COD kg/d</th><th class="num">SS kg/d</th><th class="num">NH₃-N kg/d</th><th>Expires</th><th>Status</th></tr></thead>
     <tbody>${here.map((l) => { const lo = licenceLoads(l); const c = licenceCompliance(l, 'A'); const off = l.active === false;
       return `<tr class="${off ? 'mut' : ''}"><td>${esc(l.ref)}${l.example ? ` <span class="mut">${l.bulk ? 'estimated' : 'example'}</span>` : ''}</td><td>${esc(l.premises)}</td><td>${esc(l.category ?? '')}</td><td>${esc(l.standard ?? '')}</td><td class="num">${nf(l.flow)}</td>
         ${['bod', 'cod', 'ss', 'an'].map((p) => `<td class="num">${l.conc?.[p] ?? 0}</td>`).join('')}${['bod', 'cod', 'ss', 'an'].map((p) => `<td class="num">${nf(lo[p], 1)}</td>`).join('')}
+        ${(() => { const e = expiryOf(l); return `<td class="${e.state === 'expired' ? 'bad' : e.state === 'soon' ? 'warn' : ''}">${e.has ? `${esc(e.iso)}<br><span class="mut">${esc(countdown(e.days))}</span>` : '—'}</td>`; })()}
         <td class="${off ? 'mut' : c.pass ? 'ok' : 'bad'}">${off ? 'Inactive' : c.pass ? 'Within Std A' : `Exceeds Std A (${c.breaches.join(', ')})`}</td></tr>`; }).join('')}
-      <tr><th colspan="9">Total · ${active.length} active</th>${['bod', 'cod', 'ss', 'an'].map((p) => `<th class="num">${nf(tot[p], 1)}</th>`).join('')}<th></th></tr></tbody></table>` : ''}`;
+      <tr><th colspan="9">Total · ${active.length} active</th>${['bod', 'cod', 'ss', 'an'].map((p) => `<th class="num">${nf(tot[p], 1)}</th>`).join('')}<th colspan="2"></th></tr></tbody></table>` : ''}`;
 }
 
 const MARK = `<svg viewBox="0 0 100 140" aria-hidden="true"><rect x="4" y="4" width="92" height="132" rx="46" fill="#22235f"/><path d="M50 12c-21 0-38 15-38 34v46c0 19 17 34 38 34s38-15 38-34V46c0-19-17-34-38-34z" fill="#157f3a"/><path d="M50 26 79 96a30 30 0 0 1-58 0z" fill="#f5e01c"/><g stroke="#45bfe0" stroke-width="6" stroke-linecap="round" fill="none"><path d="M24 74q7-7 13 0t13 0 13 0 13 0"/><path d="M26 88q7-7 13 0t13 0 13 0 11 0"/><path d="M30 102q6-7 12 0t12 0 12 0 8 0"/></g><path d="M20 106a30 30 0 0 0 60 0 46 46 0 0 1-60 0z" fill="#f5e01c"/></svg>`;
@@ -486,6 +493,10 @@ function summary(g) {
     ['Months meeting the target', rec.total ? `${rec.passing} of ${rec.total} (${(rec.rate * 100).toFixed(0)}%)` : '—'],
     ['TMDL', tmdlLine],
     ['Licences counting here', `${here.filter((l) => l.active !== false).length} active of ${here.length}`],
+    ['Licences running out', (() => { const e = expirySummary(here);
+      return e.attention.length
+        ? `${e.expired.length} expired, ${e.soon.length} within ${e.within} days`
+        : `none within ${e.within} days`; })()],
   ];
   return `<div class="sum">${rows.map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}</div>`;
 }

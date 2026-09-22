@@ -6,6 +6,7 @@ import { DATA, loadAll, readingAt, latestIdx, complianceRecord, fmtMonth,
 import { wqiClass } from './wqi.js';
 import { sourceLabel } from './firebase.js';
 import { store, registerAsJson, registerAsCsv, download } from './store.js';
+import { expirySummary } from './expiry.js';
 import { buildExamples, buildTmdlExamples } from './examples.js';
 import { buildGlossary } from './glossary.js';
 import { renderSesams, resizeSesams } from './sesams.js';
@@ -61,6 +62,21 @@ function show(view) {
     resizePhase3();
   }
   if (view === 'sesams') { renderSesams(); ready.sesams = true; resizeSesams(); }
+}
+
+/* A licence about to run out is worth seeing from any page, so the count
+   sits on the nav entry that leads to the register. */
+function updateWarnBadge() {
+  const el = $('navWarn');
+  if (!el) return;
+  const sum = expirySummary(store.licences());
+  const n = sum.attention.length;
+  el.hidden = n === 0;
+  el.textContent = n > 99 ? '99+' : String(n);
+  el.classList.toggle('bad', sum.expired.length > 0);
+  el.title = sum.expired.length
+    ? `${sum.expired.length} licence(s) expired, ${sum.soon.length} running out within ${sum.within} days`
+    : `${n} licence(s) run out within ${sum.within} days`;
 }
 
 /* ---------------- App bar ---------------- */
@@ -139,6 +155,7 @@ function buildStationPicker() {
 
   buildStationPicker();
   updatePills();
+  updateWarnBadge();
   buildLocationDialog();
   buildReportDialog();
   /* The picker says which location; this takes you to it */
@@ -182,6 +199,7 @@ function buildStationPicker() {
     if (DATA.months.length !== months && ready.map) refreshTimeline();
     if (!!DATA.focus.user !== pickerHadEdit) buildStationPicker();
     updatePills();
+    updateWarnBadge();
     if (ready.map) refreshMap();
     if (ready.quality) renderPhase2();
     if (ready.tmdl) renderPhase3();

@@ -22,6 +22,7 @@ import { IMAGERY, gibsLayer, REFERENCE_MAPS, WATER_INDICES, WQ_PRODUCTS, WQ_QUAR
 import { sourceIcon, sourceSwatch } from './symbols.js';
 import { HEAT_MODES, makeHeatLayer, heatColour, heatSummary, RAIN_MAX, HUM_MIN, HUM_MAX } from './weather.js';
 import { licenceStatus } from './licenceStatus.js';
+import { expiryOf, countdown } from './expiry.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
@@ -684,7 +685,7 @@ function licenceBlock(srcId) {
     <div class="pop-lic ${st.licensed ? 'ok' : 'none'}">
       <b>${st.licensed ? 'Licensed' : 'No discharge licence'}
         <span class="est-dot">${badge}</span></b>
-      ${l ? `${esc(l.ref)} · ${(l.flow ?? 0).toLocaleString('en')} m³/day permitted`
+      ${l ? `${esc(l.ref)} · ${(l.flow ?? 0).toLocaleString('en')} m³/day permitted${expiryLine(l)}`
           : 'No licence register is published, so this status is an assumption, not a record.'}
     </div>`;
   }
@@ -694,8 +695,16 @@ function licenceBlock(srcId) {
     <div class="pop-lic ${st.licensed ? 'ok' : 'none'}">
       <b>${st.licensed ? 'Licensed' : 'Licence suspended'} · ${esc(l.ref)}${l.estimated ? ' <span class="est-dot">EST</span>' : ''}</b>
       ${(l.flow ?? 0).toLocaleString('en')} m³/day at Standard ${esc(l.standard ?? 'A')}
-      · ${total.toFixed(1)} kg/day permitted
+      · ${total.toFixed(1)} kg/day permitted${expiryLine(l)}
     </div>`;
+}
+
+/* When the licence runs out, said on the premises itself */
+function expiryLine(l) {
+  const e = expiryOf(l);
+  if (!e.has) return '';
+  return `<br><span class="pop-exp" style="color:${e.colour}">Expires ${esc(e.iso)}`
+    + ` · ${esc(countdown(e.days))}</span>`;
 }
 
 /* Fly to the water a source reaches and flash it. If its layer has been
