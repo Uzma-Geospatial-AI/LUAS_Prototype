@@ -281,14 +281,18 @@ table.budget th{font-size:9.5px}
 /* The columns stay where they are: a fixed layout sizes them from the
    colgroup, not from whichever rows happen to be on the page, so a sort or a
    page turn changes the rows and nothing else. Only Premises is elastic. */
-table.register{table-layout:fixed;min-width:1180px}
+/* Every column but Premises is fixed, so the min-width has to cover their
+   sum plus room for a name: 1,408px of fixed columns, and the rest is the
+   premises. Under that the table scrolls in its own box rather than
+   squeezing a name to one letter a line. */
+table.register{table-layout:fixed;min-width:1640px}
 table.register col.c-ref{width:172px}
 table.register col.c-std{width:58px}
 table.register col.c-flow{width:76px}
 table.register col.c-conc{width:60px}
 table.register col.c-load{width:68px}
 table.register col.c-stat{width:118px}
-table.register col.c-act{width:176px}
+table.register col.c-act{width:190px}
 table.register td{padding:8px 11px;overflow-wrap:anywhere}
 table.register td .badge,table.register td .pill-status{white-space:nowrap}
 table.register td.act{white-space:nowrap;text-align:right}
@@ -1602,3 +1606,29 @@ summary{cursor:pointer}
 
 /* A save button holding photographs nobody has committed yet */
 .btn.has-pending{box-shadow:0 0 0 3px rgba(239,125,26,.32)}
+
+/* ---------------- The systems LUAS already has ---------------- */
+.sys-group{margin-top:22px}
+.sys-head{display:flex;align-items:center;gap:9px;font-size:14px;margin:0 0 10px}
+.sys-head i{width:10px;height:10px;border-radius:3px;flex:none}
+.sys-head span{font-size:11.5px;font-weight:400;color:var(--muted)}
+.sys-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:12px;align-items:start}
+.card.sys{border-left:4px solid var(--sc,var(--navy-2))}
+.sys-name{font-size:14px;font-weight:650;line-height:1.35}
+.sys-own{font-size:11px;color:var(--muted-2);margin-top:3px}
+.card.sys p{margin:9px 0 0;font-size:12.5px;color:var(--muted);line-height:1.55}
+.sys-confirm,.sys-here{margin-top:10px;font-size:11.5px;line-height:1.5;padding:7px 10px;border-radius:var(--r-sm)}
+.sys-confirm{background:#fff8e8;border:1px solid #f6e0a8;color:#6b4c0a}
+.sys-here{background:var(--surface-2);border:1px solid var(--line);color:var(--muted)}
+.sys-confirm b,.sys-here b{display:block;font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;
+  margin-bottom:2px}
+.sys-confirm b{color:#8a5a06}
+.sys-here b{color:var(--muted-2)}
+.card.sys .btn-row{margin-top:12px}
+.card.sys .btn{text-decoration:none;display:inline-flex;align-items:center;gap:7px}
+.away-arrow{width:14px;height:14px}
+table.register col.c-chg{width:106px}
+.chg-v{display:block;font-family:var(--fm);font-size:11.5px;font-weight:650;color:var(--navy)}
+.chg-m{display:block;font-size:9.5px;font-weight:600;color:#b54708;margin-top:1px}
+.chg-sched .flag{vertical-align:1px}
+.chg-kg{grid-template-columns:repeat(auto-fit,minmax(132px,1fr))}

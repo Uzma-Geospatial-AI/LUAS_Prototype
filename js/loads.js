@@ -57,8 +57,11 @@ export const DEFAULT_CONDITIONS = {
    Environmental Quality (Industrial Effluent) Regulations 2009.
    Standard A applies upstream of a water supply intake, Standard B downstream. */
 export const EFFLUENT_STANDARDS = {
-  A: { label: 'Standard A (upstream of an intake)', bod: 20, cod: 80,  ss: 50,  an: 10 },
-  B: { label: 'Standard B (downstream)',            bod: 50, cod: 200, ss: 100, an: 20 },
+  /* Oil and grease is in the regulations and in the charge schedule, but it
+     has no INWQS ambient standard here, so it is charged without entering
+     the TMDL: an effluent parameter, not a river one. */
+  A: { label: 'Standard A (upstream of an intake)', bod: 20, cod: 80,  ss: 50,  an: 10, og: 1 },
+  B: { label: 'Standard B (downstream)',            bod: 50, cod: 200, ss: 100, an: 20, og: 10 },
 };
 
 /* ============================================================
@@ -232,6 +235,9 @@ export function licenceLoads(licence) {
 export function licenceCompliance(licence, standardKey = 'A') {
   const std = EFFLUENT_STANDARDS[standardKey];
   const breaches = LOAD_PARAMS.filter((p) => (licence.conc?.[p] ?? 0) > std[p]);
+  /* Oil and grease only when it is recorded: an entry that never had a
+     figure for it is not in breach of one */
+  if (Number.isFinite(Number(licence.conc?.og)) && Number(licence.conc.og) > std.og) breaches.push('og');
   return { pass: breaches.length === 0, breaches, standard: std };
 }
 

@@ -14,7 +14,8 @@
 import { DEFAULT_CONDITIONS, CUMEC_TO_M3H } from './loads.js';
 
 const KEY = 'luas-system-v2';
-const EMPTY = { readings: [], licences: [], tmdls: [], tmdlPick: {}, stations: [], cond: null, examplesCleared: false };
+const EMPTY = { readings: [], licences: [], tmdls: [], tmdlPick: {}, stations: [],
+  charges: null, cond: null, examplesCleared: false };
 
 let cache = null;
 
@@ -182,6 +183,20 @@ export const store = {
     write();
   },
 
+  /* ---------------- The charge schedule ----------------
+     What LUAS charges a discharge, as an input rather than a constant: the
+     two rates come from the return water schedule, the boundary between
+     them and the rate per kilogram do not. See js/charges.js. */
+  chargeSchedule: () => read().charges ?? {},
+  setChargeSchedule(patch) {
+    read().charges = { ...(cache.charges ?? {}), ...patch };
+    write();
+  },
+  resetChargeSchedule() {
+    read().charges = null;
+    write();
+  },
+
   /* ---------------- Licence register ---------------- */
   /* The worked examples are premises taken off the map, so they arrive once
      the point sources have loaded rather than being written in here. */
@@ -294,6 +309,7 @@ export function registerAsJson() {
       note: 'Rows marked example:true are the shipped worked example, not real licences. '
         + 'tmdls holds the TMDLs written in this browser; each is TMDL = ΣWLA + ΣLA + MOS in kg/day per pollutant.',
       conditions: store.conditions(),
+      chargeSchedule: store.chargeSchedule(),
     },
     stations: store.stations(),
     tmdls: store.userTmdls(),

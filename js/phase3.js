@@ -24,6 +24,7 @@ import { mapCentre } from './mapview.js';
 import { mountAttach, attachGallery, wireGallery, saveWarning } from './attach.js';
 import { expiryOf, expirySummary, countdown, termProblem, todayISO, WARN_WINDOWS } from './expiry.js';
 import { buildRenewDialog, openRenewDialog, renewalLog, renewalsOf } from './renew.js';
+import { charges, chargeFor, chargeSummary, fmtMoney, CHARGE_PARAMS, DAYS_PER_MONTH, SOURCES } from './charges.js';
 
 /* One premises, one licence. Picking a premises that already has one must load
    it, not offer a second — two licences on the same site would count its
@@ -295,6 +296,7 @@ export function renderPhase3() {
   }
   renderExpiry(store.licences());
   renderRegister(store.licences(), stdKey, budgets);
+  renderCharges(store.licences());
   if (formOpen) refreshFormCalc();
   previewLicence();
 }
@@ -1038,6 +1040,170 @@ function renderExpiry(all) {
 }
 
 /* ============================================================
+   What the discharge would be charged
+   ============================================================ */
+function renderCharges(all) {
+  const box = $('p3Charges');
+  if (!box) return;
+  const sc = charges();
+  const here = licencesAt(DATA.focus.code);
+  const sum = chargeSummary(here, sc);
+  const whole = chargeSummary(all, sc);
+  const noRates = CHARGE_PARAMS.every((p) => !(sc.perKg[p.id] > 0));
+
+  const money = (v) => fmtMoney(v, sc.currency);
+
+  box.innerHTML = `
+    <div class="section-title" style="margin-top:26px">
+      <h2>Charges</h2>
+      <span class="st-sub">What a licensed discharge is charged, on the figures in the register
+        <button type="button" class="tipmark" tabindex="0" data-tip="Two charges. Return water by volume, tiered per cubic metre a month. Pollutant by mass, per kilogram, but only the mass above the standard limit. The rates are inputs here, not constants: see the note below for which came from the source and which had to be assumed." aria-label="Return water by volume, tiered per cubic metre a month; pollutant by mass per kilogram above the standard. The rates are inputs, not constants.">i</button></span>
+    </div>
+
+    <div class="notice warn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v5M12 16h.01"/><circle cx="12" cy="12" r="9"/></svg>
+      <div style="flex:1"><b>Two figures are read, three are assumed.</b>
+        From the source: return water is tiered between ${money(sc.lowRate)} and ${money(sc.highRate)}
+        per m³ a month (<i>${esc(SOURCES.volume)}</i>), and pollutant mass is charged per kilogram
+        <b>only above the standard limit</b> (<i>${esc(SOURCES.load)}</i>).
+        Not in the source: where one tier becomes the other, whether the tiers apply per band or to
+        the whole volume, and the rate per kilogram. Those are set below and marked as assumptions.</div>
+    </div>
+
+    <div class="card chg-sched">
+      <div class="cond-head">
+        <h3>The schedule</h3>
+        <button class="btn btn-ghost" id="chgReset">Reset to the source</button>
+      </div>
+      <div class="form-grid">
+        <div class="field">
+          <label for="chgLow">Lower rate <span class="unit">${esc(sc.currency)}/m³/month</span>
+            <span class="flag ok">from the source</span></label>
+          <input id="chgLow" type="number" step="0.01" min="0" value="${sc.lowRate}">
+        </div>
+        <div class="field">
+          <label for="chgHigh">Upper rate <span class="unit">${esc(sc.currency)}/m³/month</span>
+            <span class="flag ok">from the source</span></label>
+          <input id="chgHigh" type="number" step="0.01" min="0" value="${sc.highRate}">
+        </div>
+        <div class="field">
+          <label for="chgTier">Tier boundary <span class="unit">m³/month</span>
+            <span class="flag">assumed</span></label>
+          <input id="chgTier" type="number" step="100" min="0" value="${sc.tierAt}">
+        </div>
+        <div class="field">
+          <label for="chgMode">How the tiers apply <span class="flag">assumed</span></label>
+          <select id="chgMode">
+            <option value="block"${sc.tierMode === 'block' ? ' selected' : ''}>Per band — each m³ at its own rate</option>
+            <option value="flat"${sc.tierMode === 'flat' ? ' selected' : ''}>Whole volume at the band's rate</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="tf-alloc-head">
+        <div><b>Rate per kilogram above the standard</b>
+          <span>${esc(sc.currency)} per kg · <span class="flag">not in the source</span></span></div>
+      </div>
+      <div class="form-grid chg-kg">
+        ${CHARGE_PARAMS.map((p) => `
+          <div class="field">
+            <label for="chg_${p.id}">${esc(p.label)}</label>
+            <input id="chg_${p.id}" type="number" step="0.01" min="0" value="${sc.perKg[p.id] ?? 0}">
+          </div>`).join('')}
+      </div>
+      ${noRates ? `<div class="hint" style="margin-top:9px">Every rate is nought, so no mass charge is
+        computed. That is on purpose: the Fourth Schedule is cited for charging per kilogram, but no
+        rate came with it, and inventing one would put a number on a bill.</div>` : ''}
+    </div>
+
+    <div class="grid ex-kpis" style="margin-top:14px">
+      <div class="card kpi">
+        <div class="k-lab">Volume charge · ${esc(DATA.focus.code)}</div>
+        <div class="k-val" style="font-size:24px">${money(sum.volumeCharge)}</div>
+        <div class="k-sub">a month, on ${nf(Math.round(sum.volumeM3))} m³</div>
+        <div class="k-note">${sum.n} active licence${sum.n === 1 ? '' : 's'} counting here</div>
+      </div>
+      <div class="card kpi">
+        <div class="k-lab">Mass charge · ${esc(DATA.focus.code)}</div>
+        <div class="k-val" style="font-size:24px;color:${sum.loadCharge ? '#b54708' : 'inherit'}">${money(sum.loadCharge)}</div>
+        <div class="k-sub">${sum.excessKg > 0 ? `${nf(sum.excessKg, 1)} kg a month above the standard`
+    : 'nothing above the standard'}</div>
+        <div class="k-note">${sum.excessKg > 0 ? 'Charged only on the excess'
+    : 'Every licence here is written within its standard'}</div>
+      </div>
+      <div class="card kpi">
+        <div class="k-lab">Total · ${esc(DATA.focus.code)}</div>
+        <div class="k-val" style="font-size:24px">${money(sum.total)}</div>
+        <div class="k-sub">a month</div>
+        <div class="k-note">${money(sum.total * 12)} a year</div>
+      </div>
+      <div class="card kpi">
+        <div class="k-lab">The whole register</div>
+        <div class="k-val" style="font-size:24px">${money(whole.total)}</div>
+        <div class="k-sub">a month, ${whole.n} active licences</div>
+        <div class="k-note">${nf(Math.round(whole.volumeM3))} m³ a month in total</div>
+      </div>
+    </div>
+
+    ${sum.rateMissing ? `<div class="notice bad" style="margin-top:12px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+      <div style="flex:1"><b>${nf(sum.excessKg, 1)} kg a month sits above the standard and is charged
+        nothing</b>, because the rate per kilogram is still nought. Enter it above.</div></div>` : ''}
+
+    ${sum.rows.length ? `
+      <div class="card pad0 tbl-scroll" style="margin-top:12px">
+        <table class="data">
+          <thead><tr>
+            <th>Licence</th><th>Premises</th><th class="num">m³/month</th><th class="num">Volume</th>
+            <th class="num">kg above the standard</th><th class="num">Mass</th><th class="num">A month</th>
+          </tr></thead>
+          <tbody>${sum.rows.slice(0, 20).map(({ licence: l, charge: c }) => `
+            <tr class="${c.excessKg > 0 ? 'row-fail' : ''}">
+              <td><b>${esc(l.ref)}</b><span class="sub">Std ${esc(l.standard ?? 'A')}${l.bulk ? ' · estimated' : l.example ? ' · worked example' : ''}</span></td>
+              <td>${esc(l.premises)}</td>
+              <td class="num">${nf(Math.round(c.volumeM3))}</td>
+              <td class="num">${money(c.volumeCharge)}</td>
+              <td class="num${c.excessKg > 0 ? ' over' : ''}">${c.excessKg > 0 ? nf(c.excessKg, 1) : '—'}</td>
+              <td class="num">${c.loadCharge ? money(c.loadCharge) : '—'}</td>
+              <td class="num strong">${money(c.total)}</td>
+            </tr>`).join('')}</tbody>
+          <tfoot><tr class="totals">
+            <td colspan="2"><b>Total · ${sum.n} active at ${esc(DATA.focus.code)}</b></td>
+            <td class="num"><b>${nf(Math.round(sum.volumeM3))}</b></td>
+            <td class="num"><b>${money(sum.volumeCharge)}</b></td>
+            <td class="num"><b>${sum.excessKg > 0 ? nf(sum.excessKg, 1) : '—'}</b></td>
+            <td class="num"><b>${sum.loadCharge ? money(sum.loadCharge) : '—'}</b></td>
+            <td class="num"><b>${money(sum.total)}</b></td>
+          </tr></tfoot>
+        </table>
+      </div>
+      ${sum.rows.length > 20 ? `<div class="hint" style="margin-top:8px">The 20 largest of
+        ${nf(sum.rows.length)} shown.</div>` : ''}
+    ` : `<div class="card" style="margin-top:12px"><div class="empty-row">No active licence counts at
+        ${esc(DATA.focus.name)}, so there is nothing to charge here.</div></div>`}
+
+    <div class="hint" style="margin-top:10px">Monthly volume is the permitted daily flow ×
+      ${DAYS_PER_MONTH} days. A reported volume from SPASA is the figure this should use instead;
+      see the Systems page. Oil and grease is charged where a figure is on the licence, and is held
+      to ${EFFLUENT_STANDARDS.A.og} mg/L under Standard A and ${EFFLUENT_STANDARDS.B.og} mg/L under
+      Standard B; it has no ambient standard here, so it never enters the TMDL.</div>`;
+
+  const commit = () => store.setChargeSchedule({
+    lowRate: Math.max(0, num($('chgLow').value) || 0),
+    highRate: Math.max(0, num($('chgHigh').value) || 0),
+    tierAt: Math.max(0, num($('chgTier').value) || 0),
+    tierMode: $('chgMode').value,
+    perKg: Object.fromEntries(CHARGE_PARAMS.map((p) =>
+      [p.id, Math.max(0, num($(`chg_${p.id}`).value) || 0)])),
+  });
+  for (const id of ['chgLow', 'chgHigh', 'chgTier', ...CHARGE_PARAMS.map((p) => `chg_${p.id}`)]) {
+    $(id).addEventListener('change', commit);
+  }
+  $('chgMode').addEventListener('change', commit);
+  $('chgReset').onclick = () => store.resetChargeSchedule();
+}
+
+/* ============================================================
    Licence register
    ============================================================ */
 /* The register runs to a few hundred rows, so it is read a page at a time.
@@ -1056,6 +1222,7 @@ function sortValue(l, key, stdKey) {
   if (key === 'premises') return l.premises ?? '';
   if (key === 'at') return stationForLicence(l) ?? '';
   if (key === 'expires') return l.expires ? Number(String(l.expires).replace(/-/g, '')) : 99999999;
+  if (key === 'charge') return chargeFor(l).total;
   if (key === 'standard') return l.standard ?? '';
   if (key === 'flow') return l.flow ?? 0;
   if (key.startsWith('conc.')) return l.conc?.[key.slice(5)] ?? 0;
@@ -1133,6 +1300,11 @@ function renderRegister(all, stdKey, budgets) {
       ${LOAD_PARAMS.map((p) => `<td class="num${comp.breaches.includes(p) ? ' over' : ''}">
         ${l.conc?.[p] ?? 0}</td>`).join('')}
       ${LOAD_PARAMS.map((p) => `<td class="num strong">${nf(loads[p], 1)}</td>`).join('')}
+      <td class="num">${(() => { const c = chargeFor(l);
+        return c.total
+          ? `<span class="chg-v">${fmtMoney(c.total, charges().currency)}</span>`
+            + (c.loadCharge ? `<span class="chg-m" title="Includes ${nf(c.excessKg, 1)} kg a month above the standard">incl. mass</span>` : '')
+          : '<span class="mut">—</span>'; })()}</td>
       <td>${(() => { const e = expiryOf(l);
         return e.has
           ? `<span class="exp-d">${esc(e.iso)}</span><span class="exp-c" style="color:${e.colour}">${esc(countdown(e.days))}</span>${
@@ -1151,7 +1323,7 @@ function renderRegister(all, stdKey, budgets) {
         <button class="mini danger" data-del="${l.id}">Delete</button>`}
       </td>
     </tr>`;
-  }).join('') : `<tr><td colspan="17" class="empty-row">${regSearch
+  }).join('') : `<tr><td colspan="18" class="empty-row">${regSearch
       ? `Nothing in the register matches “${esc(regSearch)}”.`
       : 'No licences in the register. Add one below, or restore the worked example.'}</td></tr>`;
 
@@ -1162,6 +1334,8 @@ function renderRegister(all, stdKey, budgets) {
       <td class="num"><b>${nf(active.reduce((t, l) => t + (l.flow || 0), 0))}</b></td>
       <td colspan="4" class="num muted">permitted concentration</td>
       ${LOAD_PARAMS.map((p) => `<td class="num strong">${nf(totals[p], 1)}</td>`).join('')}
+      <td class="num strong">${fmtMoney(active.reduce((t, l) => t + chargeFor(l).total, 0),
+        charges().currency)}</td>
       <td colspan="3"></td>
     </tr>` : '';
 
@@ -1293,7 +1467,7 @@ export function buildLicenceForm() {
     hint: 'Photos are attached to this licence when you save it, and go into the report.',
     onchange: () => setAddLabel(),
   });
-  ['lRef', 'lPremises', 'lFlow', 'lIssued', 'lExpires', ...LOAD_PARAMS.map((p) => `l_${p}`)]
+  ['lRef', 'lPremises', 'lFlow', 'lIssued', 'lExpires', 'l_og', ...LOAD_PARAMS.map((p) => `l_${p}`)]
     .forEach((id) => $(id).addEventListener('input', previewLicence));
   $('lStd').addEventListener('change', previewLicence);
   /* Which station the licence counts at: the nearest unless said otherwise */
@@ -1364,6 +1538,10 @@ function readForm() {
     const v = num($(`l_${p}`).value);
     conc[p] = Number.isNaN(v) ? 0 : v;
   }
+  /* Oil and grease is charged but not budgeted, and is left out rather than
+     zeroed when nobody has measured it: nought is a reading, blank is not */
+  const og = num($('l_og').value);
+  if (!Number.isNaN(og)) conc.og = og;
   /* A term that ends before it starts is a typo, not a record */
   if (termProblem($('lIssued').value, $('lExpires').value)) return null;
   const out = {
@@ -1409,7 +1587,7 @@ function clearForm() {
   /* The form is empty, so there is nowhere to be shown */
   for (const id of ['lShowPick', 'lShowNew']) if ($(id)) $(id).disabled = true;
   setAddLabel();
-  ['lRef', 'lPremises', 'lFlow', 'lLat', 'lLon', ...LOAD_PARAMS.map((p) => `l_${p}`)]
+  ['lRef', 'lPremises', 'lFlow', 'lLat', 'lLon', 'l_og', ...LOAD_PARAMS.map((p) => `l_${p}`)]
     .forEach((id) => { $(id).value = ''; });
   $('lSource').value = '';
   $('lStation').value = '';
@@ -1446,6 +1624,7 @@ function loadIntoForm(l) {
   $('lFlow').value = l.flow ?? '';
   lAtt?.set(l.attachments ?? []);
   for (const p of LOAD_PARAMS) $(`l_${p}`).value = l.conc?.[p] ?? '';
+  $('l_og').value = l.conc?.og ?? '';
   setAddLabel();
   previewLicence();
   $('lRef').scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -1467,6 +1646,16 @@ function previewLicence() {
 
   const lStd = $('lStd').value;
   const std = EFFLUENT_STANDARDS[lStd];
+  {
+    const v = num($('l_og').value);
+    const hint = $('lh_og');
+    const over = !Number.isNaN(v) && v > std.og;
+    hint.textContent = Number.isNaN(v)
+      ? `Std ${lStd} limit ${std.og} · optional, charged above it`
+      : over ? `Exceeds Std ${lStd} (${std.og}) — charged on the excess`
+        : `Within Std ${lStd} (${std.og})`;
+    hint.className = `hint ${Number.isNaN(v) ? '' : over ? 'err' : 'ok'}`;
+  }
   for (const p of LOAD_PARAMS) {
     const v = num($(`l_${p}`).value);
     const hint = $(`lh_${p}`);

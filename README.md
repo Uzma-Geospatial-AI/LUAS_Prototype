@@ -508,6 +508,20 @@ nearest water (`scripts/08`), whether it holds a licence, and the quarterly Sent
 > ⚠️ The zones are a screening rule, not the Enactment. River reserves under the Selangor Waters
 > Management Enactment 1999 vary with river width; 50 m is used as one width for every reach.
 
+## Systems — what LUAS already has
+
+This portal is one thing among several, and most of the data it works with belongs to somebody else.
+The **Systems** page names them, grouped by what each one sees — the river, the dischargers, the
+land — with the owner, what it does, what is still to confirm about it, and what this portal holds of
+it. IWRMS, LiSS, the Air Selangor river monitoring stations and the telemetry expansion; LEDS, SPASA
+and the LUAS laboratory; and SESAMS.
+
+**SESAMS is not rebuilt here.** It is MYSA's system, built for LUAS under a memorandum of
+understanding of August 2024 and launched June 2026, and the page simply opens it at
+`sesams.mysa.gov.my`. Only SESAMS carries an address: the others are internal or reached through a
+portal whose URL is not ours to publish, and guessing one would be worse than leaving it out. The
+old `#sesams` link still lands on the page.
+
 ## Phase 3 — LEDS · TMDL · licence register
 
 ```
@@ -618,6 +632,28 @@ history; the estimate for that premises drops out, as it always does when a real
 > clears them too, and the page asks before the tab is closed with pictures still in hand. It keeps
 > no draft on purpose: a draft of unsaved photos would spend the same small storage budget as the
 > records themselves.
+
+**Charges.** LUAS already charges a licensed discharge two ways, and the register holds the figures
+for both. The *Charges* panel at the foot of the Licences tab works them out:
+
+| Charge | Basis | Source |
+|---|---|---|
+| **Volume** | Return water, tiered between RM0.10 and RM0.20 per m³ a month | LUAS return water charge schedule |
+| **Mass** | Per kilogram, but **only the mass above the standard limit** — BOD, COD, suspended solids, ammoniacal nitrogen, oil and grease | Licensing Regulations (Selangor) 2024, Fourth Schedule |
+
+> ⚠️ **Two figures are read from the source; three are not.** The two rates are. Where one tier
+> becomes the other is not, nor whether the tiers apply per band or to the whole volume, nor the rate
+> per kilogram. So **the schedule is an input, not a constant**: every figure is editable, each is
+> labelled *from the source* or *assumed*, and the rate per kilogram starts at **nought** so that no
+> charge is invented. Enter the rates and the charges appear. The choice is remembered.
+
+Monthly volume is the permitted daily flow × 30.4375 days; a reported volume from SPASA is what it
+should use instead. The register gains an **RM/month** column that sorts, and the panel totals the
+station and the whole register. **Oil and grease** is charged above 1 mg/L (Standard A) or 10 mg/L
+(Standard B) and is recorded on a licence only when someone has measured it; having no INWQS ambient
+standard, it never enters the TMDL. Because the mass charge bites only above the standard, and every
+shipped licence is written within its standard, their mass charge is nought by construction — it is
+the volume charge that is not.
 
 **Photographs.** A sampling round, a TMDL and a licence each take **attached photographs** —
 site pictures, a field sheet, a meter reading. They are read in the browser, drawn down to 1600 px
