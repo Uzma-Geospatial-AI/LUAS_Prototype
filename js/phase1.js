@@ -320,7 +320,8 @@ function buildCalculator() {
 
   att = mountAttach('p1Attach', {
     label: 'Photos (optional)',
-    hint: 'Saved with this reading in this browser.',
+    hint: 'Photos are attached to the reading when you press Save reading.',
+    onchange: () => setSaveLabel(),
   });
   Object.keys(PARAM_META).forEach((p) =>
     $(`c_${p}`).addEventListener('input', updateCalculator));
@@ -335,6 +336,9 @@ function buildCalculator() {
   };
   $('p1Reset').onclick = () => {
     for (const p of Object.keys(PARAM_META)) $(`c_${p}`).value = '';
+    /* Clear means clear: leaving the photos behind would attach them to
+       whatever reading is typed next, which is not what was asked for. */
+    att?.clear();
     updateCalculator();
   };
   $('p1Save').onclick = () => {
@@ -349,6 +353,7 @@ function buildCalculator() {
       attachments: att?.get() ?? [],
     });
     att?.clear();
+    setSaveLabel();
     /* For a location added here the saved reading IS its record, and the
        store's change has already redrawn the page with it in; the page then
        goes to that month, so the saving is seen */
@@ -362,6 +367,17 @@ function buildCalculator() {
 
   $('cMonth').value = DATA.months[DATA.months.length - 1];
   $('p1Load').click();
+  setSaveLabel();
+}
+
+/* The save button counts the photographs it is about to attach, so a picture
+   waiting in the field is visible from the one control that would keep it. */
+function setSaveLabel() {
+  const b = $('p1Save');
+  if (!b) return;
+  const n = att?.pending() ?? 0;
+  b.textContent = n ? `Save reading + ${n} photo${n === 1 ? '' : 's'}` : 'Save reading';
+  b.classList.toggle('has-pending', n > 0);
 }
 
 function readCalc() {

@@ -34,7 +34,10 @@ function licenceForSource(srcId) {
 
 /* The action follows the record being edited, including mapped premises. */
 function setAddLabel() {
-  $('p3Add').textContent = editing ? 'Save changes' : 'Add licence';
+  const n = lAtt?.pending() ?? 0;
+  const photos = n ? ` + ${n} photo${n === 1 ? '' : 's'}` : '';
+  $('p3Add').textContent = (editing ? 'Save changes' : 'Add licence') + photos;
+  $('p3Add').classList.toggle('has-pending', n > 0);
   if ($('licenceEditorTitle')) $('licenceEditorTitle').textContent = editing ? 'Edit licence' : 'Add licence';
 }
 
@@ -379,7 +382,8 @@ function buildTmdlControls() {
   $('tfFill').onclick = fillToCapacity;
   tfAtt = mountAttach('tfAttach', {
     label: 'Photographs',
-    hint: 'Optional: site, gauge or field-sheet photos. Included in the report.',
+    hint: 'Photos are attached to this TMDL when you save it, and go into the report.',
+    onchange: () => refreshFormCalc(),
   });
   $('tfSave').onclick = saveForm;
   $('tfCancel').onclick = closeForm;
@@ -544,6 +548,9 @@ function refreshFormCalc() {
   }
   const rec = readTmdlForm();
   $('tfSave').disabled = !rec;
+  const np = tfAtt?.pending() ?? 0;
+  $('tfSave').textContent = np ? `Save TMDL + ${np} photo${np === 1 ? '' : 's'}` : 'Save TMDL';
+  $('tfSave').classList.toggle('has-pending', np > 0);
   const hint = $('tfHint');
   if (!rec) {
     hint.textContent = 'Enter a reference and flow above zero. Allocations must be zero or more.';
@@ -1283,7 +1290,8 @@ export function buildLicenceForm() {
 
   lAtt = mountAttach('lAttach', {
     label: 'Photographs',
-    hint: 'Optional: outfall, premises or permit photos. Included in the report.',
+    hint: 'Photos are attached to this licence when you save it, and go into the report.',
+    onchange: () => setAddLabel(),
   });
   ['lRef', 'lPremises', 'lFlow', 'lIssued', 'lExpires', ...LOAD_PARAMS.map((p) => `l_${p}`)]
     .forEach((id) => $(id).addEventListener('input', previewLicence));

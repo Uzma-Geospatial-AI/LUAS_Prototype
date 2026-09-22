@@ -1599,3 +1599,6 @@ summary{cursor:pointer}
 .rn-hist span{display:block;font-size:10.5px;color:var(--muted);margin-top:1px}
 .rn-hist i{display:block;font-style:normal;font-size:11px;color:var(--muted);margin-top:3px}
 .exp-r{display:block;font-size:9.5px;font-weight:650;color:var(--navy-2);margin-top:2px}
+
+/* A save button holding photographs nobody has committed yet */
+.btn.has-pending{box-shadow:0 0 0 3px rgba(239,125,26,.32)}

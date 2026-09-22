@@ -17,6 +17,22 @@
 
    The originals are never uploaded anywhere. They are read in the browser,
    resized in the browser, and kept in the browser.
+
+       THE FIELD IS A STAGING AREA
+
+   Nothing here writes to the store. A picture added to the field is held in
+   memory until the form that owns it saves its record, which is what makes
+   it possible to attach three photographs and one set of readings in a
+   single act. The cost is that a picture waiting in the field is not kept
+   anywhere: close the tab and it is gone.
+
+   That is worth being plain about rather than clever about, so the field
+   says the photos are attached when the record is saved, counts what is
+   waiting, and the page warns before it is closed with pictures still in
+   hand. It deliberately does NOT keep a draft: a draft of unsaved
+   photographs would spend the same small storage budget as the records
+   themselves, and filling it with work nobody has committed to is worse
+   than asking.
    ============================================================ */
 import { store, storageOk, storageBytes } from './store.js';
 
@@ -68,7 +84,7 @@ export function mountAttach(hostId, opts = {}) {
   const host = document.getElementById(hostId);
   if (!host) return { get: () => [], set: () => {}, clear: () => {} };
   const label = opts.label ?? 'Photos (optional)';
-  const hint = opts.hint ?? 'Up to 8 photos. Saved with this record in this browser.';
+  const hint = opts.hint ?? 'Photos are attached to this record when you save it.';
   let list = [];
 
   host.classList.add('att');
@@ -104,7 +120,8 @@ export function mountAttach(hostId, opts = {}) {
         <button type="button" class="att-x" title="Remove photo" aria-label="Remove ${esc(a.name)}">×</button>
       </figure>`).join('');
     if (list.length) {
-      say(`${list.length} of ${MAX_PER_RECORD} photos · ${hint}`);
+      /* "3 photos" reads as done; "waiting" does not */
+      say(`${list.length} of ${MAX_PER_RECORD} waiting. ${hint}`);
     } else say(null);
     opts.onchange?.(list);
   };
@@ -165,13 +182,28 @@ export function mountAttach(hostId, opts = {}) {
   });
 
   render();
-  return {
+  const handle = {
     get: () => list.map((a) => ({ ...a })),
     set: (v) => { list = Array.isArray(v) ? v.map((a) => ({ ...a })) : []; render(); },
     clear: () => { list = []; render(); },
+    /* How many are waiting, for a form that wants to say so on its button */
+    pending: () => list.length,
     say,
   };
+  staged.add(handle);
+  return handle;
 }
+
+/* Every field on the page, so the tab can be stopped from closing while one
+   of them is holding pictures nobody has saved. The browser decides the
+   wording of the prompt; all a page can do is ask for one. */
+const staged = new Set();
+export const pendingPhotos = () => [...staged].reduce((t, h) => t + h.pending(), 0);
+window.addEventListener('beforeunload', (e) => {
+  if (!pendingPhotos()) return;
+  e.preventDefault();
+  e.returnValue = '';
+});
 
 /* What a form says after saving, when the store would not take it */
 export function saveWarning() {

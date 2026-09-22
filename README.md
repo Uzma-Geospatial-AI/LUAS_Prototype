@@ -611,6 +611,14 @@ history; the estimate for that premises drops out, as it always does when a real
 > undo that. So the panel demonstrates the warning without alleging anything: at the time of writing
 > 15 of 291 active entries fall inside a 30-day window and none has expired.
 
+> ⚠️ **The photo field is a staging area, not storage.** Nothing is written until the record it
+> belongs to is saved, which is what lets three photos and one set of readings be committed in a
+> single act. So the field says the photos are *attached when you save*, counts what is waiting,
+> the save button reads **Save reading + 2 photos** with an amber ring while it holds any, **Clear**
+> clears them too, and the page asks before the tab is closed with pictures still in hand. It keeps
+> no draft on purpose: a draft of unsaved photos would spend the same small storage budget as the
+> records themselves.
+
 **Photographs.** A sampling round, a TMDL and a licence each take **attached photographs** —
 site pictures, a field sheet, a meter reading. They are read in the browser, drawn down to 1600 px
 and re-encoded as JPEG so a record costs a few hundred KB rather than several MB, captioned, and
