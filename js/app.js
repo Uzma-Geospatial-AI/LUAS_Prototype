@@ -9,7 +9,6 @@ import { store, registerAsJson, registerAsCsv, download } from './store.js';
 import { expirySummary } from './expiry.js';
 import { buildExamples, buildTmdlExamples } from './examples.js';
 import { buildGlossary } from './glossary.js';
-import { renderSystems } from './systems.js';
 import { renderPhase1, resizePhase1 } from './phase1.js';
 import { renderPhase2, renderNational, resizePhase2 } from './phase2.js';
 import { renderPhase3, buildLicenceForm, resizePhase3, buildRegisterControls } from './phase3.js';
@@ -22,18 +21,15 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-const VIEWS = ['map', 'station', 'quality', 'tmdl', 'systems'];
-/* The land-activity page became the systems page; old links still land */
-const ALIASES = { sesams: 'systems' };
+const VIEWS = ['map', 'station', 'quality', 'tmdl'];
 const VIEW_TITLES = {
   map: 'Map', station: 'Station assessment', quality: 'Water quality trends',
-  tmdl: 'TMDL & licences', systems: 'Systems',
+  tmdl: 'TMDL & licences',
 };
-const ready = { map: false, quality: false, tmdl: false, systems: false };
+const ready = { map: false, quality: false, tmdl: false };
 
 /* ---------------- Navigation ---------------- */
 function show(view) {
-  view = ALIASES[view] ?? view;
   if (!VIEWS.includes(view)) view = 'map';
   document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
   document.querySelectorAll('#nav button').forEach((b) => b.classList.remove('active'));
@@ -69,7 +65,6 @@ function show(view) {
     renderPhase3();
     resizePhase3();
   }
-  if (view === 'systems' && !ready.systems) { renderSystems(); ready.systems = true; }
 }
 
 function closeNavigation() {

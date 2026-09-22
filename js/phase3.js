@@ -1183,8 +1183,8 @@ function renderCharges(all) {
         ${esc(DATA.focus.name)}, so there is nothing to charge here.</div></div>`}
 
     <div class="hint" style="margin-top:10px">Monthly volume is the permitted daily flow ×
-      ${DAYS_PER_MONTH} days. A reported volume from SPASA is the figure this should use instead;
-      see the Systems page. Oil and grease is charged where a figure is on the licence, and is held
+      ${DAYS_PER_MONTH} days. A volume reported by the licensee is the figure this should use
+      instead. Oil and grease is charged where a figure is on the licence, and is held
       to ${EFFLUENT_STANDARDS.A.og} mg/L under Standard A and ${EFFLUENT_STANDARDS.B.og} mg/L under
       Standard B; it has no ambient standard here, so it never enters the TMDL.</div>`;
 

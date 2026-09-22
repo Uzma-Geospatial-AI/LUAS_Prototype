@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>LUAS · Sungai Langat</title>
-<meta name="description" content="Lembaga Urus Air Selangor system for Sungai Langat: Class II assessment at Dengkil, quality monitoring, LEDS/TMDL load accounting with the effluent discharge licence register, licence charges and renewals, and the systems LUAS already has.">
+<meta name="description" content="Lembaga Urus Air Selangor system for Sungai Langat: Class II assessment at Dengkil, quality monitoring, LEDS/TMDL load accounting with the effluent discharge licence register, and licence charges and renewals.">
 
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -65,8 +65,6 @@
     <button data-view="tmdl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 7h14"/><path d="m5 7-2 6a3 3 0 0 0 6 0z"/><path d="m19 7 2 6a3 3 0 0 1-6 0z"/></svg>
       <span><b>TMDL &amp; licences</b></span>
       <i class="nav-warn" id="navWarn" hidden></i></button>
-    <button data-view="systems"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-      <span><b>Systems</b></span></button>
 
     <div class="sb-sec">Tools</div>
     <button class="sb-tool" id="sbReport"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h5"/></svg>
@@ -712,26 +710,6 @@
   </div>
 </section>
 
-<!-- ================= THE SYSTEMS LUAS ALREADY HAS ================= -->
-<section class="view" id="v-systems">
-  <div class="page">
-
-    <div class="page-head">
-      <h2>The systems LUAS already has</h2>
-      <p id="sysSub">Grouped by what each one sees.</p>
-    </div>
-
-    <div class="notice info">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-      <div style="flex:1">This portal is not any of these. It reads published open data, and what it
-        holds of its own — the licence register, the TMDLs, the readings you enter — lives in this
-        browser. Where a system below is the real source for a figure used here, the card says so.</div>
-    </div>
-
-    <div id="sysList"></div>
-
-  </div>
-</section>
 
 <footer class="footer">
   <div class="footer-col"><b>Lembaga Urus Air Selangor (LUAS)</b></div>
@@ -740,7 +718,9 @@
     WQI formula and INWQS: Department of Environment Malaysia (DOE)<br>
     Effluent standards: EQ (Industrial Effluent) Regulations 2009<br>
     National basin data: <a href="https://data.gov.my" target="_blank" rel="noopener">data.gov.my</a><br>
-    Water bodies: Digital Earth &middot; Imagery: Esri, Google, EOX Sentinel-2 cloudless, NASA GIBS
+    Water bodies: Digital Earth &middot; Imagery: Esri, Google, EOX Sentinel-2 cloudless, NASA GIBS<br>
+    Land activity around water bodies is monitored separately by MYSA for LUAS:
+    <a href="https://sesams.mysa.gov.my/" target="_blank" rel="noopener">SESAMS</a>
   </details>
 </footer>
 
